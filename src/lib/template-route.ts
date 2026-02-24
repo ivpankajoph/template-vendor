@@ -1,0 +1,87 @@
+const KNOWN_TEMPLATE_SEGMENTS = new Set([
+  "",
+  "about",
+  "all-products",
+  "cart",
+  "category",
+  "checkout",
+  "contact",
+  "login",
+  "orders",
+  "page",
+  "preview",
+  "product",
+  "profile",
+  "register",
+  "subcategory",
+]);
+
+const normalizeSegment = (value?: string) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+
+export type TemplateRouteContext = {
+  isPreview: boolean;
+  templateKey?: string;
+  citySlug: string;
+};
+
+export const getTemplateRouteContext = (
+  pathname: string,
+  vendorId?: string
+): TemplateRouteContext => {
+  const segments = String(pathname || "/").split("/").filter(Boolean);
+  const targetVendorId = String(vendorId || "");
+
+  if (segments[0] !== "template" || !segments[1] || (targetVendorId && segments[1] !== targetVendorId)) {
+    return { isPreview: false, citySlug: "all" };
+  }
+
+  if (segments[2] === "preview" && segments[3]) {
+    const candidateCity = normalizeSegment(segments[4]);
+    const citySlug =
+      candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity)
+        ? candidateCity
+        : "all";
+    return {
+      isPreview: true,
+      templateKey: segments[3],
+      citySlug,
+    };
+  }
+
+  const candidateCity = normalizeSegment(segments[2]);
+  const citySlug =
+    candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity)
+      ? candidateCity
+      : "all";
+
+  return { isPreview: false, citySlug };
+};
+
+export const buildTemplateScopedPath = ({
+  vendorId,
+  pathname,
+  suffix = "",
+}: {
+  vendorId: string;
+  pathname: string;
+  suffix?: string;
+}) => {
+  const context = getTemplateRouteContext(pathname, vendorId);
+  const normalizedSuffix = String(suffix || "").replace(/^\/+/, "");
+  const suffixPart = normalizedSuffix ? `/${normalizedSuffix}` : "";
+  const cityPart = context.citySlug ? `/${context.citySlug}` : "/all";
+
+  if (context.isPreview && context.templateKey) {
+    return `/template/${vendorId}/preview/${context.templateKey}${cityPart}${suffixPart}`;
+  }
+
+  return `/template/${vendorId}${cityPart}${suffixPart}`;
+};
+
+export const getTemplateCityFromPath = (pathname: string, vendorId?: string) =>
+  getTemplateRouteContext(pathname, vendorId).citySlug || "all";

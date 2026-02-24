@@ -11,6 +11,7 @@ interface TemplateState {
   errorStatus: number | null;
   lastErrorAt: number | null;
   currentVendorId: string | null;
+  currentCitySlug: string | null;
   lastFetchedAt: number | null;
 }
 
@@ -22,6 +23,7 @@ const initialState: TemplateState = {
   errorStatus: null,
   lastErrorAt: null,
   currentVendorId: null,
+  currentCitySlug: null,
   lastFetchedAt: null,
 };
 
@@ -29,7 +31,7 @@ const BASE_URL = NEXT_PUBLIC_API_URL;
 const REQUEST_TIMEOUT_MS = 8_000;
 const NOT_FOUND_RETRY_MS = 60 * 1000;
 const MIN_REQUEST_GAP_MS = 5_000;
-const templateLastRequestByVendor = new Map<string, number>();
+const templateLastRequestByVendorCity = new Map<string, number>();
 const templateEndpointPreference = new Map<string, "preview" | "fallback">();
 
 type TemplateApiError = {
@@ -40,6 +42,23 @@ type TemplateApiError = {
 type TemplateThunkState = {
   alltemplatepage: TemplateState;
 };
+
+type TemplateFetchArg = {
+  vendorId: string;
+  citySlug?: string;
+};
+
+const normalizeCitySlug = (value?: string) => {
+  const slug = String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
+  return slug || "all";
+};
+
+const getRequestKey = (vendorId: string, citySlug?: string) =>
+  `${vendorId}::${normalizeCitySlug(citySlug)}`;
 
 const asRecord = (value: unknown): Record<string, any> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -75,20 +94,24 @@ const mergeTemplateDraft = (
   return merged;
 };
 
-const fetchTemplatePayload = async (vendorId: string) => {
-  const preferredEndpoint = templateEndpointPreference.get(vendorId);
-  const previewUrl = `${BASE_URL}/templates/${vendorId}/preview`;
+const fetchTemplatePayload = async (vendorId: string, citySlug?: string) => {
+  const requestKey = getRequestKey(vendorId, citySlug);
+  const preferredEndpoint = templateEndpointPreference.get(requestKey);
+  const normalizedCity = normalizeCitySlug(citySlug);
+  const previewUrl = `${BASE_URL}/templates/${vendorId}/preview?city=${encodeURIComponent(
+    normalizedCity
+  )}`;
   const fallbackUrl = `${BASE_URL}/templates/template-all?vendor_id=${vendorId}`;
 
   const fetchPreview = async () => {
     const response = await axios.get(previewUrl, { timeout: REQUEST_TIMEOUT_MS });
-    templateEndpointPreference.set(vendorId, "preview");
+    templateEndpointPreference.set(requestKey, "preview");
     return response.data;
   };
 
   const fetchFallback = async () => {
     const response = await axios.get(fallbackUrl, { timeout: REQUEST_TIMEOUT_MS });
-    templateEndpointPreference.set(vendorId, "fallback");
+    templateEndpointPreference.set(requestKey, "fallback");
     return response.data;
   };
 
@@ -109,13 +132,13 @@ const fetchTemplatePayload = async (vendorId: string) => {
 
 export const fetchAlltemplatepageTemplate = createAsyncThunk<
   any,
-  string,
+  TemplateFetchArg,
   { state: TemplateThunkState; rejectValue: TemplateApiError }
 >(
   "template/fetchAlltemplatepageTemplate",
-  async (vendor_id: string, { rejectWithValue }) => {
+  async (arg: TemplateFetchArg, { rejectWithValue }) => {
     try {
-      return await fetchTemplatePayload(vendor_id);
+      return await fetchTemplatePayload(arg.vendorId, arg.citySlug);
     } catch (error: any) {
       const status =
         typeof error?.response?.status === "number"
@@ -136,22 +159,30 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
     }
   },
   {
-    condition: (vendor_id, { getState }) => {
+    condition: (arg, { getState }) => {
+      const vendor_id = String(arg?.vendorId || "");
+      const citySlug = normalizeCitySlug(arg?.citySlug);
       if (!vendor_id) return false;
 
       const now = Date.now();
-      const lastRequestedAt = templateLastRequestByVendor.get(vendor_id) || 0;
+      const requestKey = getRequestKey(vendor_id, citySlug);
+      const lastRequestedAt = templateLastRequestByVendorCity.get(requestKey) || 0;
       if (now - lastRequestedAt < MIN_REQUEST_GAP_MS) {
         return false;
       }
 
       const state = getState().alltemplatepage;
-      if (state?.loading && state.currentVendorId === vendor_id) {
+      if (
+        state?.loading &&
+        state.currentVendorId === vendor_id &&
+        normalizeCitySlug(state.currentCitySlug || "all") === citySlug
+      ) {
         return false;
       }
 
       const inNotFoundCooldown =
         state?.currentVendorId === vendor_id &&
+        normalizeCitySlug(state.currentCitySlug || "all") === citySlug &&
         state.errorStatus === 404 &&
         typeof state.lastErrorAt === "number" &&
         now - state.lastErrorAt < NOT_FOUND_RETRY_MS;
@@ -160,7 +191,7 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
         return false;
       }
 
-      templateLastRequestByVendor.set(vendor_id, now);
+      templateLastRequestByVendorCity.set(requestKey, now);
       return true;
     },
     dispatchConditionRejection: false,
@@ -179,6 +210,7 @@ const templateSlice = createSlice({
       state.errorStatus = null;
       state.lastErrorAt = null;
       state.currentVendorId = null;
+      state.currentCitySlug = null;
       state.lastFetchedAt = null;
     },
     applyTemplatePreviewUpdate: (
@@ -206,9 +238,12 @@ const templateSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(fetchAlltemplatepageTemplate.pending, (state, action) => {
-        const requestedVendorId = action.meta.arg;
+        const requestedVendorId = action.meta.arg.vendorId;
+        const requestedCitySlug = normalizeCitySlug(action.meta.arg.citySlug);
         const hasCachedData =
-          state.currentVendorId === requestedVendorId && Boolean(state.data);
+          state.currentVendorId === requestedVendorId &&
+          normalizeCitySlug(state.currentCitySlug || "all") === requestedCitySlug &&
+          Boolean(state.data);
         state.loading = !hasCachedData;
         state.error = null;
         state.errorStatus = null;
@@ -216,9 +251,13 @@ const templateSlice = createSlice({
       })
       .addCase(
         fetchAlltemplatepageTemplate.fulfilled,
-        (state, action: PayloadAction<any, string, { arg: string }>) => {
+        (
+          state,
+          action: PayloadAction<any, string, { arg: TemplateFetchArg }>
+        ) => {
           state.loading = false;
-          state.currentVendorId = action.meta.arg;
+          state.currentVendorId = action.meta.arg.vendorId;
+          state.currentCitySlug = normalizeCitySlug(action.meta.arg.citySlug);
           state.lastFetchedAt = Date.now();
           const payload = action.payload;
           const template =
@@ -245,15 +284,19 @@ const templateSlice = createSlice({
       .addCase(
         fetchAlltemplatepageTemplate.rejected,
         (state, action) => {
-          const requestedVendorId = action?.meta?.arg;
+          const requestedVendorId = action?.meta?.arg?.vendorId;
+          const requestedCitySlug = normalizeCitySlug(action?.meta?.arg?.citySlug);
           const hasCachedData =
-            state.currentVendorId === requestedVendorId && Boolean(state.data);
+            state.currentVendorId === requestedVendorId &&
+            normalizeCitySlug(state.currentCitySlug || "all") === requestedCitySlug &&
+            Boolean(state.data);
           const payload = action.payload as TemplateApiError | undefined;
           state.loading = false;
           if (!hasCachedData) {
             state.data = null;
             state.products = [];
             state.currentVendorId = requestedVendorId || state.currentVendorId;
+            state.currentCitySlug = requestedCitySlug || state.currentCitySlug;
           }
           state.error = payload?.message || "Failed to fetch template";
           state.errorStatus = payload?.status ?? null;

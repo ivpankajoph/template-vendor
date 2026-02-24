@@ -129,14 +129,14 @@ export function MquiqFooter() {
       id='contact-us'
       className='relative border-t border-[#2d3440] bg-[#1e2530] text-white'
     >
-      <div className='mx-auto max-w-[1320px] px-4 py-12 md:px-8 lg:py-14'>
-        <div className='grid gap-10 lg:grid-cols-[1.35fr_0.8fr_1fr_1fr]'>
+      <div className='mx-auto max-w-[1320px] px-4 py-10 md:px-8 lg:py-11'>
+        <div className='grid gap-8 lg:grid-cols-[1.35fr_0.8fr_1fr_1fr]'>
           <div>
-            <div className='flex h-[118px] w-[290px] items-center justify-center overflow-hidden rounded-[10px] bg-white'>
+            <div className='flex h-[96px] w-[240px] items-center justify-center overflow-hidden rounded-[10px] bg-white'>
               <img src={logo} alt='Business Logo' className='h-full w-full object-contain p-3' />
             </div>
 
-            <p className='mt-6 text-lg font-medium text-white/95'>
+            <p className='mt-4 text-base font-medium text-white/95'>
               Delivering Excellence Since 2023
             </p>
 
@@ -146,11 +146,11 @@ export function MquiqFooter() {
               <li>Trusted for Reliability</li>
             </ul>
 
-            <p className='mt-5 max-w-md text-lg text-white/95'>
+            <p className='mt-4 max-w-md text-base text-white/95'>
               Serving industries across India with {businessName}&apos;s expertise
             </p>
 
-            <div className='mt-5 flex items-center gap-3'>
+            <div className='mt-4 flex items-center gap-3'>
               <a
                 href={resolveHref(social?.facebook)}
                 target='_blank'
@@ -171,14 +171,14 @@ export function MquiqFooter() {
           </div>
 
           <div>
-            <h3 className='text-3xl font-bold'>Quick Links</h3>
+            <h3 className='text-2xl font-bold'>Quick Links</h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
-            <ul className='mt-5 space-y-4'>
+            <ul className='mt-4 space-y-3'>
               {quickLinks.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className='inline-flex items-center gap-2 text-lg font-medium text-white transition hover:text-[#f4b400]'
+                    className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
                   >
                     <ChevronRight className='h-5 w-5 text-[#f4b400]' />
                     {item.label}
@@ -189,14 +189,14 @@ export function MquiqFooter() {
           </div>
 
           <div>
-            <h3 className='text-3xl font-bold'>Our Products</h3>
+            <h3 className='text-2xl font-bold'>Our Products</h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
-            <ul className='mt-5 space-y-3'>
+            <ul className='mt-4 space-y-2.5'>
               {productLinks.map((item) => (
                 <li key={item.label}>
                   <Link
                     href={item.href}
-                    className='inline-flex items-center gap-2 text-lg font-medium text-white transition hover:text-[#f4b400]'
+                    className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
                   >
                     <ChevronRight className='h-5 w-5 text-[#f4b400]' />
                     {item.label}
@@ -207,24 +207,24 @@ export function MquiqFooter() {
           </div>
 
           <div>
-            <h3 className='text-3xl font-bold'>Address</h3>
+            <h3 className='text-2xl font-bold'>Address</h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
 
-            <p className='mt-5 text-base font-medium leading-relaxed text-white/95'>
+            <p className='mt-4 text-[0.95rem] font-medium leading-relaxed text-white/95'>
               {address || 'Mundka, Delhi, India'}
             </p>
 
-            <div className='mt-5 space-y-3'>
+            <div className='mt-4 space-y-2.5'>
               <a
                 href={`tel:${phone}`}
-                className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                className='inline-flex items-center gap-2 text-[0.95rem] font-medium text-white transition hover:text-[#f4b400]'
               >
                 <Phone className='h-5 w-5' />
                 {phone}
               </a>
               <a
                 href={`mailto:${email}`}
-                className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                className='inline-flex items-center gap-2 text-[0.95rem] font-medium text-white transition hover:text-[#f4b400]'
               >
                 <Mail className='h-5 w-5' />
                 {email}
@@ -235,7 +235,7 @@ export function MquiqFooter() {
       </div>
 
       <div className='border-t border-[#2d3440]'>
-        <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-4 py-5 text-sm text-white/95 md:flex-row md:px-8'>
+        <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-4 py-4 text-sm text-white/95 md:flex-row md:px-8'>
           <p>
             &copy; {new Date().getFullYear()} By {businessName}. All Rights Reserved.
           </p>

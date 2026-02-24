@@ -1,0 +1,25 @@
+
+> vendor-template@0.1.0 dev
+> next dev -p 3001
+
+ ⚠ You are using a non-standard "NODE_ENV" value in your environment. This creates inconsistencies in the project and is strongly advised against. Read more: https://nextjs.org/docs/messages/non-standard-node-env
+   ▲ Next.js 15.5.9
+   - Local:        http://localhost:3001
+   - Network:      http://192.168.1.3:3001
+   - Environments: .env
+
+ ✓ Starting...
+ ✓ Ready in 3.4s
+ ○ Compiling /middleware ...
+ ✓ Compiled /middleware in 680ms (114 modules)
+ ⨯ EvalError: Code generation from strings disallowed for this context
+    at <unknown> (c:\oph work\vendor-template\.next\server\middleware.js:18)
+    at (middleware)/./node_modules/next/dist/build/webpack/loaders/next-middleware-loader.js?absolutePagePath=c%3A%5Coph%20work%5Cvendor-template%5Csrc%5Cmiddleware.ts&page=%2Fmiddleware&rootDir=c%3A%5Coph%20work%5Cvendor-template&matchers=&preferredRegion=&middlewareConfig=e30%3D! (c:\oph work\vendor-template\.next\server\middleware.js:18:1)
+    at __webpack_require__ (c:\oph work\vendor-template\.next\server\edge-runtime-webpack.js:37:33)
+    at __webpack_exec__ (c:\oph work\vendor-template\.next\server\middleware.js:1109:48)
+    at <unknown> (c:\oph work\vendor-template\.next\server\middleware.js:1110:37)
+    at webpackJsonpCallback (c:\oph work\vendor-template\.next\server\edge-runtime-webpack.js:1128:39)
+    at <unknown> (c:\oph work\vendor-template\.next\server\middleware.js:9:61)
+ ○ Compiling /_error ...
+ ✓ Compiled /_error in 1794ms (373 modules)
+[?25h

@@ -52,7 +52,10 @@ export function MquiqNavbar() {
   const social = homepage?.components?.social_page || {}
   const logo =
     homepage?.components?.logo ||
+    vendor?.avatar ||
     'https://images.unsplash.com/photo-1620632523414-054c7bea12ac?auto=format&fit=crop&q=80&w=687'
+  const businessName =
+    homepage?.business_name || vendor?.registrar_name || vendor?.name || 'Storage Solutions'
 
   const phone =
     vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
@@ -202,7 +205,7 @@ export function MquiqNavbar() {
           <div className='hidden items-center gap-8 lg:flex'>
             <Link
               href={homeHref}
-              className={`relative text-[18px] font-bold transition ${
+              className={`relative text-[16px] font-semibold tracking-[0.01em] transition ${
                 isHome ? 'text-[#f4b400]' : 'text-[#2f3136] hover:text-[#f4b400]'
               }`}
             >
@@ -214,7 +217,7 @@ export function MquiqNavbar() {
 
             <Link
               href={aboutHref}
-              className='text-[18px] font-bold text-[#2f3136] transition hover:text-[#f4b400]'
+              className='text-[16px] font-semibold tracking-[0.01em] text-[#2f3136] transition hover:text-[#f4b400]'
             >
               About Us
             </Link>
@@ -222,7 +225,7 @@ export function MquiqNavbar() {
             <div className='group relative'>
               <button
                 type='button'
-                className='inline-flex items-center gap-2 text-[18px] font-bold text-[#2f3136] transition hover:text-[#f4b400]'
+                className='inline-flex items-center gap-2 text-[16px] font-semibold tracking-[0.01em] text-[#2f3136] transition hover:text-[#f4b400]'
               >
                 Products
                 <ChevronDown className='h-5 w-5' />
@@ -259,7 +262,7 @@ export function MquiqNavbar() {
 
             <Link
               href={whyUsHref}
-              className='text-[18px] font-bold text-[#2f3136] transition hover:text-[#f4b400]'
+              className='text-[16px] font-semibold tracking-[0.01em] text-[#2f3136] transition hover:text-[#f4b400]'
             >
               Why Us
             </Link>
@@ -268,7 +271,7 @@ export function MquiqNavbar() {
               <div className='group relative'>
                 <button
                   type='button'
-                  className='inline-flex items-center gap-2 text-[18px] font-bold text-[#2f3136] transition hover:text-[#f4b400]'
+                  className='inline-flex items-center gap-2 text-[16px] font-semibold tracking-[0.01em] text-[#2f3136] transition hover:text-[#f4b400]'
                 >
                   Pages
                   <ChevronDown className='h-5 w-5' />
@@ -295,7 +298,7 @@ export function MquiqNavbar() {
           <div className='hidden items-center gap-3 lg:flex'>
             <Link
               href={catalogHref}
-              className='inline-flex items-center gap-2 rounded-full border border-slate-300 bg-transparent px-5 py-3 text-[16px] font-bold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+              className='inline-flex items-center gap-2 rounded-full border border-slate-300 bg-transparent px-5 py-3 text-[15px] font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
             >
               <Download className='h-5 w-5' />
               Download Catalog
@@ -351,7 +354,7 @@ export function MquiqNavbar() {
 
             <Link
               href={contactHref}
-              className='inline-flex rounded-full bg-[#f4b400] px-7 py-3 text-[16px] font-bold text-white transition hover:bg-[#d79a00]'
+              className='inline-flex rounded-full bg-[#f4b400] px-7 py-3 text-[15px] font-semibold text-white transition hover:bg-[#d79a00]'
             >
               Contact Us
             </Link>
@@ -373,6 +376,9 @@ export function MquiqNavbar() {
         {mobileMenuOpen ? (
           <div className='border-t border-slate-200 bg-white px-4 py-5 lg:hidden'>
             <div className='flex flex-col gap-4 text-base font-semibold text-[#2f3136]'>
+              <p className='text-xs font-medium uppercase tracking-[0.18em] text-slate-500'>
+                {businessName}
+              </p>
               <Link href={homeHref} onClick={() => setMobileMenuOpen(false)}>
                 Home
               </Link>

@@ -2,9 +2,11 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
+import { usePathname } from 'next/navigation'
 import { fetchAlltemplatepageTemplate } from '@/store/slices/alltemplateslice'
 import { fetchVendorProfile } from '@/store/slices/vendorProfileSlice'
 import type { AppDispatch, RootState } from '@/store'
+import { getTemplateCityFromPath } from '@/lib/template-route'
 
 type Props = {
   vendorId?: string
@@ -16,13 +18,17 @@ const REQUEST_RETRY_COOLDOWN_MS = 30 * 1000
 
 export function TemplateDataLoader({ vendorId }: Props) {
   const dispatch = useDispatch<AppDispatch>()
+  const pathname = usePathname()
   const focusRefreshRef = useRef(0)
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
+  const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
+  const templateRequestKey = `${vendorId || ''}::${citySlug}`
   const {
     templateData,
     templateLoading,
     templateVendorId,
+    templateCitySlug,
     templateLastFetchedAt,
     vendorProfile,
     vendorLoading,
@@ -32,6 +38,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
     templateData: state.alltemplatepage?.data,
     templateLoading: Boolean(state.alltemplatepage?.loading),
     templateVendorId: state.alltemplatepage?.currentVendorId || null,
+    templateCitySlug: state.alltemplatepage?.currentCitySlug || null,
     templateLastFetchedAt: state.alltemplatepage?.lastFetchedAt || null,
     vendorProfile: state.vendorprofilepage?.vendor,
     vendorLoading: Boolean(state.vendorprofilepage?.loading),
@@ -56,6 +63,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
 
     const templateIsFresh =
       templateVendorId === vendorId &&
+      (templateCitySlug || 'all') === citySlug &&
       Boolean(templateData) &&
       typeof templateLastFetchedAt === 'number' &&
       now - templateLastFetchedAt < DATA_STALE_MS
@@ -69,9 +77,9 @@ export function TemplateDataLoader({ vendorId }: Props) {
     if (
       !templateIsFresh &&
       !templateLoading &&
-      canDispatchRequest(templateRequestByVendorRef.current, vendorId, now)
+      canDispatchRequest(templateRequestByVendorRef.current, templateRequestKey, now)
     ) {
-      dispatch(fetchAlltemplatepageTemplate(vendorId))
+      dispatch(fetchAlltemplatepageTemplate({ vendorId, citySlug }))
     }
     if (
       !vendorIsFresh &&
@@ -83,10 +91,13 @@ export function TemplateDataLoader({ vendorId }: Props) {
   }, [
     dispatch,
     templateData,
+    templateCitySlug,
     templateLastFetchedAt,
     templateLoading,
     templateVendorId,
     vendorId,
+    citySlug,
+    templateRequestKey,
     vendorLastFetchedAt,
     vendorLoading,
     vendorProfile,

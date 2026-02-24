@@ -21,7 +21,15 @@ import {
 type TemplateProduct = {
   _id?: string
   productName?: string
+  shortDescription?: string
+  brand?: string
   defaultImages?: Array<{ url?: string }>
+  variants?: Array<{
+    finalPrice?: number
+    actualPrice?: number
+    discountPercent?: number
+    variantsImageUrls?: Array<{ url?: string }>
+  }>
 }
 
 type BenefitIconKey = 'space' | 'custom' | 'durable' | 'safety'
@@ -52,6 +60,62 @@ const FALLBACK_PRODUCT_IMAGES = [
 ]
 
 const PRODUCT_BADGES = ['Featured', 'New', 'Popular']
+
+const toNumber = (value: unknown) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+const formatPrice = (value: unknown) => `Rs. ${toNumber(value).toLocaleString()}`
+
+const getProductImage = (product: TemplateProduct, fallback: string) => {
+  const defaultImage = product?.defaultImages?.find((image) => image?.url)?.url
+  if (defaultImage) return defaultImage
+
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  for (const variant of variants) {
+    const variantImage = variant?.variantsImageUrls?.find((image) => image?.url)?.url
+    if (variantImage) return variantImage
+  }
+
+  return fallback
+}
+
+const getProductPriceDetails = (product: TemplateProduct) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  const prices = variants
+    .map((variant) => ({
+      finalPrice: toNumber(variant?.finalPrice),
+      actualPrice: toNumber(variant?.actualPrice),
+      discountPercent: toNumber(variant?.discountPercent),
+    }))
+    .filter((entry) => entry.finalPrice > 0)
+
+  if (!prices.length) {
+    return {
+      finalPrice: 0,
+      actualPrice: 0,
+      discountPercent: 0,
+    }
+  }
+
+  const best = prices.reduce((current, entry) =>
+    entry.finalPrice < current.finalPrice ? entry : current
+  )
+
+  const computedDiscount =
+    best.discountPercent > 0
+      ? best.discountPercent
+      : best.actualPrice > best.finalPrice && best.actualPrice > 0
+        ? Math.round(((best.actualPrice - best.finalPrice) / best.actualPrice) * 100)
+        : 0
+
+  return {
+    finalPrice: best.finalPrice,
+    actualPrice: best.actualPrice,
+    discountPercent: computedDiscount,
+  }
+}
 
 const FALLBACK_BENEFITS: BenefitItem[] = [
   {
@@ -198,7 +262,7 @@ export function MquiqHome() {
   const heroImage =
     home?.backgroundImage ||
     template?.previewImage ||
-    products?.[0]?.defaultImages?.[0]?.url ||
+    (products?.[0] ? getProductImage(products[0], "") : "") ||
     FALLBACK_PRODUCT_IMAGES[0]
 
   const featuredHeading = home?.products_heading || 'Featured Products'
@@ -210,9 +274,15 @@ export function MquiqHome() {
     const productCards = products.slice(0, 3).map((product, index) => ({
       _id: product?._id,
       title: product?.productName || `Product ${index + 1}`,
-      image:
-        product?.defaultImages?.[0]?.url ||
-        FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length],
+      subtitle:
+        product?.brand ||
+        product?.shortDescription ||
+        'Industrial-grade storage solution',
+      image: getProductImage(
+        product,
+        FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length]
+      ),
+      pricing: getProductPriceDetails(product),
     }))
 
     if (productCards.length >= 3) return productCards
@@ -224,7 +294,9 @@ export function MquiqHome() {
         title: ['Slotted Angle Racks', 'Steel Mezzanine Floor', 'Warehouse Mezzanine Floors'][
           index
         ],
+        subtitle: 'Industrial storage solution',
         image: FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length],
+        pricing: { finalPrice: 0, actualPrice: 0, discountPercent: 0 },
       })
     }
 
@@ -277,7 +349,7 @@ export function MquiqHome() {
 
   const aboutImage =
     aboutPage?.story?.image ||
-    products?.[1]?.defaultImages?.[0]?.url ||
+    (products?.[1] ? getProductImage(products[1], "") : "") ||
     FALLBACK_PRODUCT_IMAGES[1]
 
   const businessName = template?.business_name || vendor?.name || 'Storage Solution'
@@ -286,8 +358,8 @@ export function MquiqHome() {
   return (
     <div className='template-home template-home-mquiq bg-[#f3f3f3] text-[#2d3138]'>
       <section id='home' className='bg-[#f4b400]' data-template-section='hero'>
-        <div className='mx-auto grid max-w-[1320px] gap-6 px-4 py-8 md:px-8 lg:grid-cols-[1fr_1fr] lg:py-10'>
-          <div className='relative overflow-hidden rounded-[10px] bg-gradient-to-br from-[#54503d] via-[#645b41] to-[#736342] px-7 py-8 text-white lg:px-9 lg:py-10'>
+        <div className='mx-auto grid max-w-[1320px] gap-5 px-4 py-7 md:px-8 lg:grid-cols-[1fr_1fr] lg:py-8'>
+          <div className='relative overflow-hidden rounded-[10px] bg-gradient-to-br from-[#54503d] via-[#645b41] to-[#736342] px-7 py-7 text-white lg:px-9 lg:py-8'>
             <span
               className='inline-flex items-center rounded-sm border-l-4 border-[#f4b400] bg-white/15 px-4 py-1 text-xs font-semibold uppercase tracking-[0.16em] text-white'
               data-template-path='components.home_page.hero_kicker'
@@ -297,7 +369,7 @@ export function MquiqHome() {
             </span>
 
             <h1
-              className='mt-6 text-4xl font-extrabold leading-[1.05] tracking-[-0.02em] text-white md:text-5xl xl:text-[76px]'
+              className='mt-5 text-[2.2rem] font-extrabold leading-[1.1] tracking-[-0.02em] text-white md:text-[3rem] xl:text-[4rem]'
               data-template-path='components.home_page.header_text'
               data-template-section='hero'
             >
@@ -311,14 +383,14 @@ export function MquiqHome() {
             </h1>
 
             <p
-              className='mt-5 max-w-xl text-base leading-[1.6] text-white/90 md:text-lg'
+              className='mt-4 max-w-xl text-base leading-[1.55] text-white/90 md:text-lg'
               data-template-path='components.home_page.header_text_small'
               data-template-section='hero'
             >
               {heroSubtitle}
             </p>
 
-            <div className='mt-8 flex flex-wrap items-center gap-3'>
+            <div className='mt-6 flex flex-wrap items-center gap-3'>
               <Link
                 href={vendorId ? `/template/${vendorId}/all-products` : '#'}
                 className='inline-flex rounded-full bg-white px-6 py-3 text-sm font-semibold text-[#2d3138] transition hover:bg-[#f5f5f5]'
@@ -339,12 +411,12 @@ export function MquiqHome() {
             <img
               src={heroImage}
               alt={`${businessName} hero`}
-              className='h-full min-h-[380px] w-full object-cover'
+              className='h-full min-h-[340px] w-full object-cover'
               data-template-path='components.home_page.backgroundImage'
               data-template-section='branding'
               data-template-component='components.home_page.backgroundImage'
             />
-            <div className='absolute right-4 top-8 rounded-2xl bg-white px-6 py-5 shadow-xl'>
+            <div className='absolute right-4 top-6 rounded-2xl bg-white px-5 py-4 shadow-xl'>
               <div className='flex items-center gap-3'>
                 <div className='flex h-10 w-10 items-center justify-center rounded-xl bg-[#eef3f8] text-[#f4b400]'>
                   <RefreshCw className='h-5 w-5' />
@@ -363,7 +435,7 @@ export function MquiqHome() {
 
       <section
         id='products'
-        className='bg-[#f3f3f3] py-16 lg:py-20'
+        className='bg-[#f3f3f3] py-12 lg:py-14'
         data-template-section='products'
       >
         <div className='mx-auto max-w-[1320px] px-4 md:px-8'>
@@ -372,14 +444,14 @@ export function MquiqHome() {
               {home?.products_kicker || 'Our Solutions'}
             </span>
             <h2
-              className='mt-5 text-4xl font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-5xl'
+              className='mt-4 text-[2rem] font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-[2.3rem]'
               data-template-path='components.home_page.products_heading'
               data-template-section='products'
             >
               {featuredHeading}
             </h2>
             <p
-              className='mx-auto mt-4 max-w-4xl text-base text-slate-500 md:text-lg'
+              className='mx-auto mt-3 max-w-4xl text-base text-slate-500 md:text-lg'
               data-template-path='components.home_page.products_subtitle'
               data-template-section='products'
             >
@@ -387,11 +459,11 @@ export function MquiqHome() {
             </p>
           </div>
 
-          <div className='mt-12 grid gap-7 lg:grid-cols-3'>
+          <div className='mt-8 grid gap-6 lg:grid-cols-3'>
             {featuredProducts.map((product, index) => (
               <article
                 key={`${product.title}-${index}`}
-                className='overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-sm'
+                className='overflow-hidden rounded-[18px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
               >
                 <Link
                   href={
@@ -414,10 +486,30 @@ export function MquiqHome() {
                       {PRODUCT_BADGES[index] || 'Featured'}
                     </span>
                   </div>
-                  <div className='px-6 py-5'>
-                    <h3 className='text-3xl font-extrabold tracking-[-0.01em] text-[#2f3136]'>
+                  <div className='px-6 py-4'>
+                    <p className='text-xs font-semibold uppercase tracking-[0.12em] text-slate-500'>
+                      {product.subtitle}
+                    </p>
+                    <h3 className='mt-2 text-[1.35rem] font-extrabold leading-tight tracking-[-0.01em] text-[#2f3136]'>
                       {product.title}
                     </h3>
+                    {product.pricing.finalPrice > 0 ? (
+                      <div className='mt-3 flex items-end gap-3'>
+                        <p className='text-[1.45rem] font-extrabold text-[#24324a]'>
+                          {formatPrice(product.pricing.finalPrice)}
+                        </p>
+                        {product.pricing.actualPrice > product.pricing.finalPrice ? (
+                          <p className='text-sm text-slate-400 line-through'>
+                            {formatPrice(product.pricing.actualPrice)}
+                          </p>
+                        ) : null}
+                        {product.pricing.discountPercent > 0 ? (
+                          <span className='rounded-full bg-emerald-50 px-2 py-1 text-xs font-bold text-emerald-700'>
+                            {product.pricing.discountPercent}% off
+                          </span>
+                        ) : null}
+                      </div>
+                    ) : null}
                   </div>
                 </Link>
               </article>
@@ -428,7 +520,7 @@ export function MquiqHome() {
 
       <section
         id='why-us'
-        className='bg-[#f4b400] py-16 lg:py-20'
+        className='bg-[#f4b400] py-12 lg:py-14'
         data-template-section='description'
       >
         <div className='mx-auto max-w-[1320px] px-4 md:px-8'>
@@ -436,32 +528,32 @@ export function MquiqHome() {
             <span className='text-sm font-semibold uppercase tracking-[0.22em] text-white/90'>
               Benefits
             </span>
-            <h2 className='mt-4 text-4xl font-extrabold tracking-[-0.02em] text-white md:text-5xl'>
+            <h2 className='mt-3 text-3xl font-extrabold tracking-[-0.02em] text-white md:text-4xl'>
               Why Our Storage Solutions Stand Apart
             </h2>
-            <p className='mx-auto mt-4 max-w-4xl text-base text-white/95 md:text-lg'>
+            <p className='mx-auto mt-3 max-w-4xl text-base text-white/95 md:text-lg'>
               Trusted advantages that enhance your storage management and operational efficiency
             </p>
           </div>
 
-          <div className='mt-12 grid gap-6 md:grid-cols-2 xl:grid-cols-4'>
+          <div className='mt-8 grid gap-5 md:grid-cols-2 xl:grid-cols-4'>
             {benefits.map((item: BenefitItem, index: number) => (
               <article
                 key={`${item.title}-${index}`}
-                className='rounded-xl bg-[#f4be1e] px-7 py-8 text-center shadow-sm'
+                className='rounded-xl bg-[#f4be1e] px-6 py-6 text-center shadow-sm'
               >
                 <div className='mx-auto flex h-16 w-16 items-center justify-center'>
                   {getBenefitIcon(item.icon)}
                 </div>
                 <h3
-                  className='mt-5 text-3xl font-extrabold tracking-[-0.01em] text-white'
+                  className='mt-4 text-[1.25rem] font-extrabold tracking-[-0.01em] text-white'
                   data-template-path={`components.about_page.values.${index}.title`}
                   data-template-section='description'
                 >
                   {item.title}
                 </h3>
                 <p
-                  className='mt-4 text-base leading-relaxed text-white/95'
+                  className='mt-3 text-[0.95rem] leading-relaxed text-white/95'
                   data-template-path={`components.about_page.values.${index}.description`}
                   data-template-section='description'
                 >
@@ -475,34 +567,34 @@ export function MquiqHome() {
 
       <section
         id='about-us'
-        className='bg-[#f3f3f3] py-16 lg:py-20'
+        className='bg-[#f3f3f3] py-12 lg:py-14'
         data-template-section='description'
       >
-        <div className='mx-auto grid max-w-[1320px] gap-8 px-4 md:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start'>
+        <div className='mx-auto grid max-w-[1320px] gap-6 px-4 md:px-8 lg:grid-cols-[0.95fr_1.05fr] lg:items-start'>
           <div>
             <span className='text-sm font-semibold uppercase tracking-[0.2em] text-[#f4b400]'>
               Why Choose Us
             </span>
-            <h2 className='mt-4 text-4xl font-extrabold leading-tight tracking-[-0.02em] text-[#2f3136] md:text-5xl'>
+            <h2 className='mt-3 text-3xl font-extrabold leading-tight tracking-[-0.02em] text-[#2f3136] md:text-4xl'>
               The {businessName} Advantage
             </h2>
 
-            <div className='mt-8 space-y-7'>
+            <div className='mt-6 space-y-5'>
               {advantages.map((item: AdvantageItem, index: number) => (
-                <article key={`${item.title}-${index}`} className='flex gap-4'>
-                  <div className='mt-1 flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-[#e6edf5]'>
+                <article key={`${item.title}-${index}`} className='flex gap-3'>
+                  <div className='mt-1 flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-[#e6edf5]'>
                     {getAdvantageIcon(item.icon)}
                   </div>
                   <div>
                     <h3
-                      className='text-3xl font-extrabold tracking-[-0.01em] text-[#2f3136]'
+                      className='text-[1.2rem] font-extrabold tracking-[-0.01em] text-[#2f3136]'
                       data-template-path={`components.about_page.values.${index}.title`}
                       data-template-section='description'
                     >
                       {item.title}
                     </h3>
                     <p
-                      className='mt-2 text-base leading-relaxed text-slate-600'
+                      className='mt-1 text-[0.95rem] leading-relaxed text-slate-600'
                       data-template-path={`components.about_page.values.${index}.description`}
                       data-template-section='description'
                     >
@@ -519,26 +611,26 @@ export function MquiqHome() {
             <img
               src={aboutImage}
               alt='Warehouse storage'
-              className='h-full min-h-[640px] w-full object-cover'
+              className='h-full min-h-[560px] w-full object-cover'
               data-template-path='components.about_page.story.image'
               data-template-section='description'
               data-template-component='components.about_page.story.image'
             />
-            <div className='absolute bottom-8 left-[-18px] rounded-full bg-[#f4b400] px-8 py-7 text-center text-white shadow-lg'>
-              <p className='text-[52px] font-extrabold leading-none'>1+</p>
-              <p className='mt-2 text-[20px] leading-tight'>Years of Excellence</p>
+            <div className='absolute bottom-6 left-[-14px] rounded-full bg-[#f4b400] px-6 py-5 text-center text-white shadow-lg'>
+              <p className='text-[42px] font-extrabold leading-none'>1+</p>
+              <p className='mt-1 text-[16px] leading-tight'>Years of Excellence</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section id='faq' className='bg-[#f3f3f3] py-16 lg:py-20'>
+      <section id='faq' className='bg-[#f3f3f3] py-12 lg:py-14'>
         <div className='mx-auto max-w-[1320px] px-4 md:px-8'>
           <div className='text-center'>
             <span className='text-sm font-semibold uppercase tracking-[0.2em] text-[#f4b400]'>
               FAQ
             </span>
-            <h2 className='mt-4 text-4xl font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-5xl'>
+            <h2 className='mt-3 text-3xl font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-4xl'>
               Frequently Asked Questions
             </h2>
             <p className='mx-auto mt-3 max-w-4xl text-base text-slate-600 md:text-lg'>
@@ -546,7 +638,7 @@ export function MquiqHome() {
             </p>
           </div>
 
-          <div className='mx-auto mt-10 max-w-6xl space-y-4'>
+          <div className='mx-auto mt-7 max-w-6xl space-y-3'>
             {faqItems.map((faq: FaqItem, index: number) => {
               const isOpen = openFaqIndex === index
               return (
@@ -559,7 +651,7 @@ export function MquiqHome() {
                     onClick={() =>
                       setOpenFaqIndex((prev) => (prev === index ? -1 : index))
                     }
-                    className={`flex w-full items-center justify-between px-6 py-5 text-left text-xl font-bold tracking-[-0.01em] ${
+                    className={`flex w-full items-center justify-between px-5 py-4 text-left text-lg font-bold tracking-[-0.01em] ${
                       isOpen ? 'bg-[#dfe9f7] text-[#f4b400]' : 'bg-[#eceff4] text-[#2f3136]'
                     }`}
                   >
@@ -571,7 +663,7 @@ export function MquiqHome() {
                     )}
                   </button>
                   {isOpen ? (
-                    <div className='px-6 py-6 text-base leading-relaxed text-slate-700'>
+                    <div className='px-5 py-5 text-base leading-relaxed text-slate-700'>
                       {faq.answer}
                     </div>
                   ) : null}

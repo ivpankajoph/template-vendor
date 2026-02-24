@@ -4,7 +4,7 @@ import React, { useEffect, useMemo, useState } from "react";
 import { ShoppingBag, Star, Search } from "lucide-react";
 import { useSelector } from "react-redux";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import axios from "axios";
 
 import { trackAddToCart } from "@/lib/analytics-events";
@@ -12,6 +12,7 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 
@@ -98,11 +99,30 @@ const getProductPricing = (product: any) => {
   };
 };
 
+const getProductImageUrl = (product: any) => {
+  const defaultImage = normalizeText(product?.defaultImages?.[0]?.url);
+  if (defaultImage) return defaultImage;
+
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  for (const variant of variants) {
+    const variantImage = normalizeText(variant?.variantsImageUrls?.[0]?.url);
+    if (variantImage) return variantImage;
+  }
+  return "";
+};
+
 export default function AllProducts() {
   const variant = useTemplateVariant();
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
   const params = useParams();
+  const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
+  const vendorId = String(vendor_id || "");
+  const allProductsPath = buildTemplateScopedPath({
+    vendorId,
+    pathname: pathname || "/",
+    suffix: "all-products",
+  });
 
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
@@ -220,7 +240,12 @@ export default function AllProducts() {
 
     const auth = getTemplateAuth(vendor_id);
     if (!auth) {
-      window.location.href = `/template/${vendor_id}/login?next=/template/${vendor_id}/all-products`;
+      const loginPath = buildTemplateScopedPath({
+        vendorId,
+        pathname: pathname || "/",
+        suffix: "login",
+      });
+      window.location.href = `${loginPath}?next=${encodeURIComponent(allProductsPath)}`;
       return;
     }
 
@@ -323,6 +348,7 @@ export default function AllProducts() {
               const pricing = getProductPricing(product);
               const rating = Math.max(0, Math.min(5, toNumber(product?.rating || 4.2)));
               const isAdding = Boolean(addingById[product._id]);
+              const productImageUrl = getProductImageUrl(product);
 
               return (
                 <div
@@ -330,14 +356,18 @@ export default function AllProducts() {
                   className={`template-product-card group shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
                 >
                   <Link
-                    href={`/template/${vendor_id}/product/${product._id}`}
+                    href={buildTemplateScopedPath({
+                      vendorId,
+                      pathname: pathname || "/",
+                      suffix: `product/${product._id}`,
+                    })}
                     className="block"
                   >
                     <div className="relative overflow-hidden rounded-t-2xl bg-slate-100">
                       <div className="aspect-[4/5]">
-                        {product?.defaultImages?.[0]?.url ? (
+                        {productImageUrl ? (
                           <img
-                            src={product.defaultImages[0].url}
+                            src={productImageUrl}
                             alt={product.productName || "Product image"}
                             className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
                           />
@@ -367,7 +397,14 @@ export default function AllProducts() {
                       </span>
                     </div>
 
-                    <Link href={`/template/${vendor_id}/product/${product._id}`} className="block">
+                    <Link
+                      href={buildTemplateScopedPath({
+                        vendorId,
+                        pathname: pathname || "/",
+                        suffix: `product/${product._id}`,
+                      })}
+                      className="block"
+                    >
                       <h3 className={`line-clamp-2 text-lg font-semibold ${titleTextClass}`}>
                         {product?.productName || "Untitled Product"}
                       </h3>
@@ -402,7 +439,11 @@ export default function AllProducts() {
                       </button>
 
                       <Link
-                        href={`/template/${vendor_id}/product/${product._id}`}
+                        href={buildTemplateScopedPath({
+                          vendorId,
+                          pathname: pathname || "/",
+                          suffix: `product/${product._id}`,
+                        })}
                         className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition ${
                           isStudio
                             ? "border-slate-700 text-slate-200 hover:bg-slate-800"

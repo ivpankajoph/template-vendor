@@ -8,6 +8,7 @@ import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { trackAddToCart } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
@@ -111,6 +112,16 @@ export default function ProductDetailPage() {
 
   const productId = params.product_id as string;
   const vendorId = params.vendor_id as string;
+  const productPath = buildTemplateScopedPath({
+    vendorId,
+    pathname: pathname || "/",
+    suffix: `product/${productId}`,
+  });
+  const loginPath = buildTemplateScopedPath({
+    vendorId,
+    pathname: pathname || "/",
+    suffix: "login",
+  });
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -311,7 +322,7 @@ export default function ProductDetailPage() {
 
     const auth = getTemplateAuth(vendorId);
     if (!auth) {
-      window.location.href = `/template/${vendorId}/login?next=/template/${vendorId}/product/${productId}`;
+      window.location.href = `${loginPath}?next=${encodeURIComponent(productPath)}`;
       return;
     }
 
@@ -805,7 +816,7 @@ export default function ProductDetailPage() {
               <ProductReviewsSection
                 productId={productId}
                 token={templateToken}
-                loginPath={`/template/${vendorId}/login?next=${encodeURIComponent(pathname || `/template/${vendorId}/product/${productId}`)}`}
+                loginPath={`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`}
                 onSummaryChange={setReviewSummary}
                 theme={isStudio ? "studio" : "default"}
               />

@@ -14,7 +14,7 @@ import {
 import Link from "next/link";
 import { useSelector } from "react-redux";
 import { RootState } from "@/store";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from "./templateAuth";
@@ -23,6 +23,7 @@ import { MquiqNavbar } from "./mquiq/MquiqNavbar";
 import { PoupqzNavbar } from "./poupqz/PoupqzNavbar";
 import { OragzeNavbar } from "./oragze/OragzeNavbar";
 import { WhiteRoseNavbar } from "./whiterose/WhiteRoseNavbar";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 export default function Navbar() {
   const variant = useTemplateVariant();
@@ -43,7 +44,15 @@ export default function Navbar() {
 
   // Get vendor_id from dynamic route
   const params = useParams();
+  const pathname = usePathname();
   const vendor_id = params.vendor_id;
+  const vendorId = String(vendor_id || "");
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || "/",
+      suffix,
+    });
 
   const menuItems = ["Home", "About", "Contact"];
   const isStudio = variant.key === "studio";
@@ -237,8 +246,8 @@ export default function Navbar() {
             key={item}
             href={
               item === "Home"
-                ? `/template/${vendor_id}`
-                : `/template/${vendor_id}/${item.toLowerCase()}`
+                ? toTemplatePath("")
+                : toTemplatePath(item.toLowerCase())
             }
             className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
           >
@@ -246,7 +255,7 @@ export default function Navbar() {
           </Link>
         ))}
         <Link
-          href={`/template/${vendor_id}/cart`}
+          href={toTemplatePath("cart")}
           className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
         >
           Cart
@@ -254,13 +263,13 @@ export default function Navbar() {
         {isLoggedIn ? (
           <>
             <Link
-              href={`/template/${vendor_id}/orders`}
+              href={toTemplatePath("orders")}
               className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
             >
               Orders
             </Link>
             <Link
-              href={`/template/${vendor_id}/profile`}
+              href={toTemplatePath("profile")}
               className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
             >
               Profile
@@ -268,7 +277,7 @@ export default function Navbar() {
           </>
         ) : (
           <Link
-            href={`/template/${vendor_id}/login`}
+            href={toTemplatePath("login")}
             className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
           >
             Login
@@ -277,7 +286,7 @@ export default function Navbar() {
         {customPages.map((page: any) => (
           <Link
             key={page.id || page.slug || page.title}
-            href={`/template/${vendor_id}/page/${page.slug || page.id}`}
+            href={toTemplatePath(`page/${page.slug || page.id}`)}
             className={`text-base font-medium transition-all duration-200 ${desktopLinkTone}`}
           >
             {page.title || "Page"}
@@ -286,7 +295,7 @@ export default function Navbar() {
 
         <div className="relative group">
         <Link
-          href={`/template/${vendor_id}/category`}
+          href={toTemplatePath("category")}
           className={`text-base font-medium transition-all duration-200 ${desktopLinkTone} ${navLabelClass}`}
         >
           Category
@@ -315,7 +324,7 @@ export default function Navbar() {
                     categories.map((category) => (
                       <Link
                         key={category._id}
-                        href={`/template/${vendor_id}/category/${category._id}`}
+                        href={toTemplatePath(`category/${category._id}`)}
                         onMouseEnter={() => setActiveCategoryId(category._id)}
                         className={`rounded-xl px-3 py-2 text-sm transition ${
                           activeCategoryId === category._id
@@ -360,7 +369,7 @@ export default function Navbar() {
                       (sub) => (
                         <Link
                           key={sub._id}
-                          href={`/template/${vendor_id}/subcategory/${sub._id}`}
+                          href={toTemplatePath(`subcategory/${sub._id}`)}
                           className={`rounded-xl px-3 py-2 text-sm transition ${
                             isStudio
                               ? "text-slate-300 hover:bg-slate-800/60"
@@ -405,7 +414,7 @@ export default function Navbar() {
           </a>
         ))}
         <Link
-          href={`/template/${vendor_id}/cart`}
+          href={toTemplatePath("cart")}
           className={`relative transition-colors duration-200 ${iconTone}`}
         >
           <ShoppingBag size={22} />
@@ -456,8 +465,8 @@ export default function Navbar() {
                 key={item}
                 href={
                   item === "Home"
-                    ? `/template/${vendor_id}`
-                    : `/template/${vendor_id}/${item.toLowerCase()}`
+                    ? toTemplatePath("")
+                    : toTemplatePath(item.toLowerCase())
                 }
                 className={`text-lg font-medium transition-colors duration-200 ${desktopLinkTone}`}
                 onClick={() => setMobileMenuOpen(false)}
@@ -468,7 +477,7 @@ export default function Navbar() {
             {customPages.map((page: any) => (
               <Link
                 key={page.id || page.slug || page.title}
-                href={`/template/${vendor_id}/page/${page.slug || page.id}`}
+                href={toTemplatePath(`page/${page.slug || page.id}`)}
                 className={`text-lg font-medium transition-colors duration-200 ${desktopLinkTone}`}
                 onClick={() => setMobileMenuOpen(false)}
               >
@@ -476,7 +485,7 @@ export default function Navbar() {
               </Link>
             ))}
             <Link
-              href={`/template/${vendor_id}/category`}
+              href={toTemplatePath("category")}
               className={`text-lg font-medium transition-colors duration-200 ${desktopLinkTone}`}
               onClick={() => setMobileMenuOpen(false)}
             >
@@ -494,7 +503,7 @@ export default function Navbar() {
                 </a>
               ))}
               <Link
-                href={`/template/${vendor_id}/cart`}
+                href={toTemplatePath("cart")}
                 className={`relative transition-colors duration-200 ${iconTone}`}
               >
                 <ShoppingBag size={22} />
@@ -509,13 +518,13 @@ export default function Navbar() {
               {isLoggedIn ? (
                 <>
                   <Link
-                    href={`/template/${vendor_id}/orders`}
+                    href={toTemplatePath("orders")}
                     className={`text-xs font-semibold uppercase tracking-[0.2em] ${authTextTone}`}
                   >
                     Orders
                   </Link>
                   <Link
-                    href={`/template/${vendor_id}/profile`}
+                    href={toTemplatePath("profile")}
                     className={`text-xs font-semibold uppercase tracking-[0.2em] ${authTextTone}`}
                   >
                     Profile
@@ -533,7 +542,7 @@ export default function Navbar() {
                 </>
               ) : (
                 <Link
-                  href={`/template/${vendor_id}/login`}
+                  href={toTemplatePath("login")}
                   className={`text-xs font-semibold uppercase tracking-[0.2em] ${authTextTone}`}
                 >
                   Login

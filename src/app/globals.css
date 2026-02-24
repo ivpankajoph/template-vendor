@@ -194,8 +194,8 @@
   --template-surface-muted: #f3f3f3;
   --template-border: #d7dde7;
   --template-radius: 12px;
-  --template-heading-font: "Poppins", "DM Sans", sans-serif;
-  --template-body-font: "Poppins", "DM Sans", sans-serif;
+  --template-heading-font: var(--font-sora), "Sora", "DM Sans", sans-serif;
+  --template-body-font: var(--font-manrope), "Manrope", "DM Sans", sans-serif;
 }
 
 .template-variant-poupqz {
