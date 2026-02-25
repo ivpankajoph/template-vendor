@@ -30,6 +30,17 @@ const resolveHref = (value: unknown) => {
   return trimmed || '#'
 }
 
+const toCloudinaryAttachmentUrl = (value: string) => {
+  if (
+    !value.includes('res.cloudinary.com') ||
+    !value.includes('/upload/') ||
+    value.includes('/upload/fl_attachment/')
+  ) {
+    return value
+  }
+  return value.replace('/upload/', '/upload/fl_attachment/')
+}
+
 export function MquiqNavbar() {
   const params = useParams()
   const pathname = usePathname()
@@ -50,6 +61,7 @@ export function MquiqNavbar() {
     ) || []
 
   const social = homepage?.components?.social_page || {}
+  const homePageConfig = homepage?.components?.home_page || {}
   const logo =
     homepage?.components?.logo ||
     vendor?.avatar ||
@@ -57,21 +69,30 @@ export function MquiqNavbar() {
   const businessName =
     homepage?.business_name || vendor?.registrar_name || vendor?.name || 'Storage Solutions'
 
+  const configuredPhone = String(social?.contact_phone || '').trim()
   const phone =
-    vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
+    configuredPhone || vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
   const email = vendor?.email || 'info@storage.com'
 
   const homeHref = vendorId ? `/template/${vendorId}` : '#'
   const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
   const whyUsHref = vendorId ? `/template/${vendorId}#why-us` : '#'
   const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
-  const catalogHref = vendorId ? `/template/${vendorId}/all-products` : '#'
+  const allProductsHref = vendorId ? `/template/${vendorId}/all-products` : '#'
   const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
   const checkoutHref = vendorId ? `/template/${vendorId}/checkout` : '#'
   const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
   const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
   const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
   const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
+  const catalogButtonLabel =
+    String(homePageConfig?.catalog_button_label || '').trim() ||
+    'Download Catalog'
+  const catalogPdfUrl = String(homePageConfig?.catalog_pdf_url || '').trim()
+  const hasCatalogPdf = Boolean(catalogPdfUrl)
+  const catalogDownloadHref = hasCatalogPdf
+    ? toCloudinaryAttachmentUrl(catalogPdfUrl)
+    : allProductsHref
 
   const productLinks = useMemo(() => {
     const seen = new Set<string>()
@@ -147,8 +168,8 @@ export function MquiqNavbar() {
   const isHome = pathname === homeHref || pathname === '/'
 
   return (
-    <header className='relative z-40'>
-      <div className='hidden bg-[#2f3640] text-white lg:block'>
+    <header className='relative z-50'>
+      <div className='hidden border-b border-slate-700/70 bg-gradient-to-r from-[#212833] via-[#2a3240] to-[#1e2632] text-white lg:block'>
         <div className='mx-auto flex h-14 w-full max-w-[1320px] items-center justify-between px-6 xl:px-8'>
           <div className='flex items-center gap-8 text-sm font-medium'>
             <a href={`tel:${phone}`} className='inline-flex items-center gap-3 hover:opacity-90'>
@@ -185,17 +206,17 @@ export function MquiqNavbar() {
         </div>
       </div>
 
-      <nav className='sticky top-0 border-b border-slate-200 bg-[#f3f4f6]'>
+      <nav className='sticky top-0 border-b border-slate-200/80 bg-[#f8fafc]/95 shadow-[0_10px_35px_rgba(15,23,42,0.08)] backdrop-blur-xl'>
         <div className='mx-auto flex w-full max-w-[1320px] items-center justify-between gap-4 px-4 py-4 md:px-6 xl:px-8'>
           <Link
             href={homeHref}
-            className='flex h-[72px] w-[190px] items-center justify-center overflow-hidden rounded-[10px] bg-white shadow-sm md:h-[94px] md:w-[290px]'
+            className='flex h-[58px] w-[150px] items-center justify-center overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm md:h-[68px] md:w-[190px]'
             data-template-section='branding'
           >
             <img
               src={logo}
               alt='Business Logo'
-              className='h-full w-full object-contain p-3'
+              className='h-full w-full object-contain p-2.5'
               data-template-path='components.logo'
               data-template-section='branding'
               data-template-component='components.logo'
@@ -231,10 +252,18 @@ export function MquiqNavbar() {
                 <ChevronDown className='h-5 w-5' />
               </button>
 
-              <div className='pointer-events-none absolute left-1/2 top-full z-40 mt-5 w-[430px] -translate-x-1/2 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100'>
-                <div className='max-h-[520px] overflow-y-auto rounded-xl border border-slate-300 bg-white p-6 shadow-xl'>
+              <div className='pointer-events-none absolute left-1/2 top-full z-40 w-[430px] -translate-x-1/2 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100'>
+                <div className='max-h-[520px] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-6 shadow-[0_24px_60px_rgba(15,23,42,0.22)] backdrop-blur-xl'>
                   <p className='text-xl font-bold text-[#f4b400]'>Products</p>
                   <div className='mt-4 border-t border-slate-200 pt-4'>
+                    <div className='mb-4'>
+                      <Link
+                        href={allProductsHref}
+                        className='inline-flex rounded-full border border-slate-200 px-3 py-1.5 text-sm font-semibold text-slate-700 transition hover:border-[#f4b400] hover:text-[#f4b400]'
+                      >
+                        All Products
+                      </Link>
+                    </div>
                     {productLinks.length > 0 ? (
                       <div className='space-y-3'>
                         {productLinks.map((product) => (
@@ -248,12 +277,9 @@ export function MquiqNavbar() {
                         ))}
                       </div>
                     ) : (
-                      <Link
-                        href={catalogHref}
-                        className='text-sm font-medium text-slate-500 hover:text-[#f4b400]'
-                      >
-                        No products added yet. View catalog
-                      </Link>
+                      <p className='text-sm font-medium text-slate-500'>
+                        No products added yet.
+                      </p>
                     )}
                   </div>
                 </div>
@@ -276,8 +302,8 @@ export function MquiqNavbar() {
                   Pages
                   <ChevronDown className='h-5 w-5' />
                 </button>
-                <div className='pointer-events-none absolute left-1/2 top-full z-40 mt-5 w-[300px] -translate-x-1/2 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100'>
-                  <div className='max-h-[420px] overflow-y-auto rounded-xl border border-slate-300 bg-white p-4 shadow-xl'>
+                <div className='pointer-events-none absolute left-1/2 top-full z-40 w-[300px] -translate-x-1/2 pt-3 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100'>
+                  <div className='max-h-[420px] overflow-y-auto rounded-2xl border border-slate-200 bg-white/95 p-4 shadow-[0_20px_55px_rgba(15,23,42,0.2)] backdrop-blur-xl'>
                     <div className='space-y-2'>
                       {customPages.map((page: any) => (
                         <Link
@@ -295,18 +321,31 @@ export function MquiqNavbar() {
             ) : null}
           </div>
 
-          <div className='hidden items-center gap-3 lg:flex'>
-            <Link
-              href={catalogHref}
-              className='inline-flex items-center gap-2 rounded-full border border-slate-300 bg-transparent px-5 py-3 text-[15px] font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
-            >
-              <Download className='h-5 w-5' />
-              Download Catalog
-            </Link>
+          <div className='hidden shrink-0 items-center gap-2 lg:flex xl:gap-3'>
+            {hasCatalogPdf ? (
+              <a
+                href={catalogDownloadHref}
+                download
+                target='_blank'
+                rel='noreferrer'
+                className='inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-slate-300 bg-transparent px-4 text-[15px] font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+              >
+                <Download className='h-5 w-5' />
+                {catalogButtonLabel}
+              </a>
+            ) : (
+              <Link
+                href={allProductsHref}
+                className='inline-flex h-11 items-center gap-2 whitespace-nowrap rounded-full border border-slate-300 bg-transparent px-4 text-[15px] font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+              >
+                <Download className='h-5 w-5' />
+                {catalogButtonLabel}
+              </Link>
+            )}
 
             <Link
               href={cartHref}
-              className='relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+              className='relative inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
               title='Cart'
             >
               <ShoppingBag className='h-5 w-5' />
@@ -317,44 +356,46 @@ export function MquiqNavbar() {
 
             <Link
               href={isLoggedIn ? profileHref : loginHref}
-              className='inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+              className='inline-flex h-11 w-11 items-center justify-center rounded-full border border-slate-300 bg-white text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
               title={isLoggedIn ? 'Profile' : 'Login'}
             >
               <UserCircle2 className='h-6 w-6' />
             </Link>
 
-            {isLoggedIn ? (
-              <>
+            <div className='flex items-center gap-2'>
+              {isLoggedIn ? (
+                <>
+                  <Link
+                    href={ordersHref}
+                    className='inline-flex h-11 items-center whitespace-nowrap rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+                  >
+                    Orders
+                  </Link>
+                  <button
+                    type='button'
+                    onClick={() => {
+                      clearTemplateAuth(vendorId)
+                      setIsLoggedIn(false)
+                      setCartCount(0)
+                    }}
+                    className='inline-flex h-11 items-center whitespace-nowrap rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
+                  >
+                    Logout
+                  </button>
+                </>
+              ) : (
                 <Link
-                  href={ordersHref}
-                  className='text-sm font-semibold text-[#2f3136] transition hover:text-[#f4b400]'
+                  href={loginHref}
+                  className='inline-flex h-11 items-center whitespace-nowrap rounded-full border border-slate-300 bg-white px-4 text-sm font-semibold text-[#2f3136] transition hover:border-[#f4b400] hover:text-[#f4b400]'
                 >
-                  Orders
+                  Login
                 </Link>
-                <button
-                  type='button'
-                  onClick={() => {
-                    clearTemplateAuth(vendorId)
-                    setIsLoggedIn(false)
-                    setCartCount(0)
-                  }}
-                  className='text-sm font-semibold text-[#2f3136] transition hover:text-[#f4b400]'
-                >
-                  Logout
-                </button>
-              </>
-            ) : (
-              <Link
-                href={loginHref}
-                className='text-sm font-semibold text-[#2f3136] transition hover:text-[#f4b400]'
-              >
-                Login
-              </Link>
-            )}
+              )}
+            </div>
 
             <Link
               href={contactHref}
-              className='inline-flex rounded-full bg-[#f4b400] px-7 py-3 text-[15px] font-semibold text-white transition hover:bg-[#d79a00]'
+              className='inline-flex h-11 items-center whitespace-nowrap rounded-full bg-gradient-to-r from-[#f4b400] to-[#f0a500] px-5 text-[15px] font-semibold text-white shadow-[0_14px_34px_rgba(244,180,0,0.35)] transition hover:-translate-y-0.5 hover:from-[#f8c12a] hover:to-[#de9800]'
             >
               Contact Us
             </Link>
@@ -388,9 +429,20 @@ export function MquiqNavbar() {
               <Link href={whyUsHref} onClick={() => setMobileMenuOpen(false)}>
                 Why Us
               </Link>
-              <Link href={catalogHref} onClick={() => setMobileMenuOpen(false)}>
+              <Link href={allProductsHref} onClick={() => setMobileMenuOpen(false)}>
                 All Products
               </Link>
+              {hasCatalogPdf ? (
+                <a
+                  href={catalogDownloadHref}
+                  download
+                  target='_blank'
+                  rel='noreferrer'
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  {catalogButtonLabel}
+                </a>
+              ) : null}
               <Link href={cartHref} onClick={() => setMobileMenuOpen(false)}>
                 Cart ({cartCount})
               </Link>
@@ -445,6 +497,13 @@ export function MquiqNavbar() {
                   Products
                 </p>
                 <div className='max-h-48 space-y-2 overflow-y-auto pr-1'>
+                  <Link
+                    href={allProductsHref}
+                    className='block text-sm font-semibold text-[#2f3136]'
+                    onClick={() => setMobileMenuOpen(false)}
+                  >
+                    All Products
+                  </Link>
                   {productLinks.length > 0 ? (
                     productLinks.map((product) => (
                       <Link

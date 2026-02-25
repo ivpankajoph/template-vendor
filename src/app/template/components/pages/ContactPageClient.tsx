@@ -155,7 +155,7 @@ export default function ContactPage() {
         >
           Browse Categories
         </button>
-        <div className="pointer-events-none absolute right-full top-1/2 mr-4 w-64 -translate-y-1/2 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
+        <div className="pointer-events-none absolute right-full top-1/2 w-64 -translate-y-1/2 pr-4 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
           <div
             className={`max-h-80 overflow-auto rounded-2xl border p-3 shadow-2xl ${
               isStudio ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white"

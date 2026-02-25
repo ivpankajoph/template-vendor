@@ -23,9 +23,13 @@ type VendorStory = {
 
 function VendorStoriesSection({
   stories,
+  heading,
+  subtitle,
   theme,
 }: {
   stories: VendorStory[];
+  heading: string;
+  subtitle: string;
   theme:
     | "studio"
     | "minimal"
@@ -76,18 +80,48 @@ function VendorStoriesSection({
     : "inline-flex rounded-full bg-white px-2 py-1 text-[10px] font-semibold uppercase tracking-[0.2em] text-slate-500 border border-slate-200";
 
   return (
-    <section className={sectionClass}>
+    <section className={sectionClass} data-template-section="vendorStories">
       <div className={wrapperClass}>
-        <h2 className={`text-3xl font-semibold ${titleTone}`}>Vendor Stories</h2>
-        <p className={`mt-2 text-sm ${subtitleTone}`}>
-          Short highlights that tell this vendor's journey.
+        <h2
+          className={`text-3xl font-semibold ${titleTone}`}
+          data-template-path="components.about_page.vendorStories.heading"
+          data-template-section="vendorStories"
+        >
+          {heading}
+        </h2>
+        <p
+          className={`mt-2 text-sm ${subtitleTone}`}
+          data-template-path="components.about_page.vendorStories.subtitle"
+          data-template-section="vendorStories"
+        >
+          {subtitle}
         </p>
         <div className="mt-6 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {stories.map((story) => (
-            <article key={story.key} className={cardClass}>
-              {story.tag ? <span className={tagClass}>{story.tag}</span> : null}
-              <h3 className={`mt-3 text-lg font-semibold ${titleTone}`}>{story.title}</h3>
-              <p className={`mt-2 text-sm leading-relaxed ${bodyTone}`}>{story.narrative}</p>
+          {stories.map((story, index) => (
+            <article key={`${story.key}-${index}`} className={cardClass}>
+              {story.tag ? (
+                <span
+                  className={tagClass}
+                  data-template-path={`components.about_page.vendorStories.items.${index}.tag`}
+                  data-template-section="vendorStories"
+                >
+                  {story.tag}
+                </span>
+              ) : null}
+              <h3
+                className={`mt-3 text-lg font-semibold ${titleTone}`}
+                data-template-path={`components.about_page.vendorStories.items.${index}.title`}
+                data-template-section="vendorStories"
+              >
+                {story.title}
+              </h3>
+              <p
+                className={`mt-2 text-sm leading-relaxed ${bodyTone}`}
+                data-template-path={`components.about_page.vendorStories.items.${index}.narrative`}
+                data-template-section="vendorStories"
+              >
+                {story.narrative}
+              </p>
             </article>
           ))}
         </div>
@@ -120,6 +154,16 @@ export default function AboutPage() {
       if (typeof value === "string" && value.trim()) return value.trim();
     }
     return "";
+  };
+  const toMappedIconKey = (
+    iconCandidate: unknown,
+    fallback: keyof typeof iconMap
+  ): keyof typeof iconMap => {
+    const iconKey =
+      typeof iconCandidate === "string" ? iconCandidate.trim().toLowerCase() : "";
+    return iconKey && iconKey in iconMap
+      ? (iconKey as keyof typeof iconMap)
+      : fallback;
   };
   const vendorBaseRecord =
     vendor && typeof vendor === "object"
@@ -166,20 +210,6 @@ export default function AboutPage() {
     return "";
   };
   const getVendorText = (...keys: string[]) => formatUnknown(getVendorRaw(...keys));
-  const getVendorPathKey = (...keys: string[]) =>
-    getVendorMatch(...keys)?.key || keys[0] || "";
-  const toLabel = (key: string) =>
-    key
-      .replace(/_/g, " ")
-      .replace(/([a-z])([A-Z])/g, "$1 $2")
-      .replace(/\b\w/g, (char) => char.toUpperCase());
-  const formatDate = (value: unknown) => {
-    if (!value || typeof value !== "string") return "";
-    const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? "" : date.toLocaleString();
-  };
-  const boolLabel = (value: unknown) =>
-    typeof value === "boolean" ? (value ? "Yes" : "No") : "";
 
   const vendorName = pickText(
     getVendorText("name", "registrar_name", "business_name"),
@@ -207,7 +237,7 @@ export default function AboutPage() {
   const vendorReturnPolicy = getVendorText("return_policy");
   const vendorTurnover = getVendorText("annual_turnover");
 
-  const vendorStories: VendorStory[] = [
+  const vendorStoriesFallback: VendorStory[] = [
     {
       key: "origin",
       title: "How It Started",
@@ -233,8 +263,34 @@ export default function AboutPage() {
       narrative: `${vendorOfficeEmployees ? `${vendorOfficeEmployees} team members` : "A dedicated team"} run daily operations${vendorTurnover ? `, with annual turnover in the range of ${vendorTurnover}` : ""}.`,
     },
   ];
+  const vendorStoriesHeading = pickText(
+    aboutpage?.vendorStories?.heading,
+    "Vendor Stories"
+  );
+  const vendorStoriesSubtitle = pickText(
+    aboutpage?.vendorStories?.subtitle,
+    "Short highlights that tell this vendor's journey."
+  );
+  const vendorStoriesFromTemplate = Array.isArray(aboutpage?.vendorStories?.items)
+    ? aboutpage.vendorStories.items
+    : [];
+  const vendorStories: VendorStory[] = Array.from({ length: 4 }, (_, index) => {
+    const fallback = vendorStoriesFallback[index];
+    const source = vendorStoriesFromTemplate[index] || {};
+    return {
+      key: fallback?.key || `story-${index + 1}`,
+      tag: pickText((source as any)?.tag, fallback?.tag),
+      title: pickText((source as any)?.title, fallback?.title, `Story ${index + 1}`),
+      narrative: pickText(
+        (source as any)?.narrative,
+        fallback?.narrative,
+        "Add your vendor story from About form."
+      ),
+    };
+  });
 
   const hero = {
+    kicker: pickText(aboutpage?.hero?.kicker, "Built for Industry"),
     title: pickText(aboutpage?.hero?.title, `About ${vendorName}`),
     subtitle: pickText(
       aboutpage?.hero?.subtitle,
@@ -298,6 +354,36 @@ export default function AboutPage() {
             description: `We keep refining our catalog and operations to serve customers better.`,
           },
         ];
+  const mquiqValueFallbacks: Array<{
+    icon: keyof typeof iconMap;
+    title: string;
+    description: string;
+  }> = [
+    {
+      icon: "award",
+      title: "Integrity",
+      description: "We maintain honesty in all our dealings.",
+    },
+    {
+      icon: "heart",
+      title: "Innovation",
+      description: "We constantly evolve to meet customer needs.",
+    },
+    {
+      icon: "users",
+      title: "Customer Focus",
+      description: "We prioritize practical solutions for every client.",
+    },
+  ];
+  const mquiqValues = Array.from({ length: 3 }, (_, index) => {
+    const fallback = mquiqValueFallbacks[index];
+    const sourceValue = valuesFromTemplate[index] || values[index] || fallback;
+    return {
+      icon: toMappedIconKey((sourceValue as any)?.icon, fallback.icon),
+      title: pickText((sourceValue as any)?.title, fallback.title),
+      description: pickText((sourceValue as any)?.description, fallback.description),
+    };
+  });
 
   const teamFromTemplate = Array.isArray(aboutpage?.team)
     ? aboutpage.team.filter((item: any) =>
@@ -335,160 +421,6 @@ export default function AboutPage() {
             label: "Return Policy",
           },
         ];
-
-  const baseVendorDetails: Array<{ label: string; value: string; keys: string[] }> = [
-    { label: "Vendor ID", value: getVendorText("_id"), keys: ["_id"] },
-    {
-      label: "Vendor Name",
-      value: getVendorText("name", "registrar_name"),
-      keys: ["name", "registrar_name"],
-    },
-    { label: "Email", value: getVendorText("email"), keys: ["email"] },
-    {
-      label: "Phone",
-      value: getVendorText("phone", "alternate_contact_phone"),
-      keys: ["phone", "alternate_contact_phone"],
-    },
-    { label: "Role", value: getVendorText("role"), keys: ["role"] },
-    {
-      label: "Business Type",
-      value: getVendorText("business_type"),
-      keys: ["business_type"],
-    },
-    {
-      label: "Business Nature",
-      value: getVendorText("business_nature"),
-      keys: ["business_nature"],
-    },
-    {
-      label: "Address",
-      value: getVendorText("address", "street"),
-      keys: ["address", "street"],
-    },
-    { label: "City", value: getVendorText("city"), keys: ["city"] },
-    { label: "State", value: getVendorText("state"), keys: ["state"] },
-    { label: "Pincode", value: getVendorText("pincode"), keys: ["pincode"] },
-    { label: "Country", value: getVendorText("country"), keys: ["country"] },
-    {
-      label: "Categories",
-      value: getVendorText("categories"),
-      keys: ["categories"],
-    },
-    {
-      label: "Established Year",
-      value: getVendorText("established_year"),
-      keys: ["established_year"],
-    },
-    {
-      label: "Annual Turnover",
-      value: getVendorText("annual_turnover"),
-      keys: ["annual_turnover"],
-    },
-    {
-      label: "Dealing Area",
-      value: getVendorText("dealing_area"),
-      keys: ["dealing_area"],
-    },
-    {
-      label: "Office Employees",
-      value: getVendorText("office_employees"),
-      keys: ["office_employees"],
-    },
-    { label: "GST Number", value: getVendorText("gst_number"), keys: ["gst_number"] },
-    { label: "PAN Number", value: getVendorText("pan_number"), keys: ["pan_number"] },
-    { label: "Bank Name", value: getVendorText("bank_name"), keys: ["bank_name"] },
-    {
-      label: "Bank Account",
-      value: getVendorText("bank_account"),
-      keys: ["bank_account"],
-    },
-    { label: "Branch", value: getVendorText("branch"), keys: ["branch"] },
-    { label: "IFSC Code", value: getVendorText("ifsc_code"), keys: ["ifsc_code"] },
-    { label: "UPI ID", value: getVendorText("upi_id"), keys: ["upi_id"] },
-    {
-      label: "Alt Contact Name",
-      value: getVendorText("alternate_contact_name"),
-      keys: ["alternate_contact_name"],
-    },
-    {
-      label: "Alt Contact Phone",
-      value: getVendorText("alternate_contact_phone"),
-      keys: ["alternate_contact_phone"],
-    },
-    {
-      label: "Operating Hours",
-      value: getVendorText("operating_hours"),
-      keys: ["operating_hours"],
-    },
-    {
-      label: "Return Policy",
-      value: getVendorText("return_policy"),
-      keys: ["return_policy"],
-    },
-    {
-      label: "Email Verified",
-      value: boolLabel(getVendorRaw("is_email_verified")),
-      keys: ["is_email_verified"],
-    },
-    {
-      label: "Profile Completed",
-      value: boolLabel(getVendorRaw("is_profile_completed")),
-      keys: ["is_profile_completed"],
-    },
-    {
-      label: "Active",
-      value: boolLabel(getVendorRaw("is_active")),
-      keys: ["is_active"],
-    },
-    {
-      label: "Verified",
-      value: boolLabel(getVendorRaw("is_verified")),
-      keys: ["is_verified"],
-    },
-    {
-      label: "Profile Completion Level",
-      value: getVendorText("profile_complete_level"),
-      keys: ["profile_complete_level"],
-    },
-    {
-      label: "Created At",
-      value: formatDate(getVendorRaw("createdAt")),
-      keys: ["createdAt"],
-    },
-    {
-      label: "Updated At",
-      value: formatDate(getVendorRaw("updatedAt")),
-      keys: ["updatedAt"],
-    },
-  ];
-
-  const usedKeys = new Set(
-    baseVendorDetails.flatMap((item) => item.keys).concat(["__v"])
-  );
-  const additionalVendorDetails = Object.entries(vendorRecord)
-    .filter(([key]) => !usedKeys.has(key))
-    .map(([key, value]) => ({
-      key,
-      label: toLabel(key),
-      value:
-        key === "createdAt" || key === "updatedAt"
-          ? formatDate(value)
-          : formatUnknown(value),
-    }))
-    .filter((item) => item.value);
-
-  const vendorDetails: Array<{ label: string; value: string; pathKey: string }> = [
-    ...baseVendorDetails.map(({ label, value, keys }) => ({
-      label,
-      value,
-      pathKey: getVendorPathKey(...keys),
-    })),
-    ...additionalVendorDetails.map(({ label, value, key }) => ({
-      label,
-      value,
-      pathKey: key,
-    })),
-  ];
 
   if (variant.key === "studio") {
     return (
@@ -613,38 +545,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="studio" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="studio"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-7xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-3xl border border-slate-800 bg-slate-900/70 p-6">
-              <h2 className="text-3xl font-semibold">Vendor Details</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-slate-800 bg-slate-950/40 p-4"
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-400">
-                      {item.label}
-                    </p>
-                    <p
-                      className="mt-2 text-sm text-slate-100 break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -654,8 +562,12 @@ export default function AboutPage() {
         <section className="mx-auto max-w-7xl px-6 py-14" data-template-section="hero">
           <div className="grid gap-8 lg:grid-cols-[1.1fr_0.9fr] lg:items-center">
             <div>
-              <p className="inline-flex rounded-full bg-[#e8eef7] px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#f4b400]">
-                Built for Industry
+              <p
+                className="inline-flex rounded-full bg-[#e8eef7] px-4 py-1 text-xs font-semibold uppercase tracking-[0.24em] text-[#f4b400]"
+                data-template-path="components.about_page.hero.kicker"
+                data-template-section="hero"
+              >
+                {hero?.kicker}
               </p>
               <h1
                 className="mt-4 text-5xl font-bold leading-tight text-[#2f3136]"
@@ -742,59 +654,41 @@ export default function AboutPage() {
           </div>
         </section>
 
-        {values?.length > 0 && (
-          <section className="mx-auto max-w-7xl px-6 pb-12" data-template-section="values">
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              {values.map((value: any, index: number) => (
-                <div key={index} className="rounded-2xl border border-[#d7dde7] bg-white p-5">
-                  <div className="mb-3 text-[#f4b400]">{iconMap[value.icon] || <Leaf size={30} />}</div>
-                  <h3
-                    className="text-lg font-semibold text-[#2f3136]"
-                    data-template-path={`components.about_page.values.${index}.title`}
-                    data-template-section="values"
-                  >
-                    {value.title}
-                  </h3>
-                  <p
-                    className="mt-2 text-sm text-[#5f6b7c]"
-                    data-template-path={`components.about_page.values.${index}.description`}
-                    data-template-section="values"
-                  >
-                    {value.description}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        <VendorStoriesSection stories={vendorStories} theme="mquiq" />
-
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-7xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-2xl border border-[#d7dde7] bg-white p-6">
-              <h2 className="text-2xl font-bold text-[#2f3136]">Vendor Details</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div key={item.label} className="rounded-xl border border-[#d7dde7] bg-[#f8fafc] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#f4b400]">{item.label}</p>
-                    <p
-                      className="mt-2 text-sm text-[#2f3136] break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
+        <section className="mx-auto max-w-7xl px-6 pb-12" data-template-section="values">
+          <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+            {mquiqValues.map((value, index: number) => (
+              <div
+                key={`${value.title}-${index}`}
+                className="flex h-full flex-col rounded-2xl border border-[#d7dde7] bg-white p-6"
+              >
+                <div className="mb-4 text-[#f4b400]">{iconMap[value.icon] || <Leaf size={30} />}</div>
+                <h3
+                  className="min-h-[2.2rem] text-lg font-semibold text-[#2f3136]"
+                  data-template-path={`components.about_page.values.${index}.title`}
+                  data-template-section="values"
+                >
+                  {value.title}
+                </h3>
+                <p
+                  className="mt-2 text-sm leading-relaxed text-[#5f6b7c]"
+                  data-template-path={`components.about_page.values.${index}.description`}
+                  data-template-section="values"
+                >
+                  {value.description}
+                </p>
               </div>
-            </div>
-          </section>
-        )}
-      </div>
+            ))}
+          </div>
+        </section>
+
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="mquiq"
+        />
+
+              </div>
     );
   }
 
@@ -873,33 +767,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="poupqz" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="poupqz"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-7xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-2xl border border-[#dce2eb] bg-white p-6">
-              <h2 className="text-2xl font-semibold text-[#111827]">Vendor Details</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div key={item.label} className="rounded-xl border border-[#dce2eb] bg-[#f8fbff] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#0b74c6]">{item.label}</p>
-                    <p
-                      className="mt-2 text-sm text-[#1f2937] break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -976,33 +851,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="oragze" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="oragze"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-7xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-2xl border border-[#d8dccf] bg-white p-6">
-              <h2 className="text-2xl font-semibold text-[#203520]">Vendor Details</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div key={item.label} className="rounded-xl border border-[#d8dccf] bg-[#f8fbf4] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#6dbf4b]">{item.label}</p>
-                    <p
-                      className="mt-2 text-sm text-[#203520] break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -1076,33 +932,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="whiterose" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="whiterose"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-[1500px] px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-xl border border-[#dce2eb] bg-white p-6">
-              <h2 className="text-2xl font-semibold text-[#1f2937]">Vendor Details</h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div key={item.label} className="rounded-lg border border-[#dce2eb] bg-[#f8fafc] p-4">
-                    <p className="text-xs uppercase tracking-[0.2em] text-[#0b74c6]">{item.label}</p>
-                    <p
-                      className="mt-2 text-sm text-[#1f2937] break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -1220,40 +1057,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="trend" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="trend"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-7xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-3xl border border-rose-200 bg-white p-6">
-              <h2 className="text-2xl font-bold text-slate-900">
-                Vendor Details
-              </h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-rose-200 bg-rose-50/60 p-4"
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-rose-600">
-                      {item.label}
-                    </p>
-                    <p
-                      className="mt-2 text-sm text-slate-800 break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -1331,40 +1142,14 @@ export default function AboutPage() {
           </section>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="minimal" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="minimal"
+        />
 
-        {vendorDetails.length > 0 && (
-          <section
-            className="mx-auto max-w-6xl px-6 pb-16"
-            data-template-section="vendor"
-          >
-            <div className="rounded-3xl border border-slate-200 bg-white p-6">
-              <h2 className="text-3xl font-semibold text-slate-900">
-                Vendor Details
-              </h2>
-              <div className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {vendorDetails.map((item) => (
-                  <div
-                    key={item.label}
-                    className="rounded-2xl border border-slate-200 bg-slate-50 p-4"
-                  >
-                    <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                      {item.label}
-                    </p>
-                    <p
-                      className="mt-2 text-sm text-slate-800 break-words"
-                      data-template-path={`components.vendor_profile.${item.pathKey}`}
-                      data-template-section="vendor"
-                    >
-                      {item.value || "Not provided"}
-                    </p>
-                  </div>
-                ))}
               </div>
-            </div>
-          </section>
-        )}
-      </div>
     );
   }
 
@@ -1481,38 +1266,14 @@ export default function AboutPage() {
           </div>
         )}
 
-        <VendorStoriesSection stories={vendorStories} theme="classic" />
+        <VendorStoriesSection
+          stories={vendorStories}
+          heading={vendorStoriesHeading}
+          subtitle={vendorStoriesSubtitle}
+          theme="classic"
+        />
 
-        {vendorDetails.length > 0 && (
-          <div
-            className="mt-20 rounded-2xl border border-slate-200 bg-white p-8"
-            data-template-section="vendor"
-          >
-            <h2 className="text-3xl font-bold text-gray-900 mb-6">
-              Vendor Details
-            </h2>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-              {vendorDetails.map((item) => (
-                <div
-                  key={item.label}
-                  className="rounded-xl border border-slate-200 bg-slate-50 p-4"
-                >
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500">
-                    {item.label}
-                  </p>
-                  <p
-                    className="mt-2 text-sm text-slate-800 break-words"
-                    data-template-path={`components.vendor_profile.${item.pathKey}`}
-                    data-template-section="vendor"
-                  >
-                    {item.value || "Not provided"}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-      </div>
+              </div>
 
       {/* Scroll to Top Button */}
       <button
@@ -1532,3 +1293,4 @@ export default function AboutPage() {
     </div>
   );
 }
+

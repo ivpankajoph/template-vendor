@@ -1,21 +1,23 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
+import { useSelector } from "react-redux";
 import { Minus, Plus, Star, Truck, RefreshCw, Shield, Zap, Check } from "lucide-react";
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { trackAddToCart } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
-import { buildTemplateScopedPath } from "@/lib/template-route";
+import { buildTemplateScopedPath, getTemplateCityFromPath } from "@/lib/template-route";
 import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
 
 type VariantImage = {
   url?: string;
-};
+} | string;
 
 type ProductVariant = {
   _id: string;
@@ -50,6 +52,11 @@ type Product = {
   faqs?: ProductFaq[];
   averageRating?: number;
   ratingsCount?: number;
+  mainCategory?: { name?: string } | string;
+  mainCategoryName?: string;
+  productCategory?: { name?: string; title?: string } | string;
+  productCategoryName?: string;
+  productSubCategory?: Array<{ name?: string; title?: string } | string> | { name?: string; title?: string } | string;
 };
 
 type ProductTab = "description" | "specifications" | "faqs" | "reviews";
@@ -70,6 +77,13 @@ const formatCurrency = (value: number) => `Rs. ${toNumber(value).toLocaleString(
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
+
+const getImageUrl = (image: VariantImage | null | undefined) => {
+  if (isNonEmptyString(image)) return image.trim();
+  if (!image || typeof image !== "object") return "";
+  const url = (image as { url?: unknown }).url;
+  return isNonEmptyString(url) ? url.trim() : "";
+};
 
 const getVariantLabel = (variant: ProductVariant) => {
   const attrs =
@@ -93,25 +107,110 @@ const getUniqueImages = (product: Product | null) => {
   if (!product) return [] as string[];
 
   const defaultUrls = (product.defaultImages || [])
-    .map((image) => image?.url?.trim())
+    .map((image) => getImageUrl(image))
     .filter((url): url is string => Boolean(url));
 
   const variantUrls = (product.variants || []).flatMap((variant) =>
     (variant.variantsImageUrls || [])
-      .map((image) => image?.url?.trim())
+      .map((image) => getImageUrl(image))
       .filter((url): url is string => Boolean(url))
   );
 
   return Array.from(new Set([...defaultUrls, ...variantUrls]));
 };
 
+const getPrimaryVariant = (product: Product | null | undefined) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : [];
+  return variants.find((variant) => variant?.isActive !== false) || variants[0] || null;
+};
+
+const getProductLeadImage = (product: Product | null | undefined) => {
+  if (!product) return "";
+
+  const defaultImage = (product.defaultImages || [])
+    .map((image) => getImageUrl(image))
+    .find((url) => Boolean(url));
+  if (defaultImage) return defaultImage;
+
+  const primaryVariant = getPrimaryVariant(product);
+  const primaryVariantImage = (primaryVariant?.variantsImageUrls || [])
+    .map((image) => getImageUrl(image))
+    .find((url) => Boolean(url));
+  if (primaryVariantImage) return primaryVariantImage;
+
+  for (const variant of product.variants || []) {
+    const variantImage = (variant?.variantsImageUrls || [])
+      .map((image) => getImageUrl(image))
+      .find((url) => Boolean(url));
+    if (variantImage) return variantImage;
+  }
+
+  return "";
+};
+
+const collectProductCategoryLabels = (product: Product | null | undefined) => {
+  const labels = new Set<string>();
+  if (!product) return [] as string[];
+
+  const push = (value: unknown) => {
+    if (isNonEmptyString(value)) labels.add(value.trim());
+  };
+
+  push(product.mainCategoryData?.name);
+  push(product.productCategoryData?.name);
+  push(product.mainCategoryName);
+  push(product.productCategoryName);
+
+  const mainCategory = product.mainCategory;
+  if (mainCategory && typeof mainCategory === "object") {
+    push(mainCategory.name);
+  } else {
+    push(mainCategory);
+  }
+
+  const productCategory = product.productCategory;
+  if (productCategory && typeof productCategory === "object") {
+    push(productCategory.name);
+    push(productCategory.title);
+  } else {
+    push(productCategory);
+  }
+
+  (product.productSubCategoryData || []).forEach((item) => {
+    push(item?.name);
+  });
+
+  const rawSubCategory = product.productSubCategory;
+  if (Array.isArray(rawSubCategory)) {
+    rawSubCategory.forEach((item) => {
+      if (item && typeof item === "object") {
+        push(item.name);
+        push(item.title);
+      } else {
+        push(item);
+      }
+    });
+  } else if (rawSubCategory && typeof rawSubCategory === "object") {
+    push(rawSubCategory.name);
+    push(rawSubCategory.title);
+  } else {
+    push(rawSubCategory);
+  }
+
+  return Array.from(labels);
+};
+
 export default function ProductDetailPage() {
   const variantTheme = useTemplateVariant();
   const params = useParams();
   const pathname = usePathname();
+  const templateProducts = useSelector(
+    (state: any) => (state?.alltemplatepage?.products || []) as Product[]
+  );
 
   const productId = params.product_id as string;
   const vendorId = params.vendor_id as string;
+  const citySlug = getTemplateCityFromPath(pathname || "/", vendorId);
   const productPath = buildTemplateScopedPath({
     vendorId,
     pathname: pathname || "/",
@@ -126,7 +225,7 @@ export default function ProductDetailPage() {
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
   const [quantity, setQuantity] = useState(1);
-  const [activeTab, setActiveTab] = useState<ProductTab>("description");
+  const [activeTab, setActiveTab] = useState<ProductTab>("specifications");
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
@@ -166,7 +265,11 @@ export default function ProductDetailPage() {
 
     const load = async () => {
       try {
-        const response = await fetch(`${NEXT_PUBLIC_API_URL}/products/${productId}`);
+        const cityQuery =
+          citySlug && citySlug !== "all"
+            ? `?city=${encodeURIComponent(citySlug)}`
+            : "";
+        const response = await fetch(`${NEXT_PUBLIC_API_URL}/products/${productId}${cityQuery}`);
         const data = await response.json();
         if (active) setProduct((data?.product || null) as Product | null);
       } catch {
@@ -180,6 +283,10 @@ export default function ProductDetailPage() {
     return () => {
       active = false;
     };
+  }, [productId, citySlug]);
+
+  useEffect(() => {
+    setActiveTab("specifications");
   }, [productId]);
 
   useEffect(() => {
@@ -209,6 +316,12 @@ export default function ProductDetailPage() {
   }, [variants, selectedVariantId]);
 
   const allImageUrls = useMemo(() => getUniqueImages(product), [product]);
+  const selectedVariantLeadImage = useMemo(() => {
+    if (!selectedVariant) return "";
+    return (selectedVariant.variantsImageUrls || [])
+      .map((image) => getImageUrl(image))
+      .find((url) => Boolean(url)) || "";
+  }, [selectedVariant]);
 
   useEffect(() => {
     if (!variants.length) {
@@ -221,17 +334,20 @@ export default function ProductDetailPage() {
   }, [variants]);
 
   useEffect(() => {
-    const selectedVariantImage = selectedVariant?.variantsImageUrls?.[0]?.url?.trim();
-
-    if (selectedVariantImage) {
-      setSelectedImage(selectedVariantImage);
+    if (selectedVariantLeadImage) {
+      setSelectedImage(selectedVariantLeadImage);
       return;
     }
 
-    if (!selectedImage && allImageUrls.length > 0) {
-      setSelectedImage(allImageUrls[0]);
+    if (!allImageUrls.length) {
+      setSelectedImage("");
+      return;
     }
-  }, [selectedVariant, allImageUrls, selectedImage]);
+
+    setSelectedImage((current) =>
+      current && allImageUrls.includes(current) ? current : allImageUrls[0]
+    );
+  }, [selectedVariantId, selectedVariantLeadImage, allImageUrls]);
 
   const basePrice = toNumber(selectedVariant?.finalPrice);
   const actualPrice = toNumber(selectedVariant?.actualPrice);
@@ -268,6 +384,35 @@ export default function ProductDetailPage() {
 
     return list;
   }, [product]);
+
+  const relatedProducts = useMemo(() => {
+    if (!product?._id) return [] as Product[];
+
+    const currentCategorySet = new Set(
+      collectProductCategoryLabels(product).map((label) => label.toLowerCase())
+    );
+
+    const candidates = templateProducts
+      .filter((item) => item?._id && item._id !== product._id)
+      .map((item) => {
+        const labels = collectProductCategoryLabels(item);
+        const score = labels.reduce((total, label) => {
+          return total + (currentCategorySet.has(label.toLowerCase()) ? 1 : 0);
+        }, 0);
+
+        return { item, score };
+      });
+
+    const byScore = [...candidates]
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 4)
+      .map((entry) => entry.item);
+
+    if (byScore.length > 0) return byScore;
+
+    return candidates.slice(0, 4).map((entry) => entry.item);
+  }, [product, templateProducts]);
 
   const summarySpecs = useMemo(() => {
     const rows: Array<[string, string]> = [];
@@ -419,7 +564,11 @@ export default function ProductDetailPage() {
                             : "border-slate-200"
                       }`}
                     >
-                      <img src={img} alt={`Thumbnail ${index + 1}`} className="h-full w-full object-cover" />
+                      <img
+                        src={img}
+                        alt={`Thumbnail ${index + 1}`}
+                        className="h-full w-full bg-white object-contain p-1"
+                      />
                     </button>
                   ))
                 ) : (
@@ -427,7 +576,7 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              <div className={`order-1 flex-1 overflow-hidden rounded-3xl p-4 ${panelClass}`}>
+              <div className={`order-1 flex-1 overflow-hidden rounded-3xl p-4 `}>
                 <div
                   className={`template-product-card relative h-[420px] overflow-hidden rounded-2xl sm:h-[520px] ${
                     isTrend ? "bg-rose-50" : "bg-slate-50"
@@ -437,7 +586,7 @@ export default function ProductDetailPage() {
                     <img
                       src={selectedImage}
                       alt={product.productName || "Product"}
-                      className="h-full w-full object-cover"
+                      className="h-full w-full bg-white object-contain p-2 sm:p-3"
                     />
                   ) : (
                     <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
@@ -541,14 +690,21 @@ export default function ProductDetailPage() {
                 <p className="mb-3 text-sm font-semibold">Select Variant</p>
                 <div className="flex flex-wrap gap-3">
                   {variants.map((item) => {
-                    const variantImage = item?.variantsImageUrls?.[0]?.url?.trim();
+                    const variantImage = (item?.variantsImageUrls || [])
+                      .map((image) => getImageUrl(image))
+                      .find((url) => Boolean(url));
                     const active = selectedVariant?._id === item._id;
                     const inStock = toNumber(item.stockQuantity) > 0;
                     return (
                       <button
                         key={item._id}
                         type="button"
-                        onClick={() => setSelectedVariantId(item._id)}
+                        onClick={() => {
+                          setSelectedVariantId(item._id);
+                          if (variantImage) {
+                            setSelectedImage(variantImage);
+                          }
+                        }}
                         className={`template-product-card relative flex min-w-[180px] items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition ${
                           active
                             ? isTrend
@@ -565,7 +721,7 @@ export default function ProductDetailPage() {
                           <img
                             src={variantImage}
                             alt={getVariantLabel(item)}
-                            className="h-10 w-10 rounded-lg object-cover"
+                            className="h-10 w-10 rounded-lg bg-white object-contain"
                           />
                         ) : (
                           <div className="h-10 w-10 rounded-lg bg-slate-200" />
@@ -822,6 +978,85 @@ export default function ProductDetailPage() {
               />
             )}
           </div>
+        </div>
+
+        <div className="mt-8">
+          <div className="mb-5 flex items-end justify-between gap-4">
+            <div>
+              <p className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}>
+                Similar picks
+              </p>
+              <h2 className="text-2xl font-bold">Related Products</h2>
+            </div>
+          </div>
+
+          {relatedProducts.length > 0 ? (
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedProducts.map((item) => {
+                const variant = getPrimaryVariant(item);
+                const finalPrice = toNumber(variant?.finalPrice);
+                const actualPrice = toNumber(variant?.actualPrice);
+                const displayPrice = finalPrice > 0 ? finalPrice : actualPrice;
+                const imageUrl = getProductLeadImage(item);
+                const productCategoryLabel = collectProductCategoryLabels(item)[0] || "Category";
+                const relatedPath = buildTemplateScopedPath({
+                  vendorId,
+                  pathname: pathname || "/",
+                  suffix: `product/${item._id}`,
+                });
+
+                return (
+                  <Link
+                    key={item._id}
+                    href={relatedPath}
+                    className={`template-product-card group overflow-hidden rounded-2xl border transition hover:-translate-y-1 ${
+                      isStudio
+                        ? "border-slate-800 bg-slate-900 hover:border-slate-700"
+                        : isTrend
+                          ? "border-rose-200 bg-white hover:border-rose-300"
+                          : "border-slate-200 bg-white hover:border-slate-300"
+                    }`}
+                  >
+                    <div className={`h-44 overflow-hidden ${isStudio ? "bg-slate-950" : "bg-slate-50"}`}>
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={item.productName || "Related product"}
+                          className="h-full w-full object-contain p-3 transition duration-300 group-hover:scale-[1.03]"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-slate-400">
+                          No Image
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="space-y-2 p-3">
+                      <p className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}>
+                        {productCategoryLabel}
+                      </p>
+                      <h3 className="line-clamp-2 text-sm font-semibold">
+                        {item.productName || "Untitled Product"}
+                      </h3>
+                      <div className="flex items-end gap-2">
+                        <p className={`text-lg font-bold ${isTrend ? "text-rose-600" : "text-indigo-600"}`}>
+                          {formatCurrency(displayPrice)}
+                        </p>
+                        {actualPrice > finalPrice && finalPrice > 0 && (
+                          <p className="text-xs text-slate-400 line-through">{formatCurrency(actualPrice)}</p>
+                        )}
+                      </div>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className={`rounded-2xl border p-5 text-sm ${isStudio ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200 bg-white text-slate-600"}`}>
+              No related products available right now.
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -19,6 +19,13 @@ const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 const normalizeText = (value: unknown) =>
   typeof value === "string" ? value.trim() : "";
 
+const getImageUrl = (image: unknown) => {
+  if (typeof image === "string") return image.trim();
+  if (!image || typeof image !== "object") return "";
+  const url = (image as { url?: unknown }).url;
+  return typeof url === "string" ? url.trim() : "";
+};
+
 const normalizeCategoryLabel = (value: unknown) => {
   const text = normalizeText(value);
   if (!text || OBJECT_ID_REGEX.test(text)) return "";
@@ -100,12 +107,22 @@ const getProductPricing = (product: any) => {
 };
 
 const getProductImageUrl = (product: any) => {
-  const defaultImage = normalizeText(product?.defaultImages?.[0]?.url);
+  const defaultImages = Array.isArray(product?.defaultImages)
+    ? product.defaultImages
+    : [];
+  const defaultImage = defaultImages
+    .map((image: unknown) => getImageUrl(image))
+    .find((url: string) => Boolean(url));
   if (defaultImage) return defaultImage;
 
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   for (const variant of variants) {
-    const variantImage = normalizeText(variant?.variantsImageUrls?.[0]?.url);
+    const variantImage = (Array.isArray(variant?.variantsImageUrls)
+      ? variant.variantsImageUrls
+      : []
+    )
+      .map((image: unknown) => getImageUrl(image))
+      .find((url: string) => Boolean(url));
     if (variantImage) return variantImage;
   }
   return "";
@@ -179,6 +196,7 @@ export default function AllProducts() {
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "whiterose";
+  const isMquiq = variant.key === "mquiq";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
   const pageClass = isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
@@ -212,6 +230,8 @@ export default function AllProducts() {
     ? "bg-slate-900 border border-slate-800 hover:border-sky-400/40 rounded-md"
     : isTrend
       ? "bg-white border border-rose-100 hover:border-rose-300 rounded-[1.7rem]"
+    : isMquiq
+      ? "bg-white border border-slate-200 hover:border-indigo-300 rounded-[1.35rem]"
     : isMinimal
       ? "bg-white border border-slate-200 hover:border-slate-300 rounded-xl"
       : "bg-white border border-slate-200 hover:border-indigo-200 rounded-3xl";
@@ -231,8 +251,10 @@ export default function AllProducts() {
     ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-6"
     : isTrend
       ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5"
+      : isMquiq
+        ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 justify-items-center"
       : isMinimal
-        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-8"
+        ? "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-7"
         : "grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-6";
 
   const handleAddToCart = async (product: any) => {
@@ -302,6 +324,12 @@ export default function AllProducts() {
 
     return matchesSearch && matchesCategory;
   });
+  const singleProductLayout = filteredProducts.length === 1;
+  const productsLayoutClass = singleProductLayout
+    ? "mx-auto flex w-full justify-center"
+    : gridClass;
+  const visibleProductCount = filteredProducts.length;
+  const visibleProductWord = visibleProductCount === 1 ? "product" : "products";
 
   return (
     <div className={`${pageClass} template-page-shell template-products-page py-10 lg:py-14`}>
@@ -309,12 +337,16 @@ export default function AllProducts() {
         <div className={`${heroClass} template-page-hero`}>
           <h2 className={`template-section-title text-3xl lg:text-4xl font-bold text-left ${heroTitleClass}`}>All Products</h2>
           <p className={`mt-2 text-sm ${heroSubtextClass}`}>
-            Explore {filteredProducts.length} products and add items to cart directly from this page.
+            Explore {visibleProductCount} {visibleProductWord} and add items to cart directly from this page.
           </p>
         </div>
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 mb-8">
-          <div className="relative w-full lg:w-1/3">
+        <div
+          className={`mb-8 flex flex-col gap-4 lg:flex-row lg:items-center ${
+            singleProductLayout ? "lg:justify-center" : "lg:justify-between"
+          }`}
+        >
+          <div className={`relative w-full ${singleProductLayout ? "lg:max-w-md" : "lg:w-1/3"}`}>
             <input
               type="text"
               placeholder="Search products..."
@@ -325,7 +357,7 @@ export default function AllProducts() {
             <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
           </div>
 
-          <div className="flex flex-wrap gap-2">
+          <div className={`flex flex-wrap gap-2 ${singleProductLayout ? "lg:justify-center" : ""}`}>
             {categories.map((cat) => (
               <button
                 key={cat}
@@ -343,17 +375,27 @@ export default function AllProducts() {
         </div>
 
         {filteredProducts.length > 0 ? (
-          <div className={gridClass}>
+          <div className={productsLayoutClass}>
             {filteredProducts.map(({ product, category }) => {
               const pricing = getProductPricing(product);
               const rating = Math.max(0, Math.min(5, toNumber(product?.rating || 4.2)));
               const isAdding = Boolean(addingById[product._id]);
               const productImageUrl = getProductImageUrl(product);
+              const cardWidthClass = singleProductLayout
+                ? "max-w-xs sm:max-w-sm"
+                : isMquiq
+                  ? "max-w-sm"
+                  : "";
+              const imageHeightClass = singleProductLayout
+                ? "h-44 sm:h-48"
+                : isMquiq
+                  ? "h-56 sm:h-60"
+                  : "h-64 sm:h-72";
 
               return (
                 <div
                   key={product._id}
-                  className={`template-product-card group shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
+                  className={`template-product-card group w-full ${cardWidthClass} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
                 >
                   <Link
                     href={buildTemplateScopedPath({
@@ -363,13 +405,14 @@ export default function AllProducts() {
                     })}
                     className="block"
                   >
-                    <div className="relative overflow-hidden rounded-t-2xl bg-slate-100">
-                      <div className="aspect-[4/5]">
+                    <div className="relative overflow-hidden rounded-t-2xl border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
+                      <div className={imageHeightClass}>
                         {productImageUrl ? (
                           <img
                             src={productImageUrl}
                             alt={product.productName || "Product image"}
-                            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+                            className="h-full w-full bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
+                            loading="lazy"
                           />
                         ) : (
                           <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
@@ -386,7 +429,7 @@ export default function AllProducts() {
                     </div>
                   </Link>
 
-                  <div className="p-4">
+                  <div className="p-3">
                     <div className="mb-2 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
                         <Star size={12} className="fill-current" />
@@ -405,7 +448,7 @@ export default function AllProducts() {
                       })}
                       className="block"
                     >
-                      <h3 className={`line-clamp-2 text-lg font-semibold ${titleTextClass}`}>
+                      <h3 className={`line-clamp-2 text-base font-semibold ${titleTextClass}`}>
                         {product?.productName || "Untitled Product"}
                       </h3>
                     </Link>
@@ -415,7 +458,7 @@ export default function AllProducts() {
                     </p>
 
                     <div className="mt-3 flex items-end gap-2">
-                      <p className={`text-xl font-bold ${titleTextClass}`}>{formatPrice(pricing.finalPrice)}</p>
+                      <p className={`text-lg font-bold ${titleTextClass}`}>{formatPrice(pricing.finalPrice)}</p>
                       {pricing.actualPrice > pricing.finalPrice ? (
                         <p className="text-sm text-slate-400 line-through">
                           {formatPrice(pricing.actualPrice)}

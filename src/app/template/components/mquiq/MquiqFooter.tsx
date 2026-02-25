@@ -21,21 +21,52 @@ type Product = {
   productName?: string
 }
 
+type FooterQuickLink = {
+  label: string
+  href: string
+}
+
+const digitsOnly = (value: unknown) => String(value || '').replace(/[^\d]/g, '')
+
 const toWhatsappHref = (value: unknown, fallbackPhone: string) => {
   if (typeof value === 'string' && value.trim()) {
     const clean = value.trim()
     if (clean.startsWith('http://') || clean.startsWith('https://')) {
       return clean
     }
-    return `https://wa.me/${clean.replace(/[^\d]/g, '')}`
+    const directDigits = digitsOnly(clean)
+    return directDigits ? `https://wa.me/${directDigits}` : ''
   }
-  return `https://wa.me/${fallbackPhone.replace(/[^\d]/g, '')}`
+  const fallbackDigits = digitsOnly(fallbackPhone)
+  return fallbackDigits ? `https://wa.me/${fallbackDigits}` : ''
 }
 
 const resolveHref = (value: unknown) => {
   if (typeof value !== 'string') return '#'
   const trimmed = value.trim()
   return trimmed || '#'
+}
+
+const isExternalHref = (value: string) =>
+  value.startsWith('http://') || value.startsWith('https://')
+
+const resolveTemplateHref = (value: unknown, vendorId: string, fallback: string) => {
+  if (typeof value !== 'string' || !value.trim()) return fallback
+  const href = value.trim()
+
+  if (href.startsWith('#') || isExternalHref(href) || href.startsWith('/template/')) {
+    return href
+  }
+
+  if (href === '/') {
+    return vendorId ? `/template/${vendorId}` : href
+  }
+
+  if (href.startsWith('/')) {
+    return vendorId ? `/template/${vendorId}${href}` : href
+  }
+
+  return href
 }
 
 export function MquiqFooter() {
@@ -57,9 +88,12 @@ export function MquiqFooter() {
     homepage?.components?.logo ||
     'https://images.unsplash.com/photo-1620632523414-054c7bea12ac?auto=format&fit=crop&q=80&w=687'
   const social = homepage?.components?.social_page || {}
+  const footer = social?.footer || {}
 
-  const phone = vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
-  const email = vendor?.email || 'info@storage.com'
+  const configuredPhone = String(social?.contact_phone || '').trim()
+  const phone =
+    configuredPhone || vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
+  const email = String(footer?.email_text || '').trim() || vendor?.email || 'info@storage.com'
   const address = [
     vendor?.street || vendor?.address,
     vendor?.city,
@@ -69,14 +103,70 @@ export function MquiqFooter() {
   ]
     .filter((item: unknown) => typeof item === 'string' && item.trim())
     .join(', ')
+  const footerAddress = String(footer?.address_text || '').trim() || address
+  const footerPhone = String(footer?.phone_text || '').trim() || phone
+  const brandLine =
+    String(footer?.brand_line || '').trim() || 'Delivering Excellence Since 2023'
+  const summaryText =
+    String(footer?.summary_text || '').trim() ||
+    `Serving industries across India with ${businessName}'s expertise`
+  const quickLinksHeading =
+    String(footer?.quick_links_heading || '').trim() || 'Quick Links'
+  const productsHeading =
+    String(footer?.products_heading || '').trim() || 'Our Products'
+  const addressHeading = String(footer?.address_heading || '').trim() || 'Address'
+  const companyPoints = (
+    Array.isArray(footer?.company_points) ? footer.company_points : []
+  )
+    .map((item: unknown) => String(item || '').trim())
+    .filter(Boolean)
 
-  const quickLinks = [
-    { label: 'Home', href: vendorId ? `/template/${vendorId}` : '#' },
-    { label: 'About Us', href: vendorId ? `/template/${vendorId}#about-us` : '#' },
-    { label: 'Contact Us', href: vendorId ? `/template/${vendorId}#contact-us` : '#' },
-  ]
+  const brandPoints = companyPoints.length
+    ? companyPoints
+    : ['Inspired by Innovation', 'Driven by Quality', 'Trusted for Reliability']
 
-  const productLinks = useMemo(() => {
+  const quickLinks = useMemo<FooterQuickLink[]>(() => {
+    const defaults: FooterQuickLink[] = [
+      { label: 'Home', href: vendorId ? `/template/${vendorId}` : '#' },
+      { label: 'About Us', href: vendorId ? `/template/${vendorId}/about` : '#' },
+      { label: 'Contact Us', href: vendorId ? `/template/${vendorId}/contact` : '#' },
+    ]
+
+    const configured: unknown[] = Array.isArray(footer?.quick_links)
+      ? footer.quick_links
+      : []
+    const normalized = configured
+      .map((item: unknown, index: number) => {
+        const row = item as { label?: unknown; href?: unknown }
+        return {
+          label: String(row?.label || defaults[index]?.label || '').trim(),
+          href: resolveTemplateHref(
+            row?.href,
+            vendorId,
+            defaults[index]?.href || (vendorId ? `/template/${vendorId}` : '#')
+          ),
+        }
+      })
+      .filter((item: { label: string }) => Boolean(item.label))
+
+    return normalized.length ? normalized : defaults
+  }, [footer?.quick_links, vendorId])
+
+  const productLinks = useMemo<FooterQuickLink[]>(() => {
+    const configured = Array.isArray(footer?.product_links) ? footer.product_links : []
+    const configuredList = configured
+      .map((item: unknown, index: number) => {
+        const row = item as { label?: unknown; href?: unknown }
+        const defaultHref = vendorId ? `/template/${vendorId}/all-products` : '#'
+        return {
+          label: String(row?.label || '').trim(),
+          href: resolveTemplateHref(row?.href, vendorId, defaultHref),
+        }
+      })
+      .filter((item: FooterQuickLink) => Boolean(item.label))
+
+    if (configuredList.length) return configuredList
+
     const seen = new Set<string>()
     const list = products
       .filter((item) => item?._id && item?.productName)
@@ -120,15 +210,36 @@ export function MquiqFooter() {
         href: vendorId ? `/template/${vendorId}/all-products` : '#',
       },
     ]
-  }, [products, vendorId])
+  }, [footer?.product_links, products, vendorId])
 
   const whatsappHref = toWhatsappHref(social?.whatsapp, phone)
+  const showPhoneButton = social?.show_phone_button !== false && Boolean(phone)
+  const showWhatsappButton =
+    social?.show_whatsapp_button !== false && Boolean(whatsappHref)
+  const hasFloatingButtons = showPhoneButton || showWhatsappButton
+  const year = new Date().getFullYear()
+  const copyrightTemplate =
+    String(footer?.copyright_text || '').trim() ||
+    '\u00a9 {year} By {business}. All Rights Reserved.'
+  const copyrightText = copyrightTemplate
+    .replaceAll('{year}', String(year))
+    .replaceAll('{business}', businessName)
+  const policyPrimaryLabel =
+    String(footer?.policy_primary_label || '').trim() ||
+    'Privacy Policy & Terms of Service'
+  const policyPrimaryHref = resolveHref(footer?.policy_primary_href || '/privacy')
+  const policySecondaryLabel =
+    String(footer?.policy_secondary_label || '').trim() || 'Shipping & Return Policy'
+  const policySecondaryHref = resolveHref(footer?.policy_secondary_href || '/terms')
 
   return (
     <footer
       id='contact-us'
-      className='relative border-t border-[#2d3440] bg-[#1e2530] text-white'
+      className='relative overflow-hidden border-t border-[#313a48] bg-gradient-to-br from-[#141b27] via-[#1b2432] to-[#121925] text-white'
     >
+      <div className='pointer-events-none absolute -right-16 -top-24 h-72 w-72 rounded-full bg-[#f4b400]/10 blur-3xl' />
+      <div className='pointer-events-none absolute -bottom-28 -left-20 h-80 w-80 rounded-full bg-[#0ea5e9]/10 blur-3xl' />
+
       <div className='mx-auto max-w-[1320px] px-4 py-10 md:px-8 lg:py-11'>
         <div className='grid gap-8 lg:grid-cols-[1.35fr_0.8fr_1fr_1fr]'>
           <div>
@@ -136,18 +247,29 @@ export function MquiqFooter() {
               <img src={logo} alt='Business Logo' className='h-full w-full object-contain p-3' />
             </div>
 
-            <p className='mt-4 text-base font-medium text-white/95'>
-              Delivering Excellence Since 2023
+            <p
+              className='mt-4 text-base font-medium text-white/95'
+              data-template-path='components.social_page.footer.brand_line'
+            >
+              {brandLine}
             </p>
 
             <ul className='mt-4 space-y-2 text-base text-white/95'>
-              <li>Inspired by Innovation</li>
-              <li>Driven by Quality</li>
-              <li>Trusted for Reliability</li>
+              {brandPoints.map((point: string, index: number) => (
+                <li
+                  key={`${point}-${index}`}
+                  data-template-path={`components.social_page.footer.company_points.${index}`}
+                >
+                  {point}
+                </li>
+              ))}
             </ul>
 
-            <p className='mt-4 max-w-md text-base text-white/95'>
-              Serving industries across India with {businessName}&apos;s expertise
+            <p
+              className='mt-4 max-w-md text-base text-white/95'
+              data-template-path='components.social_page.footer.summary_text'
+            >
+              {summaryText}
             </p>
 
             <div className='mt-4 flex items-center gap-3'>
@@ -155,7 +277,7 @@ export function MquiqFooter() {
                 href={resolveHref(social?.facebook)}
                 target='_blank'
                 rel='noreferrer'
-                className='inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20'
+                className='inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:-translate-y-0.5 hover:border-[#f4b400]/60 hover:bg-white/20'
               >
                 <Facebook className='h-5 w-5' />
               </a>
@@ -163,7 +285,7 @@ export function MquiqFooter() {
                 href={resolveHref(social?.instagram)}
                 target='_blank'
                 rel='noreferrer'
-                className='inline-flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20'
+                className='inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/15 bg-white/10 text-white transition hover:-translate-y-0.5 hover:border-[#f4b400]/60 hover:bg-white/20'
               >
                 <Instagram className='h-5 w-5' />
               </a>
@@ -171,60 +293,108 @@ export function MquiqFooter() {
           </div>
 
           <div>
-            <h3 className='text-2xl font-bold'>Quick Links</h3>
+            <h3
+              className='text-2xl font-bold !text-white'
+              data-template-path='components.social_page.footer.quick_links_heading'
+            >
+              {quickLinksHeading}
+            </h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
             <ul className='mt-4 space-y-3'>
-              {quickLinks.map((item) => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
-                  >
-                    <ChevronRight className='h-5 w-5 text-[#f4b400]' />
-                    {item.label}
-                  </Link>
+              {quickLinks.map((item, index) => (
+                <li key={`${item.label}-${index}`}>
+                  {isExternalHref(item.href) ? (
+                    <a
+                      href={item.href}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                      data-template-path={`components.social_page.footer.quick_links.${index}.label`}
+                    >
+                      <ChevronRight className='h-5 w-5 text-[#f4b400]' />
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                      data-template-path={`components.social_page.footer.quick_links.${index}.label`}
+                    >
+                      <ChevronRight className='h-5 w-5 text-[#f4b400]' />
+                      {item.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h3 className='text-2xl font-bold'>Our Products</h3>
+            <h3
+              className='text-2xl font-bold !text-white'
+              data-template-path='components.social_page.footer.products_heading'
+            >
+              {productsHeading}
+            </h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
             <ul className='mt-4 space-y-2.5'>
-              {productLinks.map((item) => (
-                <li key={item.label}>
-                  <Link
-                    href={item.href}
-                    className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
-                  >
-                    <ChevronRight className='h-5 w-5 text-[#f4b400]' />
-                    {item.label}
-                  </Link>
+              {productLinks.map((item, index) => (
+                <li key={`${item.label}-${index}`}>
+                  {isExternalHref(item.href) ? (
+                    <a
+                      href={item.href}
+                      target='_blank'
+                      rel='noreferrer'
+                      className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                      data-template-path={`components.social_page.footer.product_links.${index}.label`}
+                    >
+                      <ChevronRight className='h-5 w-5 text-[#f4b400]' />
+                      {item.label}
+                    </a>
+                  ) : (
+                    <Link
+                      href={item.href}
+                      className='inline-flex items-center gap-2 text-base font-medium text-white transition hover:text-[#f4b400]'
+                      data-template-path={`components.social_page.footer.product_links.${index}.label`}
+                    >
+                      <ChevronRight className='h-5 w-5 text-[#f4b400]' />
+                      {item.label}
+                    </Link>
+                  )}
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <h3 className='text-2xl font-bold'>Address</h3>
+            <h3
+              className='text-2xl font-bold !text-white'
+              data-template-path='components.social_page.footer.address_heading'
+            >
+              {addressHeading}
+            </h3>
             <div className='mt-2 h-[3px] w-16 rounded-full bg-[#f4b400]' />
 
-            <p className='mt-4 text-[0.95rem] font-medium leading-relaxed text-white/95'>
-              {address || 'Mundka, Delhi, India'}
+            <p
+              className='mt-4 text-[0.95rem] font-medium leading-relaxed text-white/95'
+              data-template-path='components.social_page.footer.address_text'
+            >
+              {footerAddress || 'Mundka, Delhi, India'}
             </p>
 
             <div className='mt-4 space-y-2.5'>
               <a
-                href={`tel:${phone}`}
+                href={`tel:${digitsOnly(footerPhone) || phone}`}
                 className='inline-flex items-center gap-2 text-[0.95rem] font-medium text-white transition hover:text-[#f4b400]'
+                data-template-path='components.social_page.footer.phone_text'
               >
                 <Phone className='h-5 w-5' />
-                {phone}
+                {footerPhone}
               </a>
               <a
                 href={`mailto:${email}`}
                 className='inline-flex items-center gap-2 text-[0.95rem] font-medium text-white transition hover:text-[#f4b400]'
+                data-template-path='components.social_page.footer.email_text'
               >
                 <Mail className='h-5 w-5' />
                 {email}
@@ -236,15 +406,23 @@ export function MquiqFooter() {
 
       <div className='border-t border-[#2d3440]'>
         <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-4 py-4 text-sm text-white/95 md:flex-row md:px-8'>
-          <p>
-            &copy; {new Date().getFullYear()} By {businessName}. All Rights Reserved.
+          <p data-template-path='components.social_page.footer.copyright_text'>
+            {copyrightText}
           </p>
           <div className='flex flex-wrap items-center gap-4 md:gap-8'>
-            <Link href='/privacy' className='transition hover:text-[#f4b400]'>
-              Privacy Policy &amp; Terms of Service
+            <Link
+              href={policyPrimaryHref}
+              className='transition hover:text-[#f4b400]'
+              data-template-path='components.social_page.footer.policy_primary_label'
+            >
+              {policyPrimaryLabel}
             </Link>
-            <Link href='/terms' className='transition hover:text-[#f4b400]'>
-              Shipping &amp; Return Policy
+            <Link
+              href={policySecondaryHref}
+              className='transition hover:text-[#f4b400]'
+              data-template-path='components.social_page.footer.policy_secondary_label'
+            >
+              {policySecondaryLabel}
             </Link>
           </div>
         </div>
@@ -253,27 +431,35 @@ export function MquiqFooter() {
       <button
         type='button'
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className='fixed bottom-14 left-6 z-50 inline-flex h-12 w-12 items-center justify-center rounded-md bg-[#f4b400] text-white shadow-lg transition hover:bg-[#d79a00] md:left-8'
+        className='fixed bottom-14 left-6 z-50 inline-flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-[#f7be2e] to-[#e8a500] text-white shadow-[0_18px_45px_rgba(244,180,0,0.38)] transition hover:-translate-y-0.5 hover:from-[#f7c53e] hover:to-[#e09d00] md:left-8'
       >
         <ArrowUp className='h-6 w-6' />
       </button>
 
-      <div className='fixed bottom-32 right-6 z-50 flex flex-col gap-3 md:right-8'>
-        <a
-          href={`tel:${phone}`}
-          className='inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#ef1c24] text-white shadow-lg transition hover:scale-105'
-        >
-          <PhoneCall className='h-7 w-7' />
-        </a>
-        <a
-          href={whatsappHref}
-          target='_blank'
-          rel='noreferrer'
-          className='inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#21c45d] text-white shadow-lg transition hover:scale-105'
-        >
-          <MessageCircle className='h-7 w-7' />
-        </a>
-      </div>
+      {hasFloatingButtons ? (
+        <div className='fixed bottom-32 right-6 z-50 flex flex-col gap-3 md:right-8'>
+          {showPhoneButton ? (
+            <a
+              href={`tel:${phone}`}
+              className='inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-[#ef4444] to-[#dc2626] text-white shadow-[0_18px_45px_rgba(239,68,68,0.42)] transition hover:-translate-y-0.5 hover:scale-105'
+              aria-label='Call now'
+            >
+              <PhoneCall className='h-7 w-7' />
+            </a>
+          ) : null}
+          {showWhatsappButton ? (
+            <a
+              href={whatsappHref}
+              target='_blank'
+              rel='noreferrer'
+              className='inline-flex h-14 w-14 items-center justify-center rounded-full border border-white/25 bg-gradient-to-br from-[#22c55e] to-[#16a34a] text-white shadow-[0_18px_45px_rgba(34,197,94,0.42)] transition hover:-translate-y-0.5 hover:scale-105'
+              aria-label='Chat on WhatsApp'
+            >
+              <MessageCircle className='h-7 w-7' />
+            </a>
+          ) : null}
+        </div>
+      ) : null}
     </footer>
   )
 }
