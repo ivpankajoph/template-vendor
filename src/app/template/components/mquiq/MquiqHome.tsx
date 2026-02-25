@@ -436,7 +436,9 @@ export function MquiqHome() {
   const featuredGridClass =
     featuredProducts.length <= 1
       ? 'mt-8 grid place-items-center'
-      : 'mt-8 grid gap-6 md:grid-cols-2 lg:grid-cols-3'
+      : featuredProducts.length === 2
+        ? 'mx-auto mt-8 grid max-w-[700px] gap-5 sm:grid-cols-2 sm:place-items-center'
+        : 'mt-8 grid gap-5 sm:grid-cols-2 lg:grid-cols-3 lg:place-items-center'
 
   const handleAddToCart = async (product: {
     _id?: string
@@ -604,7 +606,7 @@ export function MquiqHome() {
                 <article
                   key={`${product.title}-${index}`}
                   className={`group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                    featuredProducts.length === 1 ? 'max-w-[280px]' : ''
+                    featuredProducts.length === 1 ? 'max-w-[280px]' : 'max-w-[320px]'
                   }`}
                 >
                   <Link
@@ -620,7 +622,7 @@ export function MquiqHome() {
                     <div className='relative border-b border-slate-100 bg-[#f2f4f7] p-2.5'>
                       <div
                         className={`relative overflow-hidden rounded-2xl bg-white ${
-                          featuredProducts.length === 1 ? 'aspect-[3/4]' : 'aspect-[4/5]'
+                          featuredProducts.length === 1 ? 'aspect-[4/5]' : 'aspect-square'
                         }`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
