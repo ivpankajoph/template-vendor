@@ -14,6 +14,7 @@ import { buildTemplateScopedPath, getTemplateCityFromPath } from "@/lib/template
 import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
+import HyperlinkText from "@/components/HyperlinkText";
 
 type VariantImage = {
   url?: string;
@@ -366,6 +367,7 @@ export default function ProductDetailPage() {
     product?.description ||
     product?.shortDescription ||
     "No description available.";
+  const productShortDescription = String(product?.shortDescription || "").trim();
 
   const detailedSpecs = useMemo(() => {
     const list: Array<[string, string]> = [];
@@ -648,6 +650,14 @@ export default function ProductDetailPage() {
                   SKU: {selectedVariant?.variantSku || "N/A"}
                 </div>
               </div>
+              {productShortDescription ? (
+                <HyperlinkText
+                  text={productShortDescription}
+                  className={`mt-3 text-sm leading-relaxed ${
+                    isStudio ? "text-slate-300" : "text-slate-600"
+                  }`}
+                />
+              ) : null}
             </div>
 
             <div className={`rounded-2xl p-5 ${panelClass}`}>
@@ -903,9 +913,10 @@ export default function ProductDetailPage() {
           <div className="py-6">
             {activeTab === "description" && (
               <div className={`rounded-2xl p-5 ${panelClass}`}>
-                <p className={`${isStudio ? "text-slate-300" : "text-slate-700"} leading-relaxed`}>
-                  {productDescription}
-                </p>
+                <HyperlinkText
+                  text={productDescription}
+                  className={`${isStudio ? "text-slate-300" : "text-slate-700"} leading-relaxed`}
+                />
               </div>
             )}
 
