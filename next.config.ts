@@ -43,6 +43,16 @@ const nextConfig: NextConfig = {
       },
     ],
   },
+  webpack(config, { isServer }) {
+    // ensure mime-db is not bundled into a dynamic vendor chunk; instead
+    // require it from node_modules at runtime. this avoids runtime errors
+    // about missing ./vendor-chunks/mime-db.js.
+    if (isServer) {
+      config.externals = config.externals || []
+      config.externals.push('mime-db')
+    }
+    return config
+  },
 };
 
 export default nextConfig;

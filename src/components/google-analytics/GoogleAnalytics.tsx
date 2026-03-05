@@ -6,7 +6,7 @@ export default function GoogleAnalytics() {
   const vendorId = useVendor();
   const measurementId = "G-CN686811YH";
 
-  return (
+  return (  
     <>
       <Script
         async

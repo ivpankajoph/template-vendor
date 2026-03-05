@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
@@ -266,10 +266,32 @@ export function MquiqHome() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
-  const products = useSelector(
-    (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
-  )
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+  
+  // Fetch vendor-specific products from backend
+  const [products, setProducts] = useState<TemplateProduct[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
+
+  useEffect(() => {
+    if (!vendorId) return
+
+    const fetchVendorProducts = async () => {
+      setProductsLoading(true)
+      try {
+        // Fetch products from vendor's API endpoint with vendor_id parameter
+        const response = await templateApiFetch(vendorId, `/products?vendor_id=${vendorId}`)
+        const fetchedProducts = Array.isArray(response?.products) ? response.products : []
+        setProducts(fetchedProducts)
+      } catch (error) {
+        console.error('Failed to fetch vendor products:', error)
+        setProducts([])
+      } finally {
+        setProductsLoading(false)
+      }
+    }
+
+    fetchVendorProducts()
+  }, [vendorId])
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')

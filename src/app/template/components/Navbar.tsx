@@ -67,17 +67,17 @@ export default function Navbar() {
     : isTrend
       ? "text-slate-700 hover:text-rose-600"
       : "text-slate-800 hover:text-slate-900";
-  const iconTone = isStudio
-    ? "text-slate-100 hover:text-sky-300"
+  const iconTone = isStudio 
+    ? "text-slate-100 hover:text-sky-300" 
     : isTrend
       ? "text-slate-600 hover:text-rose-600"
       : "text-slate-700 hover:text-slate-900";
   const navLabelClass = isStudio
     ? "uppercase tracking-[0.2em] text-xs"
-    : isTrend
+    : isTrend 
       ? "text-sm"
       : "";
-  const authTextTone = isStudio
+  const authTextTone = isStudio                    
     ? "text-slate-300 hover:text-white"
     : isTrend
       ? "text-slate-500 hover:text-rose-600"

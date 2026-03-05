@@ -10,10 +10,10 @@ import {
   Facebook,
   Instagram,
   Mail,
-  MapPin,
   Phone,
   PhoneCall,
   MessageCircle,
+  ChevronRight,
 } from 'lucide-react'
 
 type Product = {
@@ -75,8 +75,6 @@ export function PoupqzFooter() {
     { label: 'About Us', href: vendorId ? `/template/${vendorId}#about-us` : '#' },
     { label: 'Products', href: vendorId ? `/template/${vendorId}#products` : '#' },
     { label: 'Contact Us', href: vendorId ? `/template/${vendorId}#contact-us` : '#' },
-    { label: 'Privacy Policy & Terms of Service', href: '/privacy' },
-    { label: 'Shipping & Return Policy', href: '/terms' },
   ]
 
   const productLinks = useMemo(() => {
@@ -93,16 +91,13 @@ export function PoupqzFooter() {
         seen.add(key)
         return true
       })
-      .slice(0, 6)
+      .slice(0, 5)
 
     if (list.length > 0) return list
 
     return [
       { label: 'Mezzanine Floor', href: vendorId ? `/template/${vendorId}#products` : '#' },
-      {
-        label: 'Industrial Storage Rack',
-        href: vendorId ? `/template/${vendorId}#products` : '#',
-      },
+      { label: 'Industrial Storage Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
       { label: 'Warehouse Storage Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
       { label: 'Slotted Angle Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
       { label: 'Cable Tray & Raceway', href: vendorId ? `/template/${vendorId}#products` : '#' },
@@ -111,146 +106,182 @@ export function PoupqzFooter() {
 
   const whatsappHref = toWhatsappHref(social?.whatsapp, phonePrimary)
 
+  const defaultDescriptionLines = [
+    'Delivering Excellence Since 2023',
+    'Inspired by Innovation',
+    'Driven by Quality',
+    'Trusted for Reliability',
+    'Serving industries globally with our expertise',
+  ]
+
   return (
-    <footer id='contact-us' className='relative'>
-      <div className='h-[86px] w-full bg-[#0b74c6]' />
+    <footer id='contact-us' className='relative bg-blue-900 rounded-md font-sans text-slate-300' data-template-section='footer'>
+      <div className='mx-auto max-w-[1400px] px-6 py-16 md:px-10 lg:px-14'>
+        {/* Main Grid — 4 columns matching reference image */}
+        <div className='grid gap-12 sm:grid-cols-2 lg:grid-cols-4'>
 
-      <div className='bg-[#1f2733] text-white'>
-        <div className='mx-auto max-w-[1320px] px-4 pb-8 pt-12 md:px-8 md:pb-10 md:pt-14'>
-          <div className='grid gap-10 md:grid-cols-2 xl:grid-cols-4'>
-            <div>
-              <div className='flex h-[110px] w-[260px] max-w-full items-center justify-center overflow-hidden rounded-[8px] bg-white'>
-                <img src={logo} alt='Business Logo' className='h-full w-full object-contain p-3' />
-              </div>
-
-              <p className='mt-8 max-w-[340px] text-[16px] leading-[1.65] text-white/95'>
-                Leading manufacturer of industrial storage solutions and racking systems with
-                exceptional customer service.
-              </p>
-
-              <div className='mt-6 flex items-center gap-4'>
-                <a
-                  href={resolveHref(social?.facebook)}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-[#0b74c6] text-[#0b74c6] transition hover:bg-[#0b74c6] hover:text-white'
-                >
-                  <Facebook className='h-6 w-6' />
-                </a>
-                <a
-                  href={resolveHref(social?.instagram)}
-                  target='_blank'
-                  rel='noreferrer'
-                  className='inline-flex h-12 w-12 items-center justify-center rounded-[10px] border border-[#0b74c6] text-[#0b74c6] transition hover:bg-[#0b74c6] hover:text-white'
-                >
-                  <Instagram className='h-6 w-6' />
-                </a>
-              </div>
+          {/* ── Col 1: Brand ── */}
+          <div className='flex flex-col'>
+            {/* Logo in a white box */}
+            <div className='mb-6 inline-flex h-[80px] w-fit items-center justify-center rounded-xl  px-8 py-2 shadow-md'>
+              <Link href='#' className='inline-block transition-transform hover:scale-[1.02]'>
+                <img src={logo} alt='Business Logo' className='h-12 w-auto object-contain' />
+              </Link>
             </div>
 
-            <div>
-              <h3 className='whitespace-nowrap text-[30px] font-semibold leading-[1.25] md:text-[34px]'>
-                Quick Links
-              </h3>
-              <ul className='mt-5 space-y-3'>
-                {quickLinks.map((item) => (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      className='text-[17px] leading-[1.5] text-white/95 transition hover:text-[#2f93e5]'
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
+            <div
+              className='flex flex-col gap-2.5 text-[14px] leading-snug text-[#cbd5e1]'
+              data-template-path='components.footer.short_description'
+              data-template-section='footer'
+            > 
+              {template?.components?.footer?.short_description ? (
+                <p className='leading-relaxed'>{template.components.footer.short_description}</p>
+              ) : (
+                defaultDescriptionLines.map((line, idx) => (
+                  <p key={idx}>{line}</p>
+                ))
+              )}
             </div>
 
-            <div>
-              <h3 className='whitespace-nowrap text-[30px] font-semibold leading-[1.25] md:text-[34px]'>
-                Our Products
-              </h3>
-              <ul className='mt-5 space-y-3'>
-                {productLinks.map((item) => (
-                  <li key={item.label}>
-                    <Link
-                      href={item.href}
-                      className='text-[17px] leading-[1.5] text-white/95 transition hover:text-[#2f93e5]'
-                    >
-                      {item.label}
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </div>
-
-            <div>
-              <h3 className='whitespace-nowrap text-[30px] font-semibold leading-[1.25] md:text-[34px]'>
-                Contact Us
-              </h3>
-              <div className='mt-5 space-y-4 text-[17px] leading-[1.5] text-white/95'>
-                <p>Registered Office:</p>
-                <p className='inline-flex items-start gap-2'>
-                  <MapPin className='mt-1 h-5 w-5 shrink-0 text-white' />
-                  <span>{address}</span>
-                </p>
-                <p>Factory Office:</p>
-                <p className='inline-flex items-center gap-2'>
-                  <Phone className='h-5 w-5 shrink-0 text-white' />
-                  <a href={`tel:${phonePrimary}`} className='hover:text-[#2f93e5]'>
-                    {phonePrimary}
-                  </a>
-                </p>
-                <p className='inline-flex items-center gap-2'>
-                  <Phone className='h-5 w-5 shrink-0 text-white' />
-                  <a href={`tel:${phoneSecondary}`} className='hover:text-[#2f93e5]'>
-                    {phoneSecondary}
-                  </a>
-                </p>
-                <p className='inline-flex items-start gap-2'>
-                  <Mail className='mt-1 h-5 w-5 shrink-0 text-white' />
-                  <span>
-                    <a href={`mailto:${emailPrimary}`} className='hover:text-[#2f93e5]'>
-                      {emailPrimary}
-                    </a>
-                    <span>, </span>
-                    <a href={`mailto:${emailSecondary}`} className='hover:text-[#2f93e5]'>
-                      {emailSecondary}
-                    </a>
-                  </span>
-                </p>
-              </div>
+            <div className='mt-8 flex gap-3'>
+              <a
+                href={resolveHref(social?.facebook)}
+                target='_blank'
+                rel='noreferrer'
+                className='flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 bg-transparent text-slate-400 transition-all hover:border-[#fbbf24] hover:text-[#fbbf24]'
+                aria-label='Facebook'
+              >
+                <Facebook className='h-4 w-4' />
+              </a>
+              <a
+                href={resolveHref(social?.instagram)}
+                target='_blank'
+                rel='noreferrer'
+                className='flex h-10 w-10 items-center justify-center rounded-full border border-slate-600 bg-transparent text-slate-400 transition-all hover:border-[#fbbf24] hover:text-[#fbbf24]'
+                aria-label='Instagram'
+              >
+                <Instagram className='h-4 w-4' />
+              </a>
             </div>
           </div>
 
-          <div className='mt-10 border-t border-white/20 pt-7 text-[17px] text-white/95'>
-            &copy; Copyright {businessName}. All Rights Reserved.
+          {/* ── Col 2: Quick Links ── */}
+          <div className='lg:pl-6 '>
+            <h4 className='text-xl font-bold'>  
+              Quick Links 
+            </h4>
+            <div className='mt-3 h-[2px] w-12 bg-transparent' />
+            <nav className='mt-8 flex flex-col gap-5'>
+              {quickLinks.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className='group flex items-center gap-3 text-[14px] text-[#cbd5e1] transition-colors hover:text-[#fbbf24]'
+                >
+                  <ChevronRight className='h-4 w-4 shrink-0 text-black transition-transform group-hover:translate-x-1' />
+                  <span>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          {/* ── Col 3: Products ── */}
+          <div>
+            <h4 className='text-xl font-bold text-white'>
+              Our Products           
+            </h4>
+            <div className='mt-3 h-[2px] w-12 bg-black-400' />
+            <nav className='mt-8 flex flex-col gap-5'>
+              {productLinks.map((item) => (
+                <Link
+                  key={item.label}
+                  href={item.href}
+                  className='group flex items-start gap-3 text-[14px] text-[#cbd5e1] transition-colors hover:text-[#fbbf24]'
+                >
+                  <ChevronRight className='mt-[2px] h-4 w-4 shrink-0 text-[#fbbf24] transition-transform group-hover:translate-x-1' />
+                  <span className='leading-snug'>{item.label}</span>
+                </Link>
+              ))}
+            </nav>
+          </div>
+
+          {/* ── Col 4: Address ── */}
+          <div>
+            <h4 className='text-xl font-bold text-white'>
+              Address
+            </h4>
+            <div className='mt-3 h-[2px] w-12 bg-black-400' />
+            <div className='mt-8 space-y-6 text-[14px] text-[#cbd5e1]'>
+              <div className='leading-relaxed pr-4'>{address}</div>
+
+              <div className='flex items-start gap-3'>
+                <Phone className='mt-0.5 h-[18px] w-[18px] shrink-0 text-slate-400' />
+                <div className='flex flex-col gap-1.5'>
+                  <a href={`tel:${phonePrimary}`} className='hover:text-[#fbbf24] transition-colors break-all'>{phonePrimary}</a>
+                  {phoneSecondary && phoneSecondary !== phonePrimary && (
+                    <a href={`tel:${phoneSecondary}`} className='hover:text-[#fbbf24] transition-colors break-all'>{phoneSecondary}</a>
+                  )}
+                </div>
+              </div>
+
+              <div className='flex items-start gap-3'>
+                <Mail className='mt-0.5 h-[18px] w-[18px] shrink-0 text-slate-400' />
+                <div className='flex flex-col gap-1.5'>
+                  <a href={`mailto:${emailPrimary}`} className='hover:text-[#fbbf24] transition-colors break-all'>{emailPrimary}</a>
+                  {emailSecondary && emailSecondary !== emailPrimary && (
+                    <a href={`mailto:${emailSecondary}`} className='hover:text-[#fbbf24] transition-colors break-all'>{emailSecondary}</a>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Footer Bottom ── */}
+        <div className='mt-16 border-t border-slate-700/60 pt-8'>
+          <div className='flex flex-col items-center justify-between gap-4 md:flex-row'>
+            <p className='text-[13px] text-slate-400'>
+              &copy; {new Date().getFullYear()} By {businessName}. All Rights Reserved.
+            </p>
+            <div className='flex items-center gap-6'>
+              <Link href='/privacy' className='text-[13px] text-slate-400 hover:text-white transition-colors'>
+                Privacy Policy & Terms of Service
+              </Link>
+              <Link href='/terms' className='text-[13px] text-slate-400 hover:text-white transition-colors'>
+                Shipping & Return Policy
+              </Link>
+            </div>
           </div>
         </div>
       </div>
 
+      {/* ── Floating Action: Scroll to Top ── */}
       <button
         type='button'
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className='fixed bottom-8 left-8 z-50 inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#0b74c6] text-white shadow-lg transition hover:bg-[#085ea0]'
+        className='fixed bottom-8 left-8 z-50 flex h-12 w-12 items-center justify-center rounded-xl bg-[#fbbf24] text-slate-900 shadow-xl transition-all hover:scale-110 active:scale-95'
+        aria-label='Scroll to top'
       >
-        <ArrowUp className='h-7 w-7' />
+        <ArrowUp className='h-6 w-6' />
       </button>
 
-      <div className='fixed bottom-32 right-8 z-50 flex flex-col gap-4'>
+      {/* ── Floating Actions: Call + WhatsApp ── */}
+      <div className='fixed bottom-8 right-8 z-50 flex flex-col gap-4'>
+        <a
+          href={`tel:${phonePrimary}`}
+          className='flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#ef4444] text-white shadow-xl transition-all hover:scale-110 active:scale-95'
+          aria-label='Call us'
+        >
+          <PhoneCall className='h-6 w-6' />
+        </a>
         <a
           href={whatsappHref}
           target='_blank'
           rel='noreferrer'
-          className='inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#21c45d] text-white shadow-lg transition hover:scale-105'
+          className='flex h-[52px] w-[52px] items-center justify-center rounded-full bg-[#22c55e] text-white shadow-xl transition-all hover:scale-110 active:scale-95'
+          aria-label='WhatsApp'
         >
-          <MessageCircle className='h-8 w-8' />
-        </a>
-        <a
-          href={`tel:${phonePrimary}`}
-          className='inline-flex h-16 w-16 items-center justify-center rounded-full bg-[#0b74f0] text-white shadow-lg transition hover:scale-105'
-        >
-          <PhoneCall className='h-8 w-8' />
+          <MessageCircle className='h-[26px] w-[26px]' />
         </a>
       </div>
     </footer>
