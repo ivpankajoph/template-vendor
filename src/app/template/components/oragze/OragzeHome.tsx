@@ -130,43 +130,55 @@ const FALLBACK_BANNER_IMAGE =
 const FALLBACK_PRODUCTS: ProductCard[] = [
   {
     _id: '',
+    variantId: '',
     title: 'Greek Style Plain Yogurt',
     image:
       'https://images.unsplash.com/photo-1571212515416-fca88d63f89c?auto=format&fit=crop&w=1200&q=80',
     price: 18,
     oldPrice: 24,
+    discountPercent: 25,
     rating: 4.5,
     reviews: 222,
+    stockQuantity: 10,
   },
   {
     _id: '',
+    variantId: '',
     title: 'Pure Squeezed No Pulp Orange Juice',
     image:
       'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80',
     price: 18,
     oldPrice: 24,
+    discountPercent: 25,
     rating: 4.5,
     reviews: 222,
+    stockQuantity: 10,
   },
   {
     _id: '',
+    variantId: '',
     title: 'Fresh Oranges',
     image:
       'https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&w=1200&q=80',
     price: 18,
     oldPrice: 24,
+    discountPercent: 25,
     rating: 4.5,
     reviews: 222,
+    stockQuantity: 10,
   },
   {
     _id: '',
+    variantId: '',
     title: 'Gourmet Dark Chocolate Bars',
     image:
       'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=1200&q=80',
     price: 18,
     oldPrice: 24,
+    discountPercent: 25,
     rating: 4.5,
     reviews: 222,
+    stockQuantity: 10,
   },
 ]
 
@@ -189,13 +201,6 @@ const FALLBACK_FAQS: FaqItem[] = [
 ]
 
 
- 
-
-
-
-
-
-jkplio;o
 export function OragzeHome() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
