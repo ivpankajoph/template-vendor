@@ -15,14 +15,86 @@ import {
   ShieldCheck,
   Star,
   Truck,
+  ShoppingCart,
 } from 'lucide-react'
+import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 
 type TemplateProduct = {
   _id?: string
   productName?: string
   shortDescription?: string
+  brand?: string
   defaultImages?: Array<{ url?: string }>
-  variants?: Array<{ finalPrice?: number }>
+  variants?: Array<{
+    _id?: string
+    finalPrice?: number
+    actualPrice?: number
+    discountPercent?: number
+    stockQuantity?: number
+    isActive?: boolean
+    variantsImageUrls?: Array<{ url?: string }>
+  }>
+}
+
+const toNumber = (value: unknown) => {
+  const num = Number(value)
+  return Number.isFinite(num) ? num : 0
+}
+
+const formatPrice = (value: unknown) => `$${toNumber(value).toFixed(2)}`
+
+const getProductImage = (product: TemplateProduct, fallback: string) => {
+  const defaultImage = product?.defaultImages?.find((image) => image?.url)?.url
+  if (defaultImage) return defaultImage
+
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  for (const variant of variants) {
+    const variantImage = variant?.variantsImageUrls?.find((image) => image?.url)?.url
+    if (variantImage) return variantImage
+  }
+
+  return fallback
+}
+
+const getPrimaryVariant = (product: TemplateProduct) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  return variants.find((variant) => variant?._id && variant?.isActive !== false) || variants[0] || null
+}
+
+const getProductPriceDetails = (product: TemplateProduct) => {
+  const variants = Array.isArray(product?.variants) ? product.variants : []
+  const prices = variants
+    .map((variant) => ({
+      finalPrice: toNumber(variant?.finalPrice),
+      actualPrice: toNumber(variant?.actualPrice),
+      discountPercent: toNumber(variant?.discountPercent),
+    }))
+    .filter((entry) => entry.finalPrice > 0)
+
+  if (!prices.length) {
+    return {
+      finalPrice: 0,
+      actualPrice: 0,
+      discountPercent: 0,
+    }
+  }
+
+  const best = prices.reduce((current, entry) =>
+    entry.finalPrice < current.finalPrice ? entry : current
+  )
+
+  const computedDiscount =
+    best.discountPercent > 0
+      ? best.discountPercent
+      : best.actualPrice > best.finalPrice && best.actualPrice > 0
+        ? Math.round(((best.actualPrice - best.finalPrice) / best.actualPrice) * 100)
+        : 0
+
+  return {
+    finalPrice: best.finalPrice,
+    actualPrice: best.actualPrice,
+    discountPercent: computedDiscount,
+  }
 }
 
 type FaqItem = {
@@ -32,17 +104,22 @@ type FaqItem = {
 
 type ProductCard = {
   _id: string
+  variantId: string
   title: string
   image: string
   price: number
   oldPrice: number
+  discountPercent: number
   rating: number
   reviews: number
+  stockQuantity: number
 }
+
 
 const FALLBACK_HERO_IMAGE =
   'https://images.unsplash.com/photo-1610348725531-843dff563e2c?auto=format&fit=crop&w=1800&q=80'
 const FALLBACK_PROMO_IMAGES = [
+
   'https://images.unsplash.com/photo-1471193945509-9ad0617afabf?auto=format&fit=crop&w=1800&q=80',
   'https://images.unsplash.com/photo-1476224203421-9ac39bcb3327?auto=format&fit=crop&w=1600&q=80',
   'https://images.unsplash.com/photo-1511690743698-d9d85f2fbf38?auto=format&fit=crop&w=1600&q=80',
@@ -111,13 +188,14 @@ const FALLBACK_FAQS: FaqItem[] = [
   },
 ]
 
-const getMinPrice = (variants: Array<{ finalPrice?: number }> = []) => {
-  const values = variants
-    .map((variant) => variant?.finalPrice)
-    .filter((value): value is number => typeof value === 'number')
-  return values.length ? Math.min(...values) : 18
-}
 
+ 
+
+
+
+
+
+jkplio;o
 export function OragzeHome() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
@@ -126,6 +204,8 @@ export function OragzeHome() {
     (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
   )
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
+  const [addingId, setAddingId] = useState<string | null>(null)
+  const [actionMessage, setActionMessage] = useState('')
 
   const home = template?.components?.home_page || {}
   const faqSection = template?.components?.social_page?.faqs || {}
@@ -142,28 +222,75 @@ export function OragzeHome() {
   const heroImage = home?.backgroundImage || FALLBACK_HERO_IMAGE
 
   const featuredProducts = useMemo(() => {
-    const mapped = products.slice(0, 4).map((product, index) => {
-      const price = getMinPrice(product?.variants || [])
-      const oldPrice = Math.max(price + Math.round(price * 0.3), price + 6)
+    const mapped = products.slice(0, 8).map((product, index) => {
+      const pricing = getProductPriceDetails(product)
+      const primaryVariant = getPrimaryVariant(product)
+      const stockQuantity = toNumber(primaryVariant?.stockQuantity)
+
       return {
         _id: String(product?._id || ''),
-        title: product?.productName || FALLBACK_PRODUCTS[index]?.title || `Product ${index + 1}`,
-        image:
-          product?.defaultImages?.[0]?.url ||
-          FALLBACK_PRODUCTS[index % FALLBACK_PRODUCTS.length].image,
-        price,
-        oldPrice,
+        variantId: primaryVariant?._id || '',
+        title: product?.productName || `Product ${index + 1}`,
+        image: getProductImage(product, FALLBACK_PRODUCTS[index % FALLBACK_PRODUCTS.length].image),
+        price: pricing.finalPrice || 18,
+        oldPrice: pricing.actualPrice || (pricing.finalPrice ? pricing.finalPrice + 6 : 24),
+        discountPercent: pricing.discountPercent,
         rating: 4.5,
         reviews: 222,
+        stockQuantity: stockQuantity,
       } satisfies ProductCard
     })
 
-    while (mapped.length < 4) {
-      mapped.push(FALLBACK_PRODUCTS[mapped.length])
+    if (mapped.length === 0) {
+      return FALLBACK_PRODUCTS.map((fallback, index) => ({
+        ...fallback,
+        variantId: '',
+        discountPercent: 0,
+        stockQuantity: 10,
+      }))
     }
 
     return mapped
   }, [products])
+
+  const handleAddToCart = async (product: Partial<ProductCard>) => {
+    setActionMessage('')
+
+    if (!vendorId || !product?._id) return
+    const auth = getTemplateAuth(vendorId)
+    if (!auth?.token) {
+      window.location.href = `/template/${vendorId}/login?next=/template/${vendorId}/all-products`
+      return
+    }
+    if (!product.variantId) {
+      setActionMessage('Variant not available for this product.')
+      return
+    }
+    if (toNumber(product.stockQuantity) <= 0) {
+      setActionMessage('This product is out of stock.')
+      return
+    }
+
+    setAddingId(product._id)
+    try {
+      await templateApiFetch(vendorId, '/cart', {
+        method: 'POST',
+        body: JSON.stringify({
+          product_id: product._id,
+          variant_id: product.variantId,
+          quantity: 1,
+        }),
+      })
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('template-cart-updated'))
+      }
+      setActionMessage('Added to cart successfully.')
+    } catch (error: any) {
+      setActionMessage(error?.message || 'Failed to add to cart.')
+    } finally {
+      setAddingId(null)
+    }
+  }
 
   const faqItems = useMemo<FaqItem[]>(() => {
     const rawFaqs = Array.isArray(faqSection?.faqs) ? faqSection.faqs : []
@@ -235,7 +362,7 @@ export function OragzeHome() {
           <div className='mt-12 grid gap-6 md:grid-cols-3'>
             <div>
               <p className='text-[46px] font-extrabold leading-none tracking-[-0.03em] text-[#1d2738] md:text-[72px]'>
-                14k+
+                4k+
               </p>
               <p className='mt-2 text-[22px] font-semibold leading-[1.04] tracking-[-0.02em] text-[#1d2738] md:text-[32px]'>
                 PRODUCT
@@ -245,7 +372,7 @@ export function OragzeHome() {
             </div>
             <div>
               <p className='text-[46px] font-extrabold leading-none tracking-[-0.03em] text-[#1d2738] md:text-[72px]'>
-                50k+
+                60k+
               </p>
               <p className='mt-2 text-[22px] font-semibold leading-[1.04] tracking-[-0.02em] text-[#1d2738] md:text-[32px]'>
                 HAPPY
@@ -298,11 +425,11 @@ export function OragzeHome() {
       <section className='bg-[#f1f2ef] py-14 md:py-16'>
         <div className='mx-auto grid max-w-[1320px] gap-7 px-4 md:px-8 lg:grid-cols-[1.4fr_1fr]'>
           <article className='relative overflow-hidden rounded-sm'>
-            <img
+            <img 
               src={FALLBACK_PROMO_IMAGES[0]}
               alt='Items on sale'
               className='h-full min-h-[560px] w-full object-cover'
-            />
+            /> 
             <div className='absolute inset-0 bg-black/25' />
             <div className='absolute left-8 top-1/2 -translate-y-1/2'>
               <h3 className='text-[32px] font-semibold leading-[1.02] tracking-[-0.02em] text-white md:text-[48px]'>
@@ -338,7 +465,7 @@ export function OragzeHome() {
                 <Link
                   href={vendorId ? `/template/${vendorId}/all-products` : '#'}
                   className='mt-7 inline-flex border-b border-white text-[18px] font-semibold tracking-[0.04em] text-white md:text-[24px]'
-                >
+                > 
                   SHOP NOW
                 </Link>
               </div>
@@ -415,7 +542,7 @@ export function OragzeHome() {
 
           <div className='grid gap-8 sm:grid-cols-2 lg:grid-cols-4'>
             {featuredProducts.map((product, index) => (
-              <article key={`${product.title}-${index}`}>
+              <article key={`${product.title}-${index}`} className='flex flex-col group'>
                 <Link
                   href={
                     product._id
@@ -424,42 +551,84 @@ export function OragzeHome() {
                         ? `/template/${vendorId}/all-products`
                         : '#'
                   }
-                  className='block overflow-hidden rounded-sm'
+                  className='block overflow-hidden rounded-sm relative'
                 >
                   <img
                     src={product.image}
                     alt={product.title}
-                    className='h-[280px] w-full object-cover transition duration-300 hover:scale-[1.03] md:h-[320px]'
+                    className='h-[280px] w-full object-cover transition duration-300 group-hover:scale-[1.03] md:h-[320px]'
                   />
                 </Link>
-                <h3 className='mt-4 line-clamp-2 min-h-[50px] text-[17px] font-medium leading-[1.25] tracking-[-0.02em] text-[#222936] md:text-[21px]'>
-                  {product.title}
-                </h3>
+                <div className='flex flex-col flex-grow mt-4'>
+                  <h3 className='line-clamp-2 min-h-[50px] text-[17px] font-medium leading-[1.25] tracking-[-0.02em] text-[#222936] md:text-[21px]'>
+                    <Link
+                      href={
+                        product._id
+                          ? `/template/${vendorId}/product/${product._id}`
+                          : vendorId
+                            ? `/template/${vendorId}/all-products`
+                            : '#'
+                      }
+                      className='hover:text-[#69b64a] transition-colors'
+                    >
+                      {product.title}
+                    </Link>
+                  </h3>
 
-                <div className='mt-2 flex items-center gap-1'>
-                  {Array.from({ length: 5 }).map((_, starIndex) => (
-                    <Star
-                      key={starIndex}
-                      className='h-4 w-4 fill-[#f6b300] text-[#f6b300] md:h-5 md:w-5'
-                    />
-                  ))}
-                  <span className='ml-2 text-[15px] text-slate-500 md:text-[18px]'>({product.reviews})</span>
-                </div>
+                  <div className='mt-2 flex items-center gap-1'>
+                    {Array.from({ length: 5 }).map((_, starIndex) => (
+                      <Star
+                        key={starIndex}
+                        className='h-4 w-4 fill-[#f6b300] text-[#f6b300] md:h-5 md:w-5'
+                      />
+                    ))}
+                    <span className='ml-2 text-[15px] text-slate-500 md:text-[18px]'>({product.reviews})</span>
+                  </div>
 
-                <div className='mt-2 flex flex-wrap items-center gap-2'>
-                  <span className='text-[14px] text-slate-500 line-through md:text-[16px]'>
-                    ${product.oldPrice.toFixed(2)}
-                  </span>
-                  <span className='text-[17px] font-semibold leading-none text-[#1f2937] md:text-[20px]'>
-                    ${product.price.toFixed(2)}
-                  </span>
-                  <span className='border border-[#bcc2cd] px-2 py-0.5 text-[11px] font-medium text-slate-500 md:text-[12px]'>
-                    10% OFF
-                  </span>
+                  <div className='mt-2 flex flex-wrap items-end gap-2'>
+                    <span className='text-[17px] font-bold leading-none text-[#1f2937] md:text-[22px]'>
+                      {formatPrice(product.price)}
+                    </span>
+                    {product.oldPrice > product.price ? (
+                      <span className='text-[14px] text-slate-400 line-through mb-0.5 md:text-[16px]'>
+                        {formatPrice(product.oldPrice)}
+                      </span>
+                    ) : null}
+                    {product.discountPercent > 0 ? (
+                      <span className='ml-1 border border-[#bcc2cd] bg-red-50 px-2 py-0.5 text-[11px] font-bold text-red-600 md:text-[12px] uppercase rounded-sm'>
+                        {product.discountPercent}% OFF
+                      </span>
+                    ) : null}
+                  </div>
+                  
+                  <div className='mt-5 mt-auto'>
+                    <button
+                      type='button'
+                      onClick={(e) => {
+                        e.preventDefault()
+                        e.stopPropagation()
+                        handleAddToCart(product)
+                      }}
+                      disabled={
+                        !product?._id ||
+                        !product?.variantId ||
+                        product.stockQuantity <= 0 ||
+                        addingId === product._id
+                      }
+                      className='flex w-full items-center justify-center gap-2 rounded-md bg-[#69b64a] py-3 text-[14px] font-semibold text-white transition hover:bg-[#5aa13f] disabled:cursor-not-allowed disabled:opacity-60 md:text-[16px]'
+                    >
+                      <ShoppingCart className='h-5 w-5' />
+                      {addingId === product._id ? 'ADDING...' : product.stockQuantity > 0 || !product._id ? 'ADD TO CART' : 'OUT OF STOCK'}
+                    </button>
+                    {product.stockQuantity < 10 && product.stockQuantity > 0 && product._id ? (
+                      <p className='mt-2 text-center text-xs font-medium text-amber-600'>Only {product.stockQuantity} left in stock</p>
+                    ) : null}
+                  </div>
                 </div>
               </article>
             ))}
           </div>
+          {actionMessage ? <p className='col-span-full mt-6 rounded-md bg-white p-3 text-center text-[15px] font-semibold text-slate-700 shadow-sm border border-slate-200'>{actionMessage}</p> : null}
         </div>
       </section>
 

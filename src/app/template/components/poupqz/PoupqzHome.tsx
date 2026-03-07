@@ -260,30 +260,8 @@ export function PoupqzHome() {
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
 
-  // Fetch vendor-specific products from backend
-  const [products, setProducts] = useState<TemplateProduct[]>([])
-  const [productsLoading, setProductsLoading] = useState(false)
-
-  useEffect(() => {
-    if (!vendorId) return
-
-    const fetchVendorProducts = async () => {
-      setProductsLoading(true)
-      try {
-        // Fetch products from vendor's API endpoint with vendor_id parameter
-        const response = await templateApiFetch(vendorId, `/products?vendor_id=${vendorId}`)
-        const fetchedProducts = Array.isArray(response?.products) ? response.products : []
-        setProducts(fetchedProducts)
-      } catch (error) {
-        console.error('Failed to fetch vendor products:', error)
-        setProducts([])
-      } finally {
-        setProductsLoading(false)
-      }
-    }
-
-    fetchVendorProducts()
-  }, [vendorId])
+  // Use products already loaded into Redux store by TemplateDataLoader
+  const products = useSelector((state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[])
 
   const home = template?.components?.home_page || {}
   const descriptionData = home?.description || {}
@@ -321,18 +299,14 @@ export function PoupqzHome() {
     'Find quick answers to common queries about our products, services, and support.'
 
   const featuredProducts = useMemo(() => {
-    const mapped = products.slice(0, 3).map((product, index) => {
+    return products.slice(0, 3).map((product, index) => {
       const primary = getPrimaryVariant(product)
       const pricing = getProductPriceDetails(product)
       return {
         _id: product?._id || '',
         variantId: primary?._id || '',
-        title:
-          product?.productName ||
-          ['Heavy Duty Rack', 'Long Span Rack', 'Mezzanine Floor'][index] ||
-          `Product ${index + 1}`,
-        subtitle:
-          product?.brand || product?.shortDescription || '',
+        title: product?.productName || `Product ${index + 1}`,
+        subtitle: product?.brand || product?.shortDescription || '',
         image: getProductImage(
           product,
           FEATURED_FALLBACK_IMAGES[index % FEATURED_FALLBACK_IMAGES.length]
@@ -341,21 +315,6 @@ export function PoupqzHome() {
         stockQuantity: toNumber(primary?.stockQuantity),
       }
     })
-
-    while (mapped.length < 3) {
-      const index = mapped.length
-      mapped.push({
-        _id: '',
-        variantId: '',
-        title: ['Heavy Duty Rack', 'Long Span Rack', 'Mezzanine Floor'][index],
-        subtitle: '',
-        image: FEATURED_FALLBACK_IMAGES[index % FEATURED_FALLBACK_IMAGES.length],
-        pricing: { finalPrice: 0, actualPrice: 0, discountPercent: 0 },
-        stockQuantity: 0,
-      })
-    }
-
-    return mapped
   }, [products])
 
   const whyChooseItems = useMemo(() => {
@@ -663,7 +622,7 @@ export function PoupqzHome() {
                 <Warehouse className='h-8 w-8' />
               </div>
               <p className='mt-6 text-sm font-bold uppercase tracking-widest text-slate-500'>
-                Inventory Synchronizing...
+                No products found. Add products from your vendor dashboard.
               </p>
             </div>
           )}
