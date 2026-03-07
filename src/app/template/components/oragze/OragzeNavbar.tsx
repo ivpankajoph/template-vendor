@@ -8,6 +8,7 @@ import { useSelector } from 'react-redux'
 import {
   Bookmark,
   ChevronDown,
+  Filter,
   Leaf,
   Menu,
   Search,
@@ -66,6 +67,10 @@ export function OragzeNavbar() {
   const [selectedCategoryPath, setSelectedCategoryPath] = useState('')
   const [cartCount, setCartCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [filterOpen, setFilterOpen] = useState(false)
+  const [filterCategory, setFilterCategory] = useState('All')
+  const [minPrice, setMinPrice] = useState('')
+  const [maxPrice, setMaxPrice] = useState('')
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const products = useSelector(
@@ -107,8 +112,7 @@ export function OragzeNavbar() {
   const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
   const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
   const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
-  const firstProductHref =
-    vendorId && products?.[0]?._id ? `/template/${vendorId}/product/${products[0]._id}` : shopHref
+  const firstProductHref =vendorId && products?.[0]?._id ? `/template/${vendorId}/product/${products[0]._id}` : shopHref
 
   useEffect(() => {
     if (!vendorId) return
@@ -119,7 +123,7 @@ export function OragzeNavbar() {
       if (!auth?.token) {
         setCartCount(0)
         return
-      }
+      } 
       try {
         const data = await templateApiFetch(vendorId, '/cart')
         const quantity = Number(data?.cart?.total_quantity)
@@ -173,26 +177,17 @@ export function OragzeNavbar() {
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()
-    const normalized = searchText.trim().toLowerCase()
-    if (!normalized) {
-      router.push(selectedCategoryPath || shopHref)
-      return
-    }
-    const exactMatch = products.find(
-      (product) => String(product?.productName || '').toLowerCase() === normalized
-    )
-    if (exactMatch?._id) {
-      router.push(`/template/${vendorId}/product/${exactMatch._id}`)
-      return
-    }
-    const partial = products.find((product) =>
-      String(product?.productName || '').toLowerCase().includes(normalized)
-    )
-    if (partial?._id) {
-      router.push(`/template/${vendorId}/product/${partial._id}`)
-      return
-    }
-    router.push(selectedCategoryPath || shopHref)
+    const params = new URLSearchParams()
+    if (searchText.trim()) params.set('search', searchText.trim())
+    if (filterCategory !== 'All') params.set('category', filterCategory)
+    if (minPrice) params.set('minPrice', minPrice)
+    if (maxPrice) params.set('maxPrice', maxPrice)
+
+    const queryString = params.toString()
+    const targetPath = queryString ? `${shopHref}?${queryString}` : shopHref
+    
+    router.push(targetPath)
+    setFilterOpen(false)
   }
 
   return (
@@ -209,18 +204,73 @@ export function OragzeNavbar() {
           onSubmit={handleSearchSubmit}
           className='relative hidden min-w-0 flex-1 items-center rounded-2xl border border-[#e1e5dc] bg-white px-3 py-2 lg:flex'
         >
-          <select
-            value={selectedCategoryPath}
-            onChange={(event) => setSelectedCategoryPath(event.target.value)}
-            className='w-[150px] border-r border-slate-200 bg-transparent pr-2 text-[15px] text-slate-700 outline-none'
-          >
-            <option value={shopHref}>All Categories</option>
-            {categoryEntries.map((entry) => (
-              <option key={entry.href} value={entry.href}>
-                {entry.label}
-              </option>
-            ))}
-          </select>
+          <div className='relative'>
+            <button
+              type='button'
+              onClick={() => setFilterOpen(!filterOpen)}
+              className='flex w-[140px] items-center justify-between border-r border-slate-200 bg-transparent px-3 text-[14px] font-bold text-slate-700 outline-none hover:text-[#23b14d]'
+            >
+              <div className='flex items-center gap-2'>
+                <Filter className='h-4 w-4' />
+                <span className='truncate'>{filterCategory === 'All' ? 'Filters' : filterCategory}</span>
+              </div>
+              <ChevronDown className={`h-4 w-4 transition ${filterOpen ? 'rotate-180' : ''}`} />
+            </button>
+
+            {filterOpen && (
+              <div className='absolute left-0 top-[calc(100%+14px)] z-50 w-[240px] rounded-xl border border-slate-200 bg-white p-4 shadow-2xl'>
+                <div className='space-y-4'>
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-black uppercase tracking-widest text-slate-400'>
+                      Category
+                    </label>
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className='w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-sm font-bold outline-none'
+                    >
+                      <option value='All'>All Categories</option>
+                      {categoryEntries.map((entry) => (
+                        <option key={entry.href} value={entry.label}>
+                          {entry.label}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className='mb-1.5 block text-[11px] font-black uppercase tracking-widest text-slate-400'>
+                      Price Range
+                    </label>
+                    <div className='flex items-center gap-2'>
+                      <input
+                        type='number'
+                        placeholder='Min'
+                        value={minPrice}
+                        onChange={(e) => setMinPrice(e.target.value)}
+                        className='w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-bold outline-none focus:border-[#23b14d]'
+                      />
+                      <span className='text-slate-300'>-</span>
+                      <input
+                        type='number'
+                        placeholder='Max'
+                        value={maxPrice}
+                        onChange={(e) => setMaxPrice(e.target.value)}
+                        className='w-full rounded-lg border border-slate-200 bg-slate-50 p-2 text-xs font-bold outline-none focus:border-[#23b14d]'
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type='submit'
+                    className='w-full rounded-lg bg-[#23b14d] py-2 text-sm font-bold text-white transition hover:bg-[#1e9641]'
+                  >
+                    Apply Filters
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
           <input
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
@@ -272,7 +322,6 @@ export function OragzeNavbar() {
             {pagesOpen ? (
               <div className='absolute right-0 top-[calc(100%+12px)] z-50 w-[280px] rounded-xl border border-slate-200 bg-white p-3 shadow-2xl'>
                 {[
-                  { label: 'About Us', href: aboutHref },
                   { label: 'Shop', href: shopHref },
                   { label: 'Single Product', href: firstProductHref },
                   { label: 'Cart', href: cartHref },
@@ -359,7 +408,6 @@ export function OragzeNavbar() {
           <div className='flex flex-col gap-3 text-[16px] font-medium text-[#1f2937]'>
             {[
               { label: 'Home', href: homeHref },
-              { label: 'About', href: aboutHref },
               { label: 'Shop', href: shopHref },
               { label: 'Contact', href: contactHref },
               { label: 'Cart', href: cartHref },

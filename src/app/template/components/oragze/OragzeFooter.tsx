@@ -4,7 +4,7 @@ import Link from 'next/link'
 import { useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
-import { Facebook, Instagram, Leaf, Twitter, Youtube } from 'lucide-react'
+import { Facebook, Instagram, Leaf, Twitter, Youtube, Mail, MapPin, Phone } from 'lucide-react'
 
 type TemplateProduct = {
   _id?: string
@@ -35,7 +35,6 @@ export function OragzeFooter() {
     { label: 'Our Journals', href: vendorId ? `/template/${vendorId}/all-products` : '#' },
     { label: 'Careers', href: vendorId ? `/template/${vendorId}/contact` : '#' },
     { label: 'Affiliate Programme', href: vendorId ? `/template/${vendorId}/register` : '#' },
-    { label: 'Ultras Press', href: vendorId ? `/template/${vendorId}/about` : '#' },
   ]
 
   const quickLinks = [
@@ -44,45 +43,35 @@ export function OragzeFooter() {
     { label: 'Stores', href: vendorId ? `/template/${vendorId}/contact` : '#' },
     { label: 'Track Order', href: vendorId ? `/template/${vendorId}/orders` : '#' },
     { label: 'Shop', href: vendorId ? `/template/${vendorId}/all-products` : '#' },
-    { label: 'Info', href: vendorId ? `/template/${vendorId}/about` : '#' },
   ]
 
   const customerService = [
-    { label: 'FAQ', href: vendorId ? `/template/${vendorId}#faq` : '#' },
     { label: 'Contact', href: vendorId ? `/template/${vendorId}/contact` : '#' },
     { label: 'Privacy Policy', href: vendorId ? `/template/${vendorId}/privacy-policy` : '#' },
     { label: 'Returns & Refunds', href: vendorId ? `/template/${vendorId}/returns-refunds` : '#' },
-    { label: 'Cookie Guidelines', href: vendorId ? `/template/${vendorId}/cookie-guidelines` : '#' },
     { label: 'Delivery Information', href: vendorId ? `/template/${vendorId}/delivery-information` : '#' },
   ]
 
-  const featuredProductLinks = useMemo(() => {
-    return products
-      .filter((item) => item?._id && item?.productName)
-      .slice(0, 4)
-      .map((item) => ({
-        label: String(item.productName || 'Product'),
-        href: `/template/${vendorId}/product/${item._id}`,
-      }))
-  }, [products, vendorId])
-
   return (
-    <footer id='contact-us' className='mt-16 border-t border-[#d8dccf] bg-[#ececea] text-[#232b3a]'>
-      <div className='mx-auto max-w-[1320px] px-4 py-14 md:px-8'>
-        <div className='grid gap-10 md:grid-cols-2 xl:grid-cols-[1.15fr_0.8fr_0.8fr_0.95fr_1fr]'>
-          <div>
-            <div className='flex items-center gap-2 text-[#111827]'>
-              <Leaf className='h-8 w-8 text-[#23b14d]' />
-              <span className='text-[40px] font-semibold leading-none tracking-[-0.04em] md:text-[52px]'>
-                Organic
+    <footer id='contact-us' className='mt-12 border-t border-slate-200 bg-white text-slate-800'>
+      <div className='mx-auto max-w-[1320px] px-4 py-16 md:px-8'>
+        <div className='grid gap-12 md:grid-cols-2 lg:grid-cols-5'>
+          <div className='lg:col-span-2 pr-0 lg:pr-12'>
+            <div className='flex items-center gap-2 text-pink-600 mb-6'>
+              <Leaf className='h-8 w-8 text-pink-600' />
+              <span className='text-[34px] font-extrabold tracking-tight text-slate-800'>
+                {businessName}
               </span>
             </div>
-            <div className='mt-6 flex items-center gap-3'>
+            <p className='text-[15px] leading-relaxed text-slate-600 mb-8'>
+              Your trusted marketplace for quality products. Unbeatable prices, massive selection, and fast delivery guaranteed.
+            </p>
+            <div className='flex items-center gap-4'>
               {[
-                { icon: Facebook, href: resolveHref(social?.facebook) },
-                { icon: Twitter, href: resolveHref(social?.twitter) },
-                { icon: Youtube, href: resolveHref(social?.youtube) },
-                { icon: Instagram, href: resolveHref(social?.instagram) },
+                { icon: Facebook, href: resolveHref(social?.facebook), color: 'hover:text-blue-600 hover:bg-blue-50' },
+                { icon: Twitter, href: resolveHref(social?.twitter), color: 'hover:text-sky-500 hover:bg-sky-50' },
+                { icon: Youtube, href: resolveHref(social?.youtube), color: 'hover:text-red-600 hover:bg-red-50' },
+                { icon: Instagram, href: resolveHref(social?.instagram), color: 'hover:text-pink-600 hover:bg-pink-50' },
               ].map((entry) => {
                 const Icon = entry.icon
                 return (
@@ -91,47 +80,23 @@ export function OragzeFooter() {
                     href={entry.href}
                     target='_blank'
                     rel='noreferrer'
-                    className='inline-flex h-12 w-12 items-center justify-center rounded-lg border border-[#d5d9d0] bg-[#f7f7f4] text-slate-500 transition hover:text-[#6dbf4b]'
+                    className={`inline-flex h-10 w-10 items-center justify-center rounded-full bg-slate-100 text-slate-500 transition-all duration-300 hover:-translate-y-1 ${entry.color}`}
                   >
                     <Icon className='h-5 w-5' />
                   </a>
                 )
               })}
             </div>
-            <ul className='mt-8 space-y-2'>
-              {featuredProductLinks.map((item) => (
-                <li key={item.href}>
-                  <Link href={item.href} className='text-[15px] text-slate-600 hover:text-[#6dbf4b]'>
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
           </div>
 
           <div>
-            <h3 className='text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] md:text-[36px]'>
-              Organic
-            </h3>
-            <ul className='mt-5 space-y-2 text-[16px] leading-[1.6] text-slate-600'>
-              {organicLinks.map((item) => (
-                <li key={item.label}>
-                  <Link href={item.href} className='transition hover:text-[#6dbf4b]'>
-                    {item.label}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          </div>
-
-          <div>
-            <h3 className='text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] md:text-[36px]'>
+            <h3 className='text-[18px] font-bold text-slate-900 mb-6'>
               Quick Links
             </h3>
-            <ul className='mt-5 space-y-2 text-[16px] leading-[1.6] text-slate-600'>
+            <ul className='space-y-3'>
               {quickLinks.map((item) => (
                 <li key={item.label}>
-                  <Link href={item.href} className='transition hover:text-[#6dbf4b]'>
+                  <Link href={item.href} className='text-[15px] font-medium text-slate-600 transition-colors hover:text-pink-600'>
                     {item.label}
                   </Link>
                 </li>
@@ -140,13 +105,13 @@ export function OragzeFooter() {
           </div>
 
           <div>
-            <h3 className='text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] md:text-[36px]'>
+            <h3 className='text-[18px] font-bold text-slate-900 mb-6'>
               Customer Service
             </h3>
-            <ul className='mt-5 space-y-2 text-[16px] leading-[1.6] text-slate-600'>
+            <ul className='space-y-3'>
               {customerService.map((item) => (
                 <li key={item.label}>
-                  <Link href={item.href} className='transition hover:text-[#6dbf4b]'>
+                  <Link href={item.href} className='text-[15px] font-medium text-slate-600 transition-colors hover:text-pink-600'>
                     {item.label}
                   </Link>
                 </li>
@@ -155,38 +120,43 @@ export function OragzeFooter() {
           </div>
 
           <div>
-            <h3 className='text-[30px] font-semibold leading-[1.05] tracking-[-0.02em] md:text-[36px]'>
-              Subscribe Us
+            <h3 className='text-[18px] font-bold text-slate-900 mb-6'>
+              Contact Us
             </h3>
-            <p className='mt-5 text-[16px] leading-[1.7] text-slate-600'>
-              Subscribe to our newsletter to get updates about our grand offers.
-            </p>
-            <div className='mt-5 flex overflow-hidden rounded-md border border-[#d5d9d0] bg-white'>
-              <input
-                type='email'
-                placeholder='Email Address'
-                className='min-w-0 flex-1 px-4 py-3 text-[17px] text-slate-700 outline-none'
-              />
-              <button
-                type='button'
-                className='bg-[#1f2733] px-5 py-3 text-[17px] font-semibold text-white transition hover:bg-[#111827]'
-              >
-                Subscribe
-              </button>
-            </div>
+            <ul className='space-y-4 text-[15px] font-medium text-slate-600'>
+              <li className='flex items-start gap-3'>
+                <MapPin className='h-5 w-5 text-pink-600 shrink-0 mt-0.5' />
+                <span>123 Commerce Blvd, Tech City, TC 10010</span>
+              </li>
+              <li className='flex items-center gap-3'>
+                <Phone className='h-5 w-5 text-pink-600 shrink-0' />
+                <span>+1 234 567 890</span>
+              </li>
+              <li className='flex items-center gap-3'>
+                <Mail className='h-5 w-5 text-pink-600 shrink-0' />
+                <span>support@{toSlug(businessName) || 'store'}.com</span>
+              </li>
+            </ul>
           </div>
         </div>
       </div>
 
-      <div className='border-t border-[#d8dccf]'>
-        <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-3 px-4 py-5 text-[15px] text-slate-600 md:flex-row md:px-8'>
+      <div className='border-t border-slate-200 bg-slate-50'>
+        <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-4 px-4 py-6 text-[14px] font-medium text-slate-500 md:flex-row md:px-8'>
           <p>&copy; {new Date().getFullYear()} {businessName}. All rights reserved.</p>
-          <p className='text-center md:text-right'>
-            HTML Template by <span className='font-semibold text-slate-700'>TemplatesJungle</span>{' '}
-            Distributed By <span className='font-semibold text-slate-700'>ThemeWagon</span>
-          </p>
+          <div className='flex items-center gap-6'>
+            <Link href='#' className='hover:text-pink-600 transition-colors'>Terms of Service</Link>
+            <Link href='#' className='hover:text-pink-600 transition-colors'>Privacy Policy</Link>
+          </div>
         </div>
       </div>
     </footer>
   )
+}
+
+function toSlug(value: string) {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9]+/g, '')
 }
