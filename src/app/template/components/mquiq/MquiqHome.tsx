@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useEffect } from 'react'
 import { useParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
@@ -266,10 +266,10 @@ export function MquiqHome() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
-  const products = useSelector(
-    (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
-  )
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+
+  // Use products already loaded into Redux store by TemplateDataLoader
+  const products = useSelector((state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[])
   const [openFaqIndex, setOpenFaqIndex] = useState(0)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
@@ -605,9 +605,8 @@ export function MquiqHome() {
               {featuredProducts.map((product, index) => (
                 <article
                   key={`${product.title}-${index}`}
-                  className={`group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${
-                    featuredProducts.length === 1 ? 'max-w-[280px]' : 'max-w-[320px]'
-                  }`}
+                  className={`group w-full overflow-hidden rounded-[22px] border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${featuredProducts.length === 1 ? 'max-w-[280px]' : 'max-w-[320px]'
+                    }`}
                 >
                   <Link
                     href={
@@ -621,9 +620,8 @@ export function MquiqHome() {
                   >
                     <div className='relative border-b border-slate-100 bg-[#f2f4f7] p-2.5'>
                       <div
-                        className={`relative overflow-hidden rounded-2xl bg-white ${
-                          featuredProducts.length === 1 ? 'aspect-[4/5]' : 'aspect-square'
-                        }`}
+                        className={`relative overflow-hidden rounded-2xl bg-white ${featuredProducts.length === 1 ? 'aspect-[4/5]' : 'aspect-square'
+                          }`}
                       >
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
@@ -671,9 +669,8 @@ export function MquiqHome() {
                   </Link>
                   <div className='flex items-center justify-between border-t border-slate-100 px-4 py-3'>
                     <span
-                      className={`text-sm font-semibold ${
-                        product.stockQuantity > 0 ? 'text-[#00a86b]' : 'text-rose-600'
-                      }`}
+                      className={`text-sm font-semibold ${product.stockQuantity > 0 ? 'text-[#00a86b]' : 'text-rose-600'
+                        }`}
                     >
                       {product.stockQuantity > 0 ? `${product.stockQuantity} in stock` : 'Out of stock'}
                     </span>
@@ -920,9 +917,8 @@ export function MquiqHome() {
                     onClick={() =>
                       setOpenFaqIndex((prev) => (prev === index ? -1 : index))
                     }
-                    className={`flex w-full items-center justify-between px-5 py-4 text-left text-lg font-bold tracking-[-0.01em] ${
-                      isOpen ? 'bg-[#dfe9f7] text-[#f4b400]' : 'bg-[#eceff4] text-[#2f3136]'
-                    }`}
+                    className={`flex w-full items-center justify-between px-5 py-4 text-left text-lg font-bold tracking-[-0.01em] ${isOpen ? 'bg-[#dfe9f7] text-[#f4b400]' : 'bg-[#eceff4] text-[#2f3136]'
+                      }`}
                   >
                     <span>{faq.question}</span>
                     {isOpen ? (

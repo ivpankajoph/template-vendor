@@ -100,8 +100,8 @@ export function MquiqFooter() {
     vendor?.state,
     vendor?.country,
     vendor?.pincode,
-  ]
-    .filter((item: unknown) => typeof item === 'string' && item.trim())
+  ]   
+    .filter((item: unknown) => typeof item === 'string' && item.trim()) 
     .join(', ')
   const footerAddress = String(footer?.address_text || '').trim() || address
   const footerPhone = String(footer?.phone_text || '').trim() || phone

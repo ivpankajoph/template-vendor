@@ -2,19 +2,11 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
-import { ChevronDown, Menu, ShoppingBag, UserCircle2, X } from 'lucide-react'
+import { Menu, ShoppingBag, UserCircle2, X } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
-
-type Product = {
-  _id?: string
-  productName?: string
-}
-
-const NAV_LINK_CLASS =
-  'whitespace-nowrap text-[18px] font-medium text-[#111827] transition hover:text-[#0b74c6]'
 
 export function PoupqzNavbar() {
   const params = useParams()
@@ -25,46 +17,19 @@ export function PoupqzNavbar() {
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
-  const products = useSelector(
-    (state: any) => (state?.alltemplatepage?.products || []) as Product[]
-  )
 
-  const customPages =
-    template?.components?.custom_pages?.filter(
-      (page: any) => page?.isPublished !== false
-    ) || []
-
-  const logo =
-    template?.components?.logo ||
-    'https://images.unsplash.com/photo-1620632523414-054c7bea12ac?auto=format&fit=crop&q=80&w=687'
-
+  // simple nav items, no dropdowns
   const homeHref = vendorId ? `/template/${vendorId}` : '#'
   const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
   const productsHref = vendorId ? `/template/${vendorId}/all-products` : '#'
   const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
   const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
-  const checkoutHref = vendorId ? `/template/${vendorId}/checkout` : '#'
-  const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
   const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
   const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
-  const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
 
-  const productLinks = useMemo(() => {
-    const seen = new Set<string>()
-    return products
-      .filter((product) => product?._id && product?.productName)
-      .map((product) => ({
-        id: String(product._id),
-        label: String(product.productName || 'Product'),
-      }))
-      .filter((product) => {
-        const key = product.label.toLowerCase().trim()
-        if (!key || seen.has(key)) return false
-        seen.add(key)
-        return true
-      })
-      .slice(0, 12)
-  }, [products])
+  const logo =
+    template?.components?.logo ||
+    'https://images.unsplash.com/photo-1620632523414-054c7bea12ac?auto=format&fit=crop&q=80&w=687'
 
   useEffect(() => {
     if (!vendorId) return
@@ -86,9 +51,9 @@ export function PoupqzNavbar() {
         } else {
           const fallback = Array.isArray(data?.cart?.items)
             ? data.cart.items.reduce(
-                (sum: number, item: any) => sum + Number(item?.quantity || 0),
-                0
-              )
+              (sum: number, item: any) => sum + Number(item?.quantity || 0),
+              0
+            )
             : 0
           setCartCount(fallback)
         }
@@ -123,235 +88,123 @@ export function PoupqzNavbar() {
   const isHome = pathname === homeHref || pathname === '/'
 
   return (
-    <header className='sticky top-0 z-50 border-b border-[#e5e7eb] bg-white shadow-[0_2px_8px_rgba(15,23,42,0.06)]'>
-      <div className='mx-auto flex h-[118px] w-full max-w-[1320px] items-center justify-between gap-6 px-4 md:px-8'>
-        <Link href={homeHref} className='flex h-[82px] w-[250px] items-center overflow-hidden'>
+    <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/80 backdrop-blur-md">
+      <div className='mx-auto flex h-24 w-full max-w-[1400px] items-center justify-between gap-6 px-6 md:px-12'>
+        <Link href={homeHref} className='flex h-16 w-52 items-center overflow-hidden transition-transform hover:scale-[1.02]'>
           <img src={logo} alt='Business Logo' className='h-full w-full object-contain' />
         </Link>
 
-        <nav className='hidden items-center gap-8 lg:flex xl:gap-10'>
-          <Link
-            href={homeHref}
-            className={`whitespace-nowrap text-[18px] font-medium transition ${
-              isHome ? 'text-[#0b74c6]' : 'text-[#111827] hover:text-[#0b74c6]'
-            }`}
-          >
-            Home
-          </Link>
-
-          <Link href={aboutHref} className={NAV_LINK_CLASS}>
-            About Us
-          </Link>
-
-          <div className='group relative'>
-            <button type='button' className={`inline-flex items-center gap-2 ${NAV_LINK_CLASS}`}>
-              Products
-              <ChevronDown className='h-5 w-5' />
-            </button>
-
-            <div className='pointer-events-none absolute left-1/2 top-full z-40 mt-3 w-[380px] -translate-x-1/2 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100'>
-              <div className='max-h-[420px] overflow-y-auto rounded-md border border-slate-200 bg-white p-3 shadow-xl'>
-                {productLinks.length > 0 ? (
-                  <div className='space-y-1'>
-                    {productLinks.map((product) => (
-                      <Link
-                        key={product.id}
-                        href={`/template/${vendorId}/product/${product.id}`}
-                        className='block rounded px-3 py-2 text-[15px] text-[#111827] transition hover:bg-slate-50 hover:text-[#0b74c6]'
-                      >
-                        {product.label}
-                      </Link>
-                    ))}
-                  </div>
-                ) : (
-                  <Link
-                    href={productsHref}
-                    className='block rounded px-3 py-2 text-[15px] text-slate-600 transition hover:bg-slate-50 hover:text-[#0b74c6]'
-                  >
-                    View products
-                  </Link>
-                )}
-              </div>
-            </div>
-          </div>
-
-          {customPages.length > 0 ? (
-            <div className='group relative'>
-              <button type='button' className={`inline-flex items-center gap-2 ${NAV_LINK_CLASS}`}>
-                Pages
-                <ChevronDown className='h-5 w-5' />
-              </button>
-
-              <div className='pointer-events-none absolute left-1/2 top-full z-40 mt-3 w-[300px] -translate-x-1/2 opacity-0 transition group-hover:pointer-events-auto group-hover:opacity-100'>
-                <div className='max-h-[360px] overflow-y-auto rounded-md border border-slate-200 bg-white p-3 shadow-xl'>
-                  <div className='space-y-1'>
-                    {customPages.map((page: any) => (
-                      <Link
-                        key={page?.id || page?.slug || page?.title}
-                        href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
-                        className='block rounded px-3 py-2 text-[15px] text-[#111827] transition hover:bg-slate-50 hover:text-[#0b74c6]'
-                      >
-                        {page?.title || 'Custom Page'}
-                      </Link>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <Link href={contactHref} className={NAV_LINK_CLASS}>
-            Contact Us
-          </Link>
+        <nav className="hidden lg:flex items-center space-x-10">
+          {[
+            { label: 'Home', href: homeHref, active: isHome },
+            { label: 'Catalog', href: productsHref, active: pathname === productsHref },
+            { label: 'Our Story', href: aboutHref, active: pathname === aboutHref },
+            { label: 'Support', href: contactHref, active: pathname === contactHref },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`relative text-[15px] font-bold uppercase tracking-widest transition-colors ${item.active ? 'text-[#0c4a6e]' : 'text-slate-500 hover:text-[#0c4a6e]'
+                }`}
+            >
+              {item.label}
+              {item.active && (
+                <span className='absolute -bottom-2 left-0 h-0.5 w-full bg-[#0c4a6e]' />
+              )}
+            </Link>
+          ))}
         </nav>
 
-        <div className='hidden items-center gap-3 lg:flex'>
-          <Link
-            href={cartHref}
-            className='relative inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-[#1f2937] transition hover:border-[#0b74c6] hover:text-[#0b74c6]'
-            title='Cart'
-          >
-            <ShoppingBag className='h-5 w-5' />
-            <span className='absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0b74c6] px-1 text-[11px] font-bold text-white'>
-              {cartCount}
-            </span>
+        <div className="flex items-center space-x-6">
+          <Link href={cartHref} className="group relative flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 transition-colors hover:bg-[#0c4a6e] hover:text-white">
+            <ShoppingBag className="h-5 w-5" />
+            {cartCount > 0 && (
+              <span className="absolute -right-1 -top-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-600 text-[10px] font-black text-white shadow-lg ring-2 ring-white">
+                {cartCount}
+              </span>
+            )}
           </Link>
 
-          <Link
-            href={isLoggedIn ? profileHref : loginHref}
-            className='inline-flex h-12 w-12 items-center justify-center rounded-full border border-slate-300 bg-white text-[#1f2937] transition hover:border-[#0b74c6] hover:text-[#0b74c6]'
-            title={isLoggedIn ? 'Profile' : 'Login'}
-          >
-            <UserCircle2 className='h-6 w-6' />
-          </Link>
+          <div className="hidden h-6 w-px bg-slate-200 lg:block" />
 
           {isLoggedIn ? (
-            <>
-              <Link
-                href={ordersHref}
-                className='text-sm font-semibold text-[#1f2937] transition hover:text-[#0b74c6]'
-              >
-                Orders
-              </Link>
-              <button
-                type='button'
-                onClick={() => {
-                  clearTemplateAuth(vendorId)
-                  setIsLoggedIn(false)
-                  setCartCount(0)
-                }}
-                className='text-sm font-semibold text-[#1f2937] transition hover:text-[#0b74c6]'
-              >
-                Logout
-              </button>
-            </>
+            <Link href={profileHref} className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 transition-colors hover:bg-[#0c4a6e] hover:text-white">
+              <UserCircle2 className="h-5 w-5" />
+            </Link>
           ) : (
             <Link
               href={loginHref}
-              className='text-sm font-semibold text-[#1f2937] transition hover:text-[#0b74c6]'
+              className="hidden rounded-full bg-[#0c4a6e] px-6 py-2.5 text-xs font-black uppercase tracking-widest text-white transition-all hover:bg-[#075985] hover:shadow-lg active:scale-95 lg:block"
             >
-              Login
+              Portal Login
             </Link>
           )}
 
-          <Link
-            href={contactHref}
-            className='inline-flex whitespace-nowrap rounded-[12px] bg-[#0b74c6] px-8 py-3 text-[16px] font-semibold text-white transition hover:bg-[#085ea0]'
+          <button
+            type="button"
+            className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-50 transition-colors hover:bg-[#0c4a6e] hover:text-white lg:hidden"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
           >
-            GET A QUOTE
-          </Link>
+            {mobileMenuOpen ? (
+              <X className="h-5 w-5" />
+            ) : (
+              <Menu className="h-5 w-5" />
+            )}
+          </button>
         </div>
-
-        <button
-          type='button'
-          className='inline-flex items-center justify-center rounded-md border border-slate-300 bg-white p-2 text-slate-700 lg:hidden'
-          onClick={() => setMobileMenuOpen((prev) => !prev)}
-        >
-          {mobileMenuOpen ? <X className='h-6 w-6' /> : <Menu className='h-6 w-6' />}
-        </button>
       </div>
 
       {mobileMenuOpen ? (
-        <div className='border-t border-slate-200 bg-white px-4 py-5 lg:hidden'>
-          <div className='flex flex-col gap-4 text-[16px] font-medium text-[#111827]'>
-            <Link href={homeHref} onClick={() => setMobileMenuOpen(false)}>
-              Home
-            </Link>
-            <Link href={aboutHref} onClick={() => setMobileMenuOpen(false)}>
-              About Us
-            </Link>
-            <Link href={productsHref} onClick={() => setMobileMenuOpen(false)}>
-              Products
-            </Link>
-            <Link href={cartHref} onClick={() => setMobileMenuOpen(false)}>
-              Cart ({cartCount})
-            </Link>
-            <Link href={checkoutHref} onClick={() => setMobileMenuOpen(false)}>
-              Checkout
-            </Link>
-            {isLoggedIn ? (
-              <>
-                <Link href={ordersHref} onClick={() => setMobileMenuOpen(false)}>
-                  Orders
-                </Link>
-                <Link href={profileHref} onClick={() => setMobileMenuOpen(false)}>
-                  Profile
-                </Link>
-              </>
-            ) : (
-              <>
-                <Link href={loginHref} onClick={() => setMobileMenuOpen(false)}>
-                  Login
-                </Link>
-                <Link href={registerHref} onClick={() => setMobileMenuOpen(false)}>
-                  Register
-                </Link>
-              </>
-            )}
-            <Link href={contactHref} onClick={() => setMobileMenuOpen(false)}>
-              Contact Us
-            </Link>
-
-            {customPages.length > 0 ? (
-              <div className='mt-2 border-t border-slate-200 pt-4'>
-                <p className='mb-2 text-xs uppercase tracking-[0.22em] text-slate-500'>
-                  Pages
-                </p>
-                <div className='space-y-2'>
-                  {customPages.map((page: any) => (
-                    <Link
-                      key={page?.id || page?.slug || page?.title}
-                      href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
-                      className='block text-sm font-medium text-slate-700'
-                      onClick={() => setMobileMenuOpen(false)}
-                    >
-                      {page?.title || 'Custom Page'}
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ) : null}
-
-            {isLoggedIn ? (
-              <button
-                type='button'
-                onClick={() => {
-                  clearTemplateAuth(vendorId)
-                  setIsLoggedIn(false)
-                  setCartCount(0)
-                  setMobileMenuOpen(false)
-                }}
-                className='mt-2 inline-flex w-max rounded-[10px] border border-slate-300 px-5 py-2.5 text-[14px] font-semibold text-[#111827]'
-              >
-                Logout
-              </button>
-            ) : (
+        <div className='absolute inset-x-0 top-full border-b border-slate-100 bg-white shadow-2xl animate-in slide-in-from-top-4 lg:hidden'>
+          <div className='flex flex-col gap-1 p-6'>
+            {[
+              { label: 'Home', href: homeHref },
+              { label: 'Products', href: productsHref },
+              { label: 'About Us', href: aboutHref },
+              { label: 'Our Contact', href: contactHref },
+              { label: 'My Cart', href: cartHref },
+            ].map((item) => (
               <Link
-                href={contactHref}
-                className='inline-flex w-max rounded-[10px] bg-[#0b74c6] px-5 py-2.5 text-[14px] font-semibold text-white'
+                key={item.label}
+                href={item.href}
+                className='rounded-xl px-4 py-3 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-50 active:bg-slate-100'
                 onClick={() => setMobileMenuOpen(false)}
               >
-                GET A QUOTE
+                {item.label}
+              </Link>
+            ))}
+
+            <div className="my-4 h-px bg-slate-100" />
+
+            {isLoggedIn ? (
+              <>
+                <Link
+                  href={profileHref}
+                  className='rounded-xl px-4 py-3 text-sm font-bold text-slate-900 transition-colors hover:bg-slate-50'
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  Account Dashboard
+                </Link>
+                <button
+                  type='button'
+                  onClick={() => {
+                    clearTemplateAuth(vendorId)
+                    setIsLoggedIn(false)
+                    setCartCount(0)
+                    setMobileMenuOpen(false)
+                  }}
+                  className='rounded-xl px-4 py-3 text-left text-sm font-bold text-rose-600 transition-colors hover:bg-rose-50'
+                >
+                  Logout
+                </button>
+              </>
+            ) : (
+              <Link
+                href={loginHref}
+                className='rounded-xl bg-[#0c4a6e] px-4 py-4 text-center text-sm font-bold text-white shadow-lg active:scale-95'
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Portal Login
               </Link>
             )}
           </div>
