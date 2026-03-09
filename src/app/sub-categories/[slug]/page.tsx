@@ -587,7 +587,7 @@ const metaDescription = subCategory?.description || "";
                                 setSelectedBrands(
                                   selectedBrands.filter((b) => b !== brand)
                                 );
-                              }
+                              } 
                             }}
                             className="w-4 h-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                           />

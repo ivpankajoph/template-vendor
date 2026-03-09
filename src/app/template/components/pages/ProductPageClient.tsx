@@ -67,7 +67,7 @@ export default function ProductDetailPage() {
               <div className="flex items-center border border-gray-300 rounded-lg">
                 <button
                   onClick={decrementQuantity}
-                  className="w-10 h-12 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  className="w-12 h-                                                                  12 flex items-center justify-center hover:bg-gray-100 transition-colors"
                 >
                   <Minus size={18} />
                 </button>
@@ -79,7 +79,7 @@ export default function ProductDetailPage() {
                 />
                 <button
                   onClick={incrementQuantity}
-                  className="w-10 h-12 flex items-center justify-center hover:bg-gray-100 transition-colors"
+                  className="w-12 h-12 flex items-center justify-center hover:bg-gray-100 transition-colors"
                 >
                   <Plus size={18} />
                 </button>
