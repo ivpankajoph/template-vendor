@@ -1,10 +1,10 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { ShoppingBag, Star, Search } from "lucide-react";
+import { ShoppingBag, Star, Search, Filter, X, ChevronDown, ChevronRight } from "lucide-react";
 import { useSelector } from "react-redux";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import axios from "axios";
 
 import { trackAddToCart } from "@/lib/analytics-events";
@@ -149,10 +149,60 @@ export default function AllProducts() {
     suffix: "all-products",
   });
 
+  const searchParams = useSearchParams();
+  const router = useRouter();
+
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const [addingById, setAddingById] = useState<Record<string, boolean>>({});
+  
+  // New Filter states
+  const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
+  const [priceRange, setPriceRange] = useState({ min: 0, max: 100000 });
+  const [minRating, setMinRating] = useState<number>(0);
+  const [minDiscount, setMinDiscount] = useState<number>(0);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Sync state with URL params
+  useEffect(() => {
+    const search = searchParams.get("search");
+    const category = searchParams.get("category");
+    const minPrice = searchParams.get("minPrice");
+    const maxPrice = searchParams.get("maxPrice");
+    const rating = searchParams.get("rating");
+    const discount = searchParams.get("discount");
+    const brandsParam = searchParams.get("brands");
+
+    if (search !== null) setSearchTerm(search);
+    if (category !== null) setSelectedCategory(category);
+    if (minPrice !== null || maxPrice !== null) {
+      setPriceRange({
+        min: minPrice !== null ? toNumber(minPrice) : 0,
+        max: maxPrice !== null ? toNumber(maxPrice) : 100000,
+      });
+    }
+    if (rating !== null) setMinRating(toNumber(rating));
+    if (discount !== null) setMinDiscount(toNumber(discount));
+    if (brandsParam !== null) {
+      setSelectedBrands(brandsParam.split(",").filter(Boolean));
+    }
+  }, [searchParams]);
+
+  // Update URL when filters change (optional but good for syncing)
+  // For now, let listeners from Navbar drive the navigation, 
+  // and we just read them. 
+  // But updating the URL makes it shareable.
+  const updateUrl = (updates: Record<string, string | null>) => {
+    const params = new URLSearchParams(searchParams.toString());
+    Object.entries(updates).forEach(([key, value]) => {
+      if (value === null) params.delete(key);
+      else params.set(key, value);
+    });
+    router.replace(`${pathname}?${params.toString()}`, { scroll: false });
+  };
+
+
 
   useEffect(() => {
     let mounted = true;
@@ -197,6 +247,15 @@ export default function AllProducts() {
     });
     return ["All", ...Array.from(list).sort((a, b) => a.localeCompare(b))];
   }, [normalizedProducts]);
+
+  const brands = useMemo(() => {
+    const list = new Set<string>();
+    normalizedProducts.forEach(({ product }) => {
+      if (product.brand) list.add(product.brand);
+    });
+    return Array.from(list).sort((a, b) => a.localeCompare(b));
+  }, [normalizedProducts]);
+
 
   const isStudio = variant.key === "studio";
   const isWhiteRose = variant.key === "whiterose";
@@ -326,13 +385,20 @@ export default function AllProducts() {
     const name = normalizeText(product?.productName).toLowerCase();
     const categoryLabel = category.label.toLowerCase();
     const term = searchTerm.toLowerCase();
+    const pricing = getProductPricing(product);
 
     const matchesSearch = name.includes(term) || categoryLabel.includes(term);
     const matchesCategory =
       selectedCategory === "All" || category.label === selectedCategory;
+    
+    const matchesBrand = selectedBrands.length === 0 || selectedBrands.includes(product.brand);
+    const matchesPrice = pricing.finalPrice >= priceRange.min && pricing.finalPrice <= priceRange.max;
+    const matchesRating = (product.rating || 4.2) >= minRating;
+    const matchesDiscount = pricing.discountPercent >= minDiscount;
 
-    return matchesSearch && matchesCategory;
+    return matchesSearch && matchesCategory && matchesBrand && matchesPrice && matchesRating && matchesDiscount;
   });
+
   const singleProductLayout = filteredProducts.length === 1;
   const productsLayoutClass = singleProductLayout
     ? "mx-auto flex w-full justify-center"
@@ -440,181 +506,342 @@ export default function AllProducts() {
           </p>
         </div>
 
-        <div
-          className={`mb-8 flex flex-col gap-4 lg:flex-row lg:items-center ${
-            singleProductLayout ? "lg:justify-center" : "lg:justify-between"
-          }`}
-        >
-          <div className={`relative w-full ${singleProductLayout ? "lg:max-w-md" : "lg:w-1/3"}`}>
-            <input
-              type="text"
-              placeholder="Search products..."
-              className={`w-full rounded-xl pl-11 pr-4 py-2.5 template-focus-accent ${searchClass}`}
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-            <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+        {/* Mobile Filter Toggle */}
+        {isTrend && (
+          <div className="mb-4 flex items-center justify-between lg:hidden">
+            <button
+              onClick={() => setIsSidebarOpen(true)}
+              className="flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-bold text-slate-700"
+            >
+              <Filter size={16} /> Filters
+            </button>
+            <span className="text-xs font-bold text-slate-500 uppercase tracking-widest">{visibleProductCount} Items</span>
           </div>
+        )}
 
-          <div className={`flex flex-wrap gap-2 ${singleProductLayout ? "lg:justify-center" : ""}`}>
-            {categories.map((cat) => (
-              <button
-                key={cat}
-                onClick={() => setSelectedCategory(cat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium transition ${
-                  selectedCategory === cat
-                    ? chipActiveClass
-                    : chipInactiveClass
-                }`}
-              >
-                {cat}
-              </button>
-            ))}
-          </div>
-        </div>
+        <div className={`flex flex-col lg:flex-row gap-8`}>
+          {/* Sidebar Filter for Oragze */}
+          {isTrend && (
+            <>
+              {/* Overlay for mobile */}
+              {isSidebarOpen && (
+                <div 
+                  className="fixed inset-0 z-[100] bg-black/50 lg:hidden"
+                  onClick={() => setIsSidebarOpen(false)}
+                />
+              )}
+              <aside className={`fixed inset-y-0 left-0 z-[101] w-72 transform bg-white p-6 transition-transform duration-300 lg:static lg:block lg:w-64 lg:translate-x-0 lg:bg-transparent lg:p-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+                <div className="flex items-center justify-between mb-6 lg:hidden">
+                  <h3 className="text-lg font-bold">Filters</h3>
+                  <button onClick={() => setIsSidebarOpen(false)}>
+                    <X size={24} />
+                  </button>
+                </div>
 
-        {filteredProducts.length > 0 ? (
-          <div className={productsLayoutClass}>
-            {filteredProducts.map(({ product, category }) => {
-              const pricing = getProductPricing(product);
-              const rating = Math.max(0, Math.min(5, toNumber(product?.rating || 4.2)));
-              const isAdding = Boolean(addingById[product._id]);
-              const productImageUrl = getProductImageUrl(product);
-              const cardWidthClass = singleProductLayout
-                ? "max-w-xs sm:max-w-sm"
-                : isMquiq
-                  ? "max-w-sm"
-                  : "";
-              const imageHeightClass = singleProductLayout
-                ? "h-44 sm:h-48"
-                : isMquiq
-                  ? "h-56 sm:h-60"
-                  : "h-64 sm:h-72";
+                <div className="space-y-8 sticky top-24">
+                  {/* Category Filter */}
+                  <div className="border-b border-slate-200 pb-6">
+                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Categories</h4>
+                    <div className="space-y-2.5">
+                      {categories.map((cat) => (
+                        <button
+                          key={cat}
+                          onClick={() => setSelectedCategory(cat)}
+                          className={`flex w-full items-center justify-between text-[14px] font-bold transition-colors ${selectedCategory === cat ? 'text-pink-600' : 'text-slate-600 hover:text-pink-500'}`}
+                        >
+                          <span>{cat}</span>
+                          {selectedCategory === cat && <ChevronRight size={14} />}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
 
-              return (
-                <div
-                  key={product._id}
-                  className={`template-product-card group w-full ${cardWidthClass} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
-                >
-                  <Link
-                    href={buildTemplateScopedPath({
-                      vendorId,
-                      pathname: pathname || "/",
-                      suffix: `product/${product._id}`,
-                    })}
-                    className="block"
-                  >
-                    <div className="relative overflow-hidden rounded-t-2xl border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
-                      <div className={imageHeightClass}>
-                        {productImageUrl ? (
-                          <img
-                            src={productImageUrl}
-                            alt={product.productName || "Product image"}
-                            className="h-full w-full bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
-                            loading="lazy"
+                  {/* Rating Filter */}
+                  <div className="border-b border-slate-200 pb-6">
+                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Customer Ratings</h4>
+                    <div className="space-y-3">
+                      {[4, 3, 2, 1].map((star) => (
+                        <label key={star} className="flex cursor-pointer items-center gap-3 group">
+                          <input 
+                            type="radio" 
+                            name="rating" 
+                            className="h-4 w-4 border-slate-300 text-pink-600 focus:ring-pink-500" 
+                            checked={minRating === star}
+                            onChange={() => setMinRating(star)}
                           />
-                        ) : (
-                          <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
-                            No Image
+                          <div className="flex items-center gap-1">
+                            <span className="text-[14px] font-bold text-slate-700">{star}★ & above</span>
                           </div>
-                        )}
-                      </div>
-
-                      {pricing.discountPercent > 0 ? (
-                        <span className="absolute left-3 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-semibold text-white">
-                          {pricing.discountPercent}% OFF
-                        </span>
-                      ) : null}
-                    </div>
-                  </Link>
-
-                  <div className="p-3">
-                    <div className="mb-2 flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
-                        <Star size={12} className="fill-current" />
-                        {rating.toFixed(1)}
-                      </div>
-                      <span className={`text-xs ${subtleTextClass}`}>
-                        {pricing.stockQuantity > 0 ? `${pricing.stockQuantity} in stock` : "Out of stock"}
-                      </span>
-                    </div>
-
-                    <Link
-                      href={buildTemplateScopedPath({
-                        vendorId,
-                        pathname: pathname || "/",
-                        suffix: `product/${product._id}`,
-                      })}
-                      className="block"
-                    >
-                      <h3 className={`line-clamp-2 text-base font-semibold ${titleTextClass}`}>
-                        {product?.productName || "Untitled Product"}
-                      </h3>
-                    </Link>
-
-                    <p className={`mt-1 text-sm ${subtleTextClass}`}>
-                      {category.label || "Category"}
-                    </p>
-
-                    <div className="mt-3 flex items-end gap-2">
-                      <p className={`text-lg font-bold ${titleTextClass}`}>{formatPrice(pricing.finalPrice)}</p>
-                      {pricing.actualPrice > pricing.finalPrice ? (
-                        <p className="text-sm text-slate-400 line-through">
-                          {formatPrice(pricing.actualPrice)}
-                        </p>
-                      ) : null}
-                    </div>
-
-                    <div className="mt-4 grid grid-cols-2 gap-2">
-                      <button
-                        type="button"
-                        disabled={isAdding || pricing.stockQuantity <= 0}
-                        onClick={() => handleAddToCart(product)}
-                        className={`template-primary-button inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:bg-slate-400 ${
-                          isTrend
-                            ? "bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
-                            : "bg-slate-900 hover:bg-slate-800"
-                        }`}
+                        </label>
+                      ))}
+                      <button 
+                         onClick={() => setMinRating(0)}
+                         className="text-[11px] font-black uppercase tracking-tight text-pink-600 hover:text-pink-700"
                       >
-                        <ShoppingBag size={15} />
-                        {isAdding ? "Adding..." : "Add to Cart"}
+                        Reset Rating
                       </button>
+                    </div>
+                  </div>
 
+                  {/* Brand Filter */}
+                  {brands.length > 0 && (
+                    <div className="border-b border-slate-200 pb-6">
+                      <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Brand</h4>
+                      <div className="max-h-48 space-y-2.5 overflow-y-auto pr-2 no-scrollbar">
+                        {brands.map((brand) => (
+                          <label key={brand} className="flex cursor-pointer items-center gap-3">
+                            <input 
+                              type="checkbox" 
+                              className="h-4 w-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500" 
+                              checked={selectedBrands.includes(brand)}
+                              onChange={(e) => {
+                                if (e.target.checked) setSelectedBrands([...selectedBrands, brand]);
+                                else setSelectedBrands(selectedBrands.filter(b => b !== brand));
+                              }}
+                            />
+                            <span className="text-[14px] font-bold text-slate-700">{brand}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Price Filter */}
+                  <div className="border-b border-slate-200 pb-6">
+                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Price Range</h4>
+                    <div className="space-y-4">
+                      <div className="grid grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase">Min</span>
+                          <input 
+                            type="number" 
+                            value={priceRange.min}
+                            onChange={(e) => setPriceRange({ ...priceRange, min: toNumber(e.target.value) })}
+                            className="w-full rounded-md border border-slate-200 p-2 text-xs font-bold focus:border-pink-500 outline-none"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <span className="text-[10px] font-black text-slate-400 uppercase">Max</span>
+                          <input 
+                            type="number" 
+                            value={priceRange.max}
+                            onChange={(e) => setPriceRange({ ...priceRange, max: toNumber(e.target.value) })}
+                            className="w-full rounded-md border border-slate-200 p-2 text-xs font-bold focus:border-pink-500 outline-none"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Discount Filter */}
+                  <div>
+                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Discount</h4>
+                    <div className="space-y-2.5">
+                      {[50, 40, 30, 20, 10].map((disc) => (
+                        <label key={disc} className="flex cursor-pointer items-center gap-3">
+                          <input 
+                            type="radio" 
+                            name="discount" 
+                            className="h-4 w-4 border-slate-300 text-pink-600 focus:ring-pink-500" 
+                            checked={minDiscount === disc}
+                            onChange={() => setMinDiscount(disc)}
+                          />
+                          <span className="text-[14px] font-bold text-slate-700">{disc}% and above</span>
+                        </label>
+                      ))}
+                      <button 
+                         onClick={() => setMinDiscount(0)}
+                         className="text-[11px] font-black uppercase tracking-tight text-pink-600 hover:text-pink-700"
+                      >
+                        Reset Discount
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </aside>
+            </>
+          )}
+
+          <div className="flex-1">
+            <div
+              className={`mb-8 flex flex-col gap-4 lg:flex-row lg:items-center ${
+                singleProductLayout ? "lg:justify-center" : "lg:justify-between"
+              }`}
+            >
+              <div className={`relative w-full ${singleProductLayout ? "lg:max-w-md" : "lg:w-1/2"}`}>
+                <input
+                  type="text"
+                  placeholder="Search products..."
+                  className={`w-full rounded-xl pl-11 pr-4 py-2.5 template-focus-accent ${searchClass}`}
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+              </div>
+
+              {!isTrend && (
+                <div className={`flex flex-wrap gap-2 ${singleProductLayout ? "lg:justify-center" : ""}`}>
+                  {categories.map((cat) => (
+                    <button
+                      key={cat}
+                      onClick={() => setSelectedCategory(cat)}
+                      className={`px-4 py-2 rounded-full text-sm font-medium transition ${
+                        selectedCategory === cat
+                          ? chipActiveClass
+                          : chipInactiveClass
+                      }`}
+                    >
+                      {cat}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {filteredProducts.length > 0 ? (
+              <div className={productsLayoutClass}>
+                {filteredProducts.map(({ product, category }) => {
+                  const pricing = getProductPricing(product);
+                  const rating = Math.max(0, Math.min(5, toNumber(product?.rating || 4.2)));
+                  const isAdding = Boolean(addingById[product._id]);
+                  const productImageUrl = getProductImageUrl(product);
+                  const cardWidthClass = singleProductLayout
+                    ? "max-w-xs sm:max-w-sm"
+                    : isMquiq
+                      ? "max-w-sm"
+                      : "";
+                  const imageHeightClass = singleProductLayout
+                    ? "h-44 sm:h-48"
+                    : isMquiq
+                      ? "h-56 sm:h-60"
+                      : "h-64 sm:h-72";
+
+                  return (
+                    <div
+                      key={product._id}
+                      className={`template-product-card group w-full ${cardWidthClass} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
+                    >
                       <Link
                         href={buildTemplateScopedPath({
                           vendorId,
                           pathname: pathname || "/",
                           suffix: `product/${product._id}`,
                         })}
-                        className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition ${
-                          isStudio
-                            ? "border-slate-700 text-slate-200 hover:bg-slate-800"
-                            : isTrend
-                              ? "border-rose-200 text-rose-600 hover:bg-rose-50"
-                            : "border-slate-300 text-slate-700 hover:bg-slate-100"
-                        }`}
+                        className="block"
                       >
-                        View
+                        <div className="relative overflow-hidden rounded-t-2xl border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
+                          <div className={imageHeightClass}>
+                            {productImageUrl ? (
+                              <img
+                                src={productImageUrl}
+                                alt={product.productName || "Product image"}
+                                className="h-full w-full bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
+                                loading="lazy"
+                              />
+                            ) : (
+                              <div className="flex h-full w-full items-center justify-center text-xs uppercase tracking-[0.3em] text-slate-400">
+                                No Image
+                              </div>
+                            )}
+                          </div>
+
+                          {pricing.discountPercent > 0 ? (
+                            <span className="absolute left-3 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-semibold text-white">
+                              {pricing.discountPercent}% OFF
+                            </span>
+                          ) : null}
+                        </div>
                       </Link>
+
+                      <div className="p-3">
+                        <div className="mb-2 flex items-center justify-between gap-2">
+                          <div className="flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-xs font-medium text-emerald-700">
+                            <Star size={12} className="fill-current" />
+                            {rating.toFixed(1)}
+                          </div>
+                          <span className={`text-xs ${subtleTextClass}`}>
+                            {pricing.stockQuantity > 0 ? `${pricing.stockQuantity} in stock` : "Out of stock"}
+                          </span>
+                        </div>
+
+                        <Link
+                          href={buildTemplateScopedPath({
+                            vendorId,
+                            pathname: pathname || "/",
+                            suffix: `product/${product._id}`,
+                          })}
+                          className="block"
+                        >
+                          <h3 className={`line-clamp-2 text-base font-semibold ${titleTextClass}`}>
+                            {product?.productName || "Untitled Product"}
+                          </h3>
+                        </Link>
+
+                        <p className={`mt-1 text-sm ${subtleTextClass}`}>
+                          {category.label || "Category"}
+                        </p>
+
+                        <div className="mt-3 flex items-end gap-2">
+                          <p className={`text-lg font-bold ${titleTextClass}`}>{formatPrice(pricing.finalPrice)}</p>
+                          {pricing.actualPrice > pricing.finalPrice ? (
+                            <p className="text-sm text-slate-400 line-through">
+                              {formatPrice(pricing.actualPrice)}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <div className="mt-4 grid grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            disabled={isAdding || pricing.stockQuantity <= 0}
+                            onClick={() => handleAddToCart(product)}
+                            className={`template-primary-button inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:bg-slate-400 ${
+                              isTrend
+                                ? "bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                                : "bg-slate-900 hover:bg-slate-800"
+                            }`}
+                          >
+                            <ShoppingBag size={15} />
+                            {isAdding ? "Adding..." : "Add to Cart"}
+                          </button>
+
+                          <Link
+                            href={buildTemplateScopedPath({
+                              vendorId,
+                              pathname: pathname || "/",
+                              suffix: `product/${product._id}`,
+                            })}
+                            className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                              isStudio
+                                ? "border-slate-700 text-slate-200 hover:bg-slate-800"
+                                : isTrend
+                                  ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                                : "border-slate-300 text-slate-700 hover:bg-slate-100"
+                            }`}
+                          >
+                            View
+                          </Link>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            ) : (
+              <div
+                className={`mt-10 rounded-xl border border-dashed p-10 text-center ${
+                  isStudio
+                    ? "border-slate-700 bg-slate-900"
+                    : isTrend
+                      ? "border-rose-200 bg-white"
+                      : "border-slate-300 bg-white"
+                }`}
+              >
+                <p className={subtleTextClass}>No products found matching your criteria.</p>
+              </div>
+            )}
           </div>
-        ) : (
-          <div
-            className={`mt-10 rounded-xl border border-dashed p-10 text-center ${
-              isStudio
-                ? "border-slate-700 bg-slate-900"
-                : isTrend
-                  ? "border-rose-200 bg-white"
-                  : "border-slate-300 bg-white"
-            }`}
-          >
-            <p className={subtleTextClass}>No products found matching your criteria.</p>
-          </div>
-        )}
+        </div>
       </div>
     </div>
   );

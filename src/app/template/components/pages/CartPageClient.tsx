@@ -108,10 +108,18 @@ export default function ShoppingCartPage() {
   };
 
   const removeItem = async (itemId: string) => {
-    const data = await templateApiFetch(vendorId, `/cart/item/${itemId}`, {
-      method: "DELETE",
-    });
-    setCart(data.cart || null);
+    try {
+      const data = await templateApiFetch(vendorId, `/cart/item/${itemId}`, {
+        method: "DELETE",
+      });
+      // Refresh the local cart state
+      await loadCart();
+      // Notify other components (like the Navbar) to update their counts
+      window.dispatchEvent(new CustomEvent("template-cart-updated"));
+      setShowNotification(true);
+    } catch (error) {
+      console.error("Failed to remove item:", error);
+    }
   };
 
   const subtotal = useMemo(() => cart?.subtotal || 0, [cart]);
