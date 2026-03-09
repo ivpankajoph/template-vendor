@@ -4,13 +4,24 @@ import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
-import { Minus, Plus, Star, Truck, RefreshCw, Shield, Zap, Check } from "lucide-react";
+import {
+  Minus,
+  Plus,
+  Star,
+  Truck,
+  RefreshCw,
+  Shield,
+  Zap,
+  Check,
+  MessageSquareMore,
+} from "lucide-react";
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { trackAddToCart } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildTemplateScopedPath, getTemplateCityFromPath } from "@/lib/template-route";
+import ProductEnquiryDialog from "@/app/template/components/pages/ProductEnquiryDialog";
 import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
@@ -291,6 +302,16 @@ export default function ProductDetailPage() {
       ? "text-slate-300"
       : "text-slate-600";
   const softPanelClass = isWhiteRose ? "bg-[#f8fafc]" : isTrend ? "bg-rose-50" : "bg-slate-50";
+  const enquiryTriggerClass =
+    variantTheme.key === "mquiq"
+      ? "fixed bottom-16 right-6 z-[60] h-12 rounded-full border border-[#e7c565] bg-[#f4b400] px-4 text-sm font-semibold text-[#1f2937] shadow-[0_18px_45px_rgba(244,180,0,0.32)] transition hover:-translate-y-0.5 hover:bg-[#f6bf1f] md:right-8"
+      : isStudio
+        ? "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-slate-700 bg-slate-900 px-4 text-sm font-semibold text-white shadow-[0_18px_45px_rgba(15,23,42,0.35)] transition hover:-translate-y-0.5 hover:bg-slate-800 md:right-8"
+        : isWhiteRose
+          ? "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-[#dfe3eb] bg-white px-4 text-sm font-semibold text-[#174ea6] shadow-[0_18px_45px_rgba(40,116,240,0.18)] transition hover:-translate-y-0.5 hover:bg-[#f8fbff] md:right-8"
+          : isTrend
+            ? "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-rose-200 bg-white px-4 text-sm font-semibold text-rose-600 shadow-[0_18px_45px_rgba(244,63,94,0.16)] transition hover:-translate-y-0.5 hover:bg-rose-50 md:right-8"
+            : "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-[0_18px_45px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:bg-slate-50 md:right-8";
 
   useEffect(() => {
     if (!productId) return;
@@ -1112,6 +1133,19 @@ export default function ProductDetailPage() {
           )}
         </div>
       </div>
+
+      <ProductEnquiryDialog
+        vendorId={vendorId}
+        productId={productId}
+        productName={product.productName}
+        triggerClassName={enquiryTriggerClass}
+        triggerContent={
+          <>
+            <MessageSquareMore className="h-4 w-4" />
+            <span>Send enquiry</span>
+          </>
+        }
+      />
     </div>
   );
 }
