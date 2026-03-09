@@ -26,26 +26,33 @@ export default function TemplateCheckoutShell({
 }: TemplateCheckoutShellProps) {
   const variant = useTemplateVariant();
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "whiterose";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
-  const shellClass = isStudio
+  const shellClass = isWhiteRose
+    ? "bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "bg-slate-950 text-slate-100"
     : isMinimal
       ? "bg-[#f7f7f5] text-slate-900"
       : isTrend
         ? "bg-rose-50/60 text-slate-900"
         : "bg-[#f5f5f6] text-slate-900";
-  const topRailClass = isStudio
+  const topRailClass = isWhiteRose
+    ? "border-y border-[#dfe3eb] bg-white"
+    : isStudio
     ? "border-y border-slate-800 bg-slate-900"
     : isTrend
       ? "border-y border-rose-200 bg-white"
       : "border-y border-slate-200 bg-white";
-  const secureClass = isStudio ? "text-sky-300" : isTrend ? "text-rose-600" : "text-[#03a685]";
-  const stepActiveClass = isStudio
+  const secureClass = isWhiteRose ? "text-[#2874f0]" : isStudio ? "text-sky-300" : isTrend ? "text-rose-600" : "text-[#03a685]";
+  const stepActiveClass = isWhiteRose
+    ? "text-[#2874f0]"
+    : isStudio
     ? "text-sky-300"
     : isTrend
       ? "text-rose-600"

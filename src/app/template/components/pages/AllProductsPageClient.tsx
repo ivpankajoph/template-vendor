@@ -13,6 +13,8 @@ import { useTemplateVariant } from "@/app/template/components/useTemplateVariant
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { buildTemplateScopedPath } from "@/lib/template-route";
+import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
+import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
 
 const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
 
@@ -135,6 +137,12 @@ export default function AllProducts() {
   const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
   const vendorId = String(vendor_id || "");
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || "/",
+      suffix,
+    });
   const allProductsPath = buildTemplateScopedPath({
     vendorId,
     pathname: pathname || "/",
@@ -191,6 +199,7 @@ export default function AllProducts() {
   }, [normalizedProducts]);
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
@@ -330,6 +339,96 @@ export default function AllProducts() {
     : gridClass;
   const visibleProductCount = filteredProducts.length;
   const visibleProductWord = visibleProductCount === 1 ? "product" : "products";
+
+  if (isWhiteRose) {
+    return (
+      <div className="template-page-shell min-h-screen bg-[#f1f3f6] py-8 text-[#172337] lg:py-10">
+        <div className="mx-auto max-w-[1500px] px-4 md:px-8">
+          <div className="rounded-[28px] border border-[#dfe3eb] bg-gradient-to-r from-[#e7f0ff] via-white to-[#fff3d1] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2874f0]">
+                  Full catalog
+                </p>
+                <h1 className="mt-2 text-4xl font-bold tracking-[-0.03em] text-[#172337] sm:text-5xl">
+                  Marketplace product listing
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f6c7b] sm:text-base">
+                  Explore {visibleProductCount} {visibleProductWord} and use the existing backend cart flow inside the new whiterose storefront.
+                </p>
+              </div>
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#5f6c7b]">
+                    Live products
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-[#172337]">{visibleProductCount}</p>
+                </div>
+                <div className="rounded-2xl border border-white/70 bg-white/80 px-4 py-3">
+                  <p className="text-xs font-medium uppercase tracking-[0.16em] text-[#5f6c7b]">
+                    Departments
+                  </p>
+                  <p className="mt-1 text-2xl font-bold text-[#172337]">{Math.max(categories.length - 1, 0)}</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-[#dfe3eb] bg-white p-5 shadow-[0_12px_24px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-lg">
+                <input
+                  type="text"
+                  placeholder="Search products, categories, and offers"
+                  className="w-full rounded-2xl border border-[#dfe3eb] bg-[#f8fafc] py-3 pl-11 pr-4 text-sm text-[#172337] outline-none transition focus:border-[#2874f0]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3.5 top-3.5 text-[#7a8797]" size={18} />
+              </div>
+
+              <div className="flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <button
+                    key={cat}
+                    onClick={() => setSelectedCategory(cat)}
+                    className={`rounded-full px-4 py-2 text-sm font-semibold transition ${
+                      selectedCategory === cat
+                        ? "bg-[#2874f0] text-white"
+                        : "border border-[#dfe3eb] bg-[#f8fafc] text-[#172337] hover:border-[#2874f0] hover:text-[#2874f0]"
+                    }`}
+                  >
+                    {cat}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {filteredProducts.length > 0 ? (
+            <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredProducts.map(({ product, category }, index) => (
+                <WhiteRoseProductCard
+                  key={product._id || `product-${index}`}
+                  product={product}
+                  href={toTemplatePath(`product/${product._id}`)}
+                  categoryLabel={category.label || whiteRoseGetCategoryDetails(product, categoryMap).label || "Top category"}
+                  badgeLabel={index < 2 ? "Featured deal" : undefined}
+                  onAddToCart={() => handleAddToCart(product)}
+                  isAdding={Boolean(addingById[product._id])}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[#d6deed] bg-white p-12 text-center text-sm text-[#5f6c7b]">
+              No products found matching your filters.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${pageClass} template-page-shell template-products-page py-10 lg:py-14`}>

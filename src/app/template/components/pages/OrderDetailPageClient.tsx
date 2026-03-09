@@ -65,18 +65,23 @@ export default function OrderDetailPageClient() {
   const [downloading, setDownloading] = useState(false);
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "oragze" ||
     variant.key === "whiterose";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f5f5f7] text-slate-900"
       : "min-h-screen bg-gray-50";
-  const panelClass = isStudio
+  const panelClass = isWhiteRose
+    ? "rounded-[24px] border border-[#dfe3eb] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : isStudio
     ? "rounded-2xl border border-slate-800 bg-slate-900/70"
     : "rounded-2xl border border-slate-200 bg-white shadow-sm";
 

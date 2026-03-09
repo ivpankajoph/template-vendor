@@ -124,20 +124,25 @@ export default function ContactPage() {
   };
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "whiterose";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
       : isTrend
         ? "min-h-screen bg-rose-50/50 text-slate-900"
         : "min-h-screen bg-white";
-  const cardClass = isStudio
+  const cardClass = isWhiteRose
+    ? "template-surface-card bg-white border border-[#dfe3eb] rounded-[24px] shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : isStudio
     ? "template-surface-card bg-slate-900/70 border border-slate-800 text-slate-100 rounded-md"
     : isMinimal
       ? "template-surface-card bg-white border border-slate-200 rounded-xl"
@@ -150,7 +155,7 @@ export default function ContactPage() {
       <div className="group fixed right-6 top-1/2 z-50 -translate-y-1/2">
         <button
           className={`template-primary-button rounded-full px-5 py-3 text-sm font-semibold shadow-lg transition hover:shadow-xl template-accent ${
-            isStudio ? "bg-slate-900 text-slate-100" : "bg-white"
+            isStudio ? "bg-slate-900 text-slate-100" : isWhiteRose ? "bg-[#2874f0] text-white" : "bg-white"
           }`}
         >
           Browse Categories
@@ -158,7 +163,7 @@ export default function ContactPage() {
         <div className="pointer-events-none absolute right-full top-1/2 w-64 -translate-y-1/2 pr-4 opacity-0 transition duration-200 group-hover:pointer-events-auto group-hover:opacity-100">
           <div
             className={`max-h-80 overflow-auto rounded-2xl border p-3 shadow-2xl ${
-              isStudio ? "border-slate-800 bg-slate-900 text-slate-100" : "border-slate-200 bg-white"
+              isStudio ? "border-slate-800 bg-slate-900 text-slate-100" : isWhiteRose ? "border-[#dfe3eb] bg-white" : "border-slate-200 bg-white"
             }`}
           >
             <p className="px-2 pb-2 text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">

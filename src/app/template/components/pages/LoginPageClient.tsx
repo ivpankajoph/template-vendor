@@ -18,20 +18,25 @@ export default function TemplateLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "whiterose";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
       : isTrend
         ? "min-h-screen bg-rose-50/50 text-slate-900"
         : "min-h-screen bg-gray-50";
-  const cardClass = isStudio
+  const cardClass = isWhiteRose
+    ? "template-surface-card w-full max-w-md rounded-[26px] border border-[#dfe3eb] bg-white p-8 shadow-[0_16px_30px_rgba(15,23,42,0.06)]"
+    : isStudio
     ? "template-surface-card w-full max-w-md rounded-md border border-slate-800 bg-slate-900/85 p-8 shadow-sm"
     : isTrend
       ? "template-surface-card w-full max-w-md rounded-[1.5rem] border border-rose-200 bg-white p-8 shadow-sm"
@@ -84,7 +89,7 @@ export default function TemplateLoginPage() {
               <input
                 value={identifier}
                 onChange={(event) => setIdentifier(event.target.value)}
-                className={`mt-2 w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 template-focus-accent ${isStudio ? "border-slate-600 bg-slate-950 text-slate-100" : isTrend ? "border-rose-200 bg-white" : "border-slate-200"}`}
+                className={`mt-2 w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 template-focus-accent ${isStudio ? "border-slate-600 bg-slate-950 text-slate-100" : isWhiteRose ? "border-[#dfe3eb] bg-[#f8fafc]" : isTrend ? "border-rose-200 bg-white" : "border-slate-200"}`}
                 placeholder="Enter email or phone"
                 required
               />
@@ -97,7 +102,7 @@ export default function TemplateLoginPage() {
                 type="password"
                 value={password}
                 onChange={(event) => setPassword(event.target.value)}
-                className={`mt-2 w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 template-focus-accent ${isStudio ? "border-slate-600 bg-slate-950 text-slate-100" : isTrend ? "border-rose-200 bg-white" : "border-slate-200"}`}
+                className={`mt-2 w-full rounded-lg border px-4 py-3 text-sm focus:outline-none focus:ring-2 template-focus-accent ${isStudio ? "border-slate-600 bg-slate-950 text-slate-100" : isWhiteRose ? "border-[#dfe3eb] bg-[#f8fafc]" : isTrend ? "border-rose-200 bg-white" : "border-slate-200"}`}
                 placeholder="Enter password"
                 required
               />

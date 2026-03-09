@@ -238,13 +238,16 @@ export default function ProductDetailPage() {
   });
 
   const isStudio = variantTheme.key === "studio";
+  const isWhiteRose = variantTheme.key === "whiterose";
   const isMinimal =
     variantTheme.key === "minimal" ||
     variantTheme.key === "mquiq" ||
     variantTheme.key === "poupqz" ||
     variantTheme.key === "whiterose";
   const isTrend = variantTheme.key === "trend" || variantTheme.key === "oragze";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
@@ -252,13 +255,42 @@ export default function ProductDetailPage() {
         ? "min-h-screen bg-rose-50/50 text-slate-900"
         : "min-h-screen bg-gray-50 text-slate-900";
 
-  const panelClass = isStudio
+  const panelClass = isWhiteRose
+    ? "template-surface-card border border-[#dfe3eb] bg-white rounded-[24px] shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : isStudio
     ? "template-surface-card border border-slate-800 bg-slate-900/70 rounded-md"
     : isTrend
       ? "template-surface-card border border-rose-200 bg-white rounded-[1.8rem]"
     : isMinimal
       ? "template-surface-card border border-slate-200 bg-white rounded-xl"
       : "template-surface-card border border-slate-200 bg-white rounded-3xl";
+  const accentTextClass = isWhiteRose
+    ? "text-[#2874f0]"
+    : isTrend
+      ? "text-rose-600"
+      : "text-indigo-600";
+  const accentActiveVariantClass = isWhiteRose
+    ? "border-[#2874f0] bg-[#eef4ff]"
+    : isTrend
+      ? "border-rose-400 bg-rose-50"
+      : "border-indigo-500 bg-indigo-50";
+  const accentIdleVariantClass = isWhiteRose
+    ? "border-[#dfe3eb] bg-white"
+    : isTrend
+      ? "border-rose-200 bg-white"
+      : "border-slate-200 bg-white";
+  const accentBadgeClass = isWhiteRose
+    ? "bg-[#eef4ff] text-[#174ea6]"
+    : isTrend
+      ? "bg-rose-50 text-rose-700"
+      : "bg-slate-100 text-slate-700";
+  const accentButtonClass = isWhiteRose ? "bg-[#2874f0]" : isTrend ? "bg-rose-500" : "bg-indigo-500";
+  const subtleTextClass = isWhiteRose
+    ? "text-[#5f6c7b]"
+    : isStudio
+      ? "text-slate-300"
+      : "text-slate-600";
+  const softPanelClass = isWhiteRose ? "bg-[#f8fafc]" : isTrend ? "bg-rose-50" : "bg-slate-50";
 
   useEffect(() => {
     if (!productId) return;
@@ -558,12 +590,16 @@ export default function ProductDetailPage() {
                       onClick={() => setSelectedImage(img)}
                       className={`template-product-card h-20 w-20 overflow-hidden rounded-xl border-2 transition ${
                         selectedImage === img
-                          ? "border-indigo-500"
+                          ? isWhiteRose
+                            ? "border-[#2874f0]"
+                            : "border-indigo-500"
                           : isStudio
                             ? "border-slate-700"
                             : isTrend
                               ? "border-rose-200"
-                            : "border-slate-200"
+                              : isWhiteRose
+                                ? "border-[#dfe3eb]"
+                                : "border-slate-200"
                       }`}
                     >
                       <img
@@ -581,7 +617,7 @@ export default function ProductDetailPage() {
               <div className={`order-1 flex-1 overflow-hidden rounded-3xl p-4 `}>
                 <div
                   className={`template-product-card relative h-[420px] overflow-hidden rounded-2xl sm:h-[520px] ${
-                    isTrend ? "bg-rose-50" : "bg-slate-50"
+                    softPanelClass
                   }`}
                 >
                   {selectedImage ? (
@@ -629,7 +665,9 @@ export default function ProductDetailPage() {
                       ? "bg-slate-800 text-slate-100"
                       : isTrend
                         ? "bg-rose-100 text-rose-700"
-                        : "bg-amber-50 text-amber-900"
+                        : isWhiteRose
+                          ? "bg-[#fff3d1] text-[#8a5a00]"
+                          : "bg-amber-50 text-amber-900"
                   }`}
                 >
                   <Star className="h-4 w-4 fill-current text-amber-500" />
@@ -644,7 +682,9 @@ export default function ProductDetailPage() {
                       ? "bg-slate-800 text-slate-200"
                       : isTrend
                         ? "bg-rose-50 text-rose-700"
-                        : "bg-slate-100 text-slate-700"
+                        : isWhiteRose
+                          ? "bg-[#eef4ff] text-[#174ea6]"
+                          : "bg-slate-100 text-slate-700"
                   }`}
                 >
                   SKU: {selectedVariant?.variantSku || "N/A"}
@@ -654,7 +694,7 @@ export default function ProductDetailPage() {
                 <HyperlinkText
                   text={productShortDescription}
                   className={`mt-3 text-sm leading-relaxed ${
-                    isStudio ? "text-slate-300" : "text-slate-600"
+                    subtleTextClass
                   }`}
                 />
               ) : null}
@@ -663,9 +703,9 @@ export default function ProductDetailPage() {
             <div className={`rounded-2xl p-5 ${panelClass}`}>
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className={isStudio ? "text-slate-400 text-sm" : "text-slate-500 text-sm"}>Item Price</p>
+                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Item Price</p>
                   <div className="mt-1 flex items-baseline gap-3">
-                    <p className={`text-4xl font-bold ${isTrend ? "text-rose-600" : "text-indigo-600"}`}>
+                    <p className={`text-4xl font-bold ${accentTextClass}`}>
                       {formatCurrency(basePrice)}
                     </p>
                     {actualPrice > basePrice && (
@@ -686,7 +726,7 @@ export default function ProductDetailPage() {
                 {RETAIL_BENEFITS.map((benefit) => (
                   <div
                     key={benefit.text}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isStudio ? "bg-slate-800 text-slate-200" : "bg-blue-50 text-blue-900"}`}
+                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isStudio ? "bg-slate-800 text-slate-200" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-blue-50 text-blue-900"}`}
                   >
                     <benefit.icon className="h-4 w-4 text-blue-500" />
                     <span>{benefit.text}</span>
@@ -717,14 +757,10 @@ export default function ProductDetailPage() {
                         }}
                         className={`template-product-card relative flex min-w-[180px] items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition ${
                           active
-                            ? isTrend
-                              ? "border-rose-400 bg-rose-50"
-                              : "border-indigo-500 bg-indigo-50"
+                            ? accentActiveVariantClass
                             : isStudio
                               ? "border-slate-700 bg-slate-900"
-                              : isTrend
-                                ? "border-rose-200 bg-white"
-                              : "border-slate-200 bg-white"
+                              : accentIdleVariantClass
                         } ${!inStock ? "opacity-60" : ""}`}
                       >
                         {variantImage ? (
@@ -745,7 +781,7 @@ export default function ProductDetailPage() {
                         {active && (
                           <span
                             className={`absolute -right-1 -top-1 rounded-full p-1 text-white ${
-                              isTrend ? "bg-rose-500" : "bg-indigo-500"
+                              accentButtonClass
                             }`}
                           >
                             <Check className="h-3 w-3" />
@@ -766,9 +802,11 @@ export default function ProductDetailPage() {
                     className={`h-12 w-12 rounded-xl border text-xl ${
                       isStudio
                         ? "border-slate-700 hover:bg-slate-800"
-                        : isTrend
-                          ? "border-rose-200 hover:bg-rose-50"
-                          : "border-slate-300 hover:bg-slate-100"
+                        : isWhiteRose
+                          ? "border-[#dfe3eb] hover:bg-[#eef4ff]"
+                          : isTrend
+                            ? "border-rose-200 hover:bg-rose-50"
+                            : "border-slate-300 hover:bg-slate-100"
                     }`}
                   >
                     <Minus className="mx-auto h-5 w-5" />
@@ -782,9 +820,11 @@ export default function ProductDetailPage() {
                     className={`h-12 w-24 rounded-xl border text-center text-lg font-bold ${
                       isStudio
                         ? "border-slate-700 bg-slate-950 text-slate-100"
-                        : isTrend
-                          ? "border-rose-200 bg-white"
-                          : "border-slate-300 bg-white"
+                        : isWhiteRose
+                          ? "border-[#dfe3eb] bg-white"
+                          : isTrend
+                            ? "border-rose-200 bg-white"
+                            : "border-slate-300 bg-white"
                     }`}
                   />
                   <button
@@ -793,9 +833,11 @@ export default function ProductDetailPage() {
                     className={`h-12 w-12 rounded-xl border text-xl ${
                       isStudio
                         ? "border-slate-700 hover:bg-slate-800"
-                        : isTrend
-                          ? "border-rose-200 hover:bg-rose-50"
-                          : "border-slate-300 hover:bg-slate-100"
+                        : isWhiteRose
+                          ? "border-[#dfe3eb] hover:bg-[#eef4ff]"
+                          : isTrend
+                            ? "border-rose-200 hover:bg-rose-50"
+                            : "border-slate-300 hover:bg-slate-100"
                     }`}
                   >
                     <Plus className="mx-auto h-5 w-5" />
@@ -819,13 +861,13 @@ export default function ProductDetailPage() {
             <div className={`rounded-2xl p-5 ${panelClass}`}>
               <div className="mb-4 flex items-end justify-between">
                 <div>
-                  <p className={isStudio ? "text-slate-400 text-sm" : "text-slate-500 text-sm"}>Total Amount</p>
-                  <p className={`text-4xl font-bold ${isTrend ? "text-rose-600" : "text-indigo-600"}`}>
+                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Total Amount</p>
+                  <p className={`text-4xl font-bold ${accentTextClass}`}>
                     {formatCurrency(subtotal)}
                   </p>
                 </div>
                 <div className="text-right">
-                  <p className={isStudio ? "text-slate-400 text-sm" : "text-slate-500 text-sm"}>Quantity</p>
+                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Quantity</p>
                   <p className="text-3xl font-bold">{quantity} pcs</p>
                 </div>
               </div>
@@ -839,7 +881,7 @@ export default function ProductDetailPage() {
                 {adding ? "Adding..." : "Add to cart"}
               </button>
 
-              {message && <p className="mt-3 text-sm text-slate-500">{message}</p>}
+              {message && <p className={`mt-3 text-sm ${isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}>{message}</p>}
             </div>
           </div>
         </div>

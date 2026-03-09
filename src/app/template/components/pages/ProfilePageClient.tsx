@@ -47,17 +47,26 @@ export default function TemplateProfilePage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "oragze" ||
     variant.key === "whiterose";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f5f5f7] text-slate-900"
       : "min-h-screen bg-gray-50";
+  const panelClass = isWhiteRose
+    ? "rounded-[24px] border border-[#dfe3eb] bg-white p-6 shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : "rounded-2xl border border-slate-200 bg-white p-6 shadow-sm";
+  const subPanelClass = isWhiteRose
+    ? "rounded-[18px] border border-[#e6ebf2] bg-[#f8fafc] p-4"
+    : "rounded-xl border border-slate-200 bg-slate-50 p-4";
 
   useEffect(() => {
     if (!auth) {
@@ -89,7 +98,7 @@ export default function TemplateProfilePage() {
     return (
       <div className={pageClass}>
         <div className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
-          <div className="rounded-2xl border border-slate-200 bg-white p-8 text-center shadow-sm">
+          <div className={panelClass}>
             <h1 className="text-2xl font-bold text-slate-900">
               Login required
             </h1>
@@ -123,7 +132,7 @@ export default function TemplateProfilePage() {
         ) : (
           <div className="grid gap-6 lg:grid-cols-[1.1fr_0.9fr]">
             <div className="space-y-6">
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className={panelClass}>
                 <h2 className="text-xl font-semibold text-slate-900">
                   Account details
                 </h2>
@@ -143,7 +152,7 @@ export default function TemplateProfilePage() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+              <div className={panelClass}>
                 <h2 className="text-xl font-semibold text-slate-900">
                   Saved addresses
                 </h2>
@@ -152,7 +161,7 @@ export default function TemplateProfilePage() {
                     addresses.map((address) => (
                       <div
                         key={address._id}
-                        className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                        className={subPanelClass}
                       >
                         <p className="font-semibold text-slate-900">
                           {address.label || "Address"}
@@ -176,7 +185,7 @@ export default function TemplateProfilePage() {
               </div>
             </div>
 
-            <div className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
+            <div className={panelClass}>
               <h2 className="text-xl font-semibold text-slate-900">
                 Orders history
               </h2>
@@ -185,7 +194,7 @@ export default function TemplateProfilePage() {
                   orders.map((order) => (
                     <div
                       key={order._id}
-                      className="rounded-xl border border-slate-200 bg-slate-50 p-4"
+                      className={subPanelClass}
                     >
                       <p className="font-semibold text-slate-900">
                         {order.order_number}

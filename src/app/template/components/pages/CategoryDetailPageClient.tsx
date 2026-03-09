@@ -2,22 +2,28 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { Search } from "lucide-react";
 import { useSelector } from "react-redux";
 import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
+import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
+import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
 
 export default function CategoryProductsPage() {
   const variant = useTemplateVariant();
   const params = useParams();
+  const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
   const categoryId = params.category_id as string;
+  const vendorId = String(vendor_id || "");
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
   const [searchTerm, setSearchTerm] = useState("");
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
@@ -52,6 +58,12 @@ export default function CategoryProductsPage() {
       : isMinimal
         ? "rounded-xl border border-slate-200 bg-white p-4"
         : "rounded-2xl border border-slate-200 bg-white p-4";
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || `/template/${vendorId}`,
+      suffix,
+    });
 
   useEffect(() => {
     const load = async () => {
@@ -117,6 +129,59 @@ export default function CategoryProductsPage() {
 
     return { label: displayLabel, filteredProducts: searched };
   }, [categoryId, products, searchTerm, categoryMap]);
+
+  if (isWhiteRose) {
+    return (
+      <div className="template-page-shell min-h-screen bg-[#f1f3f6] py-8 text-[#172337]">
+        <div className="mx-auto max-w-[1500px] px-4 md:px-8">
+          <div className="rounded-[28px] border border-[#dfe3eb] bg-gradient-to-r from-[#e7f0ff] via-white to-[#fff3d1] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2874f0]">
+                  Category view
+                </p>
+                <h1 className="mt-2 text-4xl font-bold tracking-[-0.03em] text-[#172337] sm:text-5xl">
+                  {label}
+                </h1>
+                <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f6c7b] sm:text-base">
+                  Filter the selected department and push buyers into product detail pages without changing the existing backend flows.
+                </p>
+              </div>
+
+              <div className="relative w-full lg:max-w-sm">
+                <input
+                  type="text"
+                  placeholder="Search in this category"
+                  className="w-full rounded-2xl border border-white/70 bg-white/85 py-3 pl-10 pr-4 text-sm text-[#172337] outline-none transition focus:border-[#2874f0]"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+                <Search className="absolute left-3 top-3.5 text-[#7a8797]" size={18} />
+              </div>
+            </div>
+          </div>
+
+          {filteredProducts.length > 0 ? (
+            <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredProducts.map((product: any, index: number) => (
+                <WhiteRoseProductCard
+                  key={product._id || `product-${index}`}
+                  product={product}
+                  href={toTemplatePath(`product/${product._id}`)}
+                  categoryLabel={whiteRoseGetCategoryDetails(product, categoryMap).label || label}
+                  showAddToCart={false}
+                />
+              ))}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[#d6deed] bg-white p-12 text-center text-sm text-[#5f6c7b]">
+              No products found for this category.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${pageClass} template-page-shell template-category-detail-page py-16 lg:py-20`}>

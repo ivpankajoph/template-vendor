@@ -218,11 +218,11 @@
 
 .template-variant-whiterose {
   --template-surface: #ffffff;
-  --template-surface-muted: #f6f6f6;
-  --template-border: #dce2eb;
-  --template-radius: 8px;
-  --template-heading-font: "Poppins", "DM Sans", sans-serif;
-  --template-body-font: "Poppins", "DM Sans", sans-serif;
+  --template-surface-muted: #f1f3f6;
+  --template-border: #dfe3eb;
+  --template-radius: 18px;
+  --template-heading-font: var(--font-sora), "Sora", "Poppins", sans-serif;
+  --template-body-font: var(--font-manrope), "Manrope", "Poppins", sans-serif;
 }
 
 .template-variant-studio nav {
@@ -263,7 +263,7 @@
 
 .template-variant-whiterose nav {
   background: #ffffff;
-  border-bottom: 1px solid #dce2eb;
+  border-bottom: 1px solid #dfe3eb;
 }
 
 .template-variant-studio {
@@ -323,7 +323,7 @@
 
 .template-variant-whiterose {
   color: #1f2937;
-  background: #f6f6f6;
+  background: #f1f3f6;
 }
 
 .template-variant-minimal .template-accent {
@@ -376,8 +376,8 @@
 }
 
 .template-variant-whiterose .template-accent-bg {
-  background: #0b74c6;
-  border-radius: 8px;
+  background: linear-gradient(135deg, #2874f0 0%, #174ea6 100%);
+  border-radius: 14px;
 }
 
 .template-variant-minimal .template-accent-soft {
@@ -406,8 +406,8 @@
 }
 
 .template-variant-whiterose .template-accent-soft {
-  background-color: #edf4fb;
-  border: 1px solid #dce2eb;
+  background-color: #eef4ff;
+  border: 1px solid #dfe3eb;
 }
 
 .template-variant-minimal .template-accent-gradient {
@@ -436,8 +436,8 @@
 }
 
 .template-variant-whiterose .template-accent-gradient {
-  background: linear-gradient(135deg, #dfeefd 0%, #f8fbff 100%);
-  border: 1px solid #dce2eb;
+  background: linear-gradient(135deg, #e7f0ff 0%, #fff9e6 100%);
+  border: 1px solid #dfe3eb;
 }
 
 .template-variant-minimal .template-accent-bg-hover:hover {
@@ -461,7 +461,7 @@
 }
 
 .template-variant-whiterose .template-accent-bg-hover:hover {
-  background: #085ea0;
+  background: linear-gradient(135deg, #174ea6 0%, #123b80 100%);
 }
 
 .template-home {
@@ -515,7 +515,7 @@
 }
 
 .template-home-whiterose {
-  background: #f6f6f6;
+  background: #f1f3f6;
 }
 
 .template-minimal-panel {
@@ -780,8 +780,8 @@
 
 .template-variant-whiterose .template-page-shell::before {
   opacity: 0.58;
-  background: radial-gradient(circle at 100% 0%, rgba(11, 116, 198, 0.1), transparent 35%),
-    radial-gradient(circle at 0% 18%, rgba(226, 232, 240, 0.25), transparent 45%);
+  background: radial-gradient(circle at 100% 0%, rgba(40, 116, 240, 0.1), transparent 35%),
+    radial-gradient(circle at 0% 18%, rgba(255, 159, 0, 0.08), transparent 45%);
 }
 
 .template-variant-trend .template-section-title {
@@ -809,9 +809,9 @@
 }
 
 .template-variant-whiterose .template-section-title {
-  font-family: "Poppins", "DM Sans", sans-serif;
+  font-family: var(--font-sora), "Sora", "Poppins", sans-serif;
   font-weight: 700;
-  letter-spacing: -0.015em;
+  letter-spacing: -0.03em;
 }
 
 .template-variant-trend .template-surface-card {
@@ -839,9 +839,9 @@
 }
 
 .template-variant-whiterose .template-surface-card {
-  border-radius: 8px;
-  border-color: #dce2eb;
-  box-shadow: 0 12px 24px -20px rgba(15, 23, 42, 0.25);
+  border-radius: 20px;
+  border-color: #dfe3eb;
+  box-shadow: 0 14px 28px -22px rgba(15, 23, 42, 0.2);
 }
 
 .template-variant-trend .template-primary-button {
@@ -865,8 +865,8 @@
 }
 
 .template-variant-whiterose .template-primary-button {
-  border-radius: 8px;
-  background: #0b74c6;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #2874f0 0%, #174ea6 100%);
 }
 
 .template-variant-trend .template-product-card:hover {
@@ -886,5 +886,5 @@
 }
 
 .template-variant-whiterose .template-product-card:hover {
-  box-shadow: 0 16px 30px -24px rgba(11, 116, 198, 0.32);
+  box-shadow: 0 18px 34px -24px rgba(40, 116, 240, 0.24);
 }

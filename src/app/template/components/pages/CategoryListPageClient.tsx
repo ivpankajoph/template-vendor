@@ -4,10 +4,11 @@ import React, { useEffect, useMemo, useState } from "react";
 import { Search } from "lucide-react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type CategoryCard = {
   id: string;
@@ -26,8 +27,16 @@ export default function ShopCategoriesPage() {
 
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
   const params = useParams();
+  const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
+  const vendorId = String(vendor_id || "");
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || `/template/${vendorId}`,
+      suffix,
+    });
 
   useEffect(() => {
     const load = async () => {
@@ -104,6 +113,7 @@ export default function ShopCategoriesPage() {
   }, [categories, searchTerm]);
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
@@ -131,6 +141,88 @@ export default function ShopCategoriesPage() {
       : isMinimal
         ? "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-7"
         : "grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6";
+
+  if (isWhiteRose) {
+    return (
+      <div className="template-page-shell min-h-screen bg-[#f1f3f6] text-[#172337]">
+        <div className="mx-auto max-w-[1500px] px-4 py-8 md:px-8">
+          <div className="rounded-[28px] border border-[#dfe3eb] bg-gradient-to-r from-[#e7f0ff] via-white to-[#fff3d1] p-6 shadow-[0_18px_40px_rgba(15,23,42,0.07)]">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-[#2874f0]">
+              Departments
+            </p>
+            <h1 className="mt-2 text-4xl font-bold tracking-[-0.03em] text-[#172337] sm:text-5xl">
+              Shop by category
+            </h1>
+            <p className="mt-3 max-w-3xl text-sm leading-7 text-[#5f6c7b] sm:text-base">
+              Turn your catalog into department-led shopping. Search and jump straight into the categories buyers care about most.
+            </p>
+          </div>
+
+          <div className="mt-5 rounded-[24px] border border-[#dfe3eb] bg-white p-5 shadow-[0_12px_24px_rgba(15,23,42,0.05)]">
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <p className="text-sm text-[#5f6c7b]">
+                Showing <span className="font-semibold text-[#172337]">{filteredCategories.length}</span> departments
+              </p>
+              <div className="relative w-full sm:w-80">
+                <input
+                  type="text"
+                  placeholder="Search categories"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="w-full rounded-2xl border border-[#dfe3eb] bg-[#f8fafc] py-3 pl-10 pr-4 text-sm text-[#172337] outline-none transition focus:border-[#2874f0]"
+                />
+                <Search className="absolute left-3 top-3.5 text-[#7a8797]" size={18} />
+              </div>
+            </div>
+          </div>
+
+          {filteredCategories.length > 0 ? (
+            <div className="mt-5 grid gap-5 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredCategories.map((category) => {
+                const categoryPath = category.isObjectId ? category.id : slugify(category.name);
+                return (
+                  <Link
+                    key={category.id}
+                    href={toTemplatePath(`category/${categoryPath}`)}
+                    className="group overflow-hidden rounded-[24px] border border-[#dfe3eb] bg-white shadow-[0_10px_22px_rgba(15,23,42,0.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_36px_rgba(40,116,240,0.12)]"
+                  >
+                    <div className="relative h-56 overflow-hidden bg-[#f8fafc]">
+                      {category.image ? (
+                        <img
+                          src={category.image}
+                          alt={category.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-105"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-xs font-semibold uppercase tracking-[0.3em] text-slate-400">
+                          Category
+                        </div>
+                      )}
+                      <div className="absolute inset-0 bg-gradient-to-t from-[#172337]/80 via-transparent to-transparent" />
+                      <div className="absolute left-4 top-4 rounded-full bg-white/95 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-[#2874f0]">
+                        {category.count} products
+                      </div>
+                      <p className="absolute bottom-4 left-4 right-4 text-2xl font-semibold text-white line-clamp-2">
+                        {category.name}
+                      </p>
+                    </div>
+                    <div className="flex items-center justify-between px-4 py-4">
+                      <span className="text-sm font-semibold text-[#172337]">Explore department</span>
+                      <span className="text-sm font-semibold text-[#2874f0]">View</span>
+                    </div>
+                  </Link>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="mt-5 rounded-[24px] border border-dashed border-[#d6deed] bg-white p-12 text-center text-sm text-[#5f6c7b]">
+              No categories found.
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className={`${pageClass} template-page-shell template-category-page`}>

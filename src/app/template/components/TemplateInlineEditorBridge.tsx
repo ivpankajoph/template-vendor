@@ -200,6 +200,148 @@ const buildCandidates = (templateData: any, page: PageKey): EditableCandidate[] 
       ["components", "home_page", "products_subtitle"],
       home?.products_subtitle
     );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "benefits", "kicker"],
+      home?.benefits?.kicker
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "benefits", "heading"],
+      home?.benefits?.heading
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "benefits", "subtitle"],
+      home?.benefits?.subtitle
+    );
+    if (Array.isArray(home?.benefits?.cards)) {
+      home.benefits.cards.forEach((card: any, index: number) => {
+        addTextCandidate(
+          list,
+          "description",
+          ["components", "home_page", "benefits", "cards", String(index), "title"],
+          card?.title
+        );
+        addTextCandidate(
+          list,
+          "description",
+          [
+            "components",
+            "home_page",
+            "benefits",
+            "cards",
+            String(index),
+            "description",
+          ],
+          card?.description
+        );
+      });
+    }
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "kicker"],
+      home?.advantage?.kicker
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "heading"],
+      home?.advantage?.heading
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "subtitle"],
+      home?.advantage?.subtitle
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "ctaLabel"],
+      home?.advantage?.ctaLabel
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "topTag"],
+      home?.advantage?.topTag
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "badgeValue"],
+      home?.advantage?.badgeValue
+    );
+    addTextCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "badgeLabel"],
+      home?.advantage?.badgeLabel
+    );
+    addImageCandidate(
+      list,
+      "description",
+      ["components", "home_page", "advantage", "image"],
+      home?.advantage?.image
+    );
+    if (Array.isArray(home?.advantage?.cards)) {
+      home.advantage.cards.forEach((card: any, index: number) => {
+        addTextCandidate(
+          list,
+          "description",
+          ["components", "home_page", "advantage", "cards", String(index), "title"],
+          card?.title
+        );
+        addTextCandidate(
+          list,
+          "description",
+          [
+            "components",
+            "home_page",
+            "advantage",
+            "cards",
+            String(index),
+            "description",
+          ],
+          card?.description
+        );
+      });
+    }
+    if (Array.isArray(home?.advantage?.highlights)) {
+      home.advantage.highlights.forEach((highlight: any, index: number) => {
+        addTextCandidate(
+          list,
+          "description",
+          [
+            "components",
+            "home_page",
+            "advantage",
+            "highlights",
+            String(index),
+            "value",
+          ],
+          highlight?.value
+        );
+        addTextCandidate(
+          list,
+          "description",
+          [
+            "components",
+            "home_page",
+            "advantage",
+            "highlights",
+            String(index),
+            "label",
+          ],
+          highlight?.label
+        );
+      });
+    }
     return list;
   }
 

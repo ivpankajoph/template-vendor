@@ -46,20 +46,25 @@ export default function TemplateOrdersPage() {
   const [downloadingOrderId, setDownloadingOrderId] = useState("");
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
     variant.key === "poupqz" ||
     variant.key === "whiterose";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
       : isTrend
         ? "min-h-screen bg-rose-50/50 text-slate-900"
         : "min-h-screen bg-gray-50";
-  const panelClass = isStudio
+  const panelClass = isWhiteRose
+    ? "template-surface-card rounded-[24px] border border-[#dfe3eb] bg-white shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : isStudio
     ? "template-surface-card rounded-md border border-slate-800 bg-slate-900/80 text-slate-100"
     : isTrend
       ? "template-surface-card rounded-[1.4rem] border border-rose-200 bg-white"
@@ -126,7 +131,7 @@ export default function TemplateOrdersPage() {
         <div className="mx-auto flex min-h-screen max-w-4xl items-center justify-center px-6">
           <div className={`${panelClass} p-8 text-center shadow-sm`}>
             <h1 className={isStudio ? "text-2xl font-bold text-slate-100" : "text-2xl font-bold text-slate-900"}>Login required</h1>
-            <p className={isStudio ? "mt-2 text-sm text-slate-300" : "mt-2 text-sm text-slate-500"}>Sign in to view your orders.</p>
+            <p className={isStudio ? "mt-2 text-sm text-slate-300" : isWhiteRose ? "mt-2 text-sm text-[#5f6c7b]" : "mt-2 text-sm text-slate-500"}>Sign in to view your orders.</p>
             <button
               onClick={() =>
                 router.push(`/template/${vendorId}/login?next=/template/${vendorId}/orders`)
@@ -148,7 +153,7 @@ export default function TemplateOrdersPage() {
         <div className="h-1 mb-6 template-accent-bg"></div>
 
         {loading ? (
-          <div className={`${panelClass} p-6 text-center ${isStudio ? "text-slate-300" : "text-slate-500"}`}>Loading orders...</div>
+          <div className={`${panelClass} p-6 text-center ${isStudio ? "text-slate-300" : isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}>Loading orders...</div>
         ) : orders.length ? (
           <div className="space-y-4">
             {orders.map((order) => (
@@ -158,24 +163,24 @@ export default function TemplateOrdersPage() {
               >
                 <div className="flex flex-wrap items-center justify-between gap-3">
                   <div>
-                    <p className={isStudio ? "text-sm text-slate-400" : "text-sm text-slate-500"}>Order</p>
+                    <p className={isStudio ? "text-sm text-slate-400" : isWhiteRose ? "text-sm text-[#5f6c7b]" : "text-sm text-slate-500"}>Order</p>
                     <p className={isStudio ? "text-lg font-semibold text-slate-100" : "text-lg font-semibold text-slate-900"}>{order.order_number}</p>
                   </div>
-                  <div className={isStudio ? "text-sm text-slate-400" : "text-sm text-slate-500"}>
+                  <div className={isStudio ? "text-sm text-slate-400" : isWhiteRose ? "text-sm text-[#5f6c7b]" : "text-sm text-slate-500"}>
                     {new Date(order.createdAt).toLocaleString()}
                   </div>
-                  <div className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${isStudio ? "bg-slate-800 text-slate-200" : isTrend ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                  <div className={`rounded-full px-3 py-1 text-xs font-semibold uppercase ${isStudio ? "bg-slate-800 text-slate-200" : isTrend ? "bg-rose-100 text-rose-700" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-slate-100 text-slate-600"}`}>
                     {order.status}
                   </div>
                   <div className={isStudio ? "text-lg font-semibold text-slate-100" : "text-lg font-semibold text-slate-900"}>{formatMoney(order.total)}</div>
                 </div>
 
-                <div className={`mt-4 grid gap-3 text-sm ${isStudio ? "text-slate-300" : "text-slate-600"}`}>
+                <div className={`mt-4 grid gap-3 text-sm ${isStudio ? "text-slate-300" : isWhiteRose ? "text-[#5f6c7b]" : "text-slate-600"}`}>
                   {order.items.map((item, index) => (
                     <a
                       key={`${order._id}-${item._id || index}`}
                       href={item.product_id ? `/template/${vendorId}/product/${item.product_id}` : "#"}
-                      className={`template-product-card flex items-start justify-between gap-3 rounded-lg border p-3 transition ${isStudio ? "border-slate-700 bg-slate-900 hover:border-slate-600" : isTrend ? "border-rose-200 bg-white hover:border-rose-300" : "border-slate-200 bg-white hover:border-slate-300"}`}
+                      className={`template-product-card flex items-start justify-between gap-3 rounded-lg border p-3 transition ${isStudio ? "border-slate-700 bg-slate-900 hover:border-slate-600" : isTrend ? "border-rose-200 bg-white hover:border-rose-300" : isWhiteRose ? "border-[#dfe3eb] bg-[#f8fafc] hover:border-[#2874f0]" : "border-slate-200 bg-white hover:border-slate-300"}`}
                     >
                       <div className="flex items-start gap-3">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -189,10 +194,10 @@ export default function TemplateOrdersPage() {
                         />
                         <div className="min-w-0">
                           <p className={isStudio ? "text-sm font-semibold text-slate-100" : "text-sm font-semibold text-slate-900"}>{item.product_name}</p>
-                          <p className={isStudio ? "text-xs text-slate-400" : "text-xs text-slate-500"}>
+                          <p className={isStudio ? "text-xs text-slate-400" : isWhiteRose ? "text-xs text-[#5f6c7b]" : "text-xs text-slate-500"}>
                             {formatAttrs(item.variant_attributes) || "Default variant"}
                           </p>
-                          <p className={isStudio ? "text-xs text-slate-400" : "text-xs text-slate-500"}>Qty: {item.quantity}</p>
+                          <p className={isStudio ? "text-xs text-slate-400" : isWhiteRose ? "text-xs text-[#5f6c7b]" : "text-xs text-slate-500"}>Qty: {item.quantity}</p>
                         </div>
                       </div>
                       <span className={isStudio ? "text-sm font-semibold text-slate-100" : "text-sm font-semibold text-slate-900"}>
@@ -203,13 +208,13 @@ export default function TemplateOrdersPage() {
                 </div>
 
                 <div className="mt-4 flex flex-wrap items-center justify-between gap-3 border-t pt-4 text-sm">
-                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isStudio ? "bg-slate-800 text-slate-200" : isTrend ? "bg-rose-100 text-rose-700" : "bg-slate-100 text-slate-600"}`}>
+                  <span className={`rounded-full px-3 py-1 text-xs font-semibold ${isStudio ? "bg-slate-800 text-slate-200" : isTrend ? "bg-rose-100 text-rose-700" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-slate-100 text-slate-600"}`}>
                     {order.items?.length || 0} items
                   </span>
                   <div className="flex flex-wrap gap-2">
                     <a
                       href={`/template/${vendorId}/orders/${order._id}`}
-                      className={`inline-flex items-center rounded-lg border px-4 py-2 text-xs font-semibold ${isStudio ? "border-slate-700 text-slate-200 hover:border-slate-600" : isTrend ? "border-rose-200 text-rose-700 hover:border-rose-300" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}
+                      className={`inline-flex items-center rounded-lg border px-4 py-2 text-xs font-semibold ${isStudio ? "border-slate-700 text-slate-200 hover:border-slate-600" : isTrend ? "border-rose-200 text-rose-700 hover:border-rose-300" : isWhiteRose ? "border-[#dfe3eb] text-[#172337] hover:border-[#2874f0] hover:text-[#2874f0]" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}
                     >
                       View details
                     </a>
@@ -227,7 +232,7 @@ export default function TemplateOrdersPage() {
             ))}
           </div>
         ) : (
-          <div className={`${panelClass} p-6 text-center ${isStudio ? "text-slate-300" : "text-slate-500"}`}>No orders yet.</div>
+          <div className={`${panelClass} p-6 text-center ${isStudio ? "text-slate-300" : isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}>No orders yet.</div>
         )}
       </div>
     </div>

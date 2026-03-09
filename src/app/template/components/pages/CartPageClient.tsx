@@ -42,6 +42,7 @@ export default function ShoppingCartPage() {
   const [showNotification, setShowNotification] = useState(false);
 
   const isStudio = variant.key === "studio";
+  const isWhiteRose = variant.key === "whiterose";
   const isMinimal =
     variant.key === "minimal" ||
     variant.key === "mquiq" ||
@@ -49,7 +50,9 @@ export default function ShoppingCartPage() {
     variant.key === "whiterose";
   const isTrend = variant.key === "trend" || variant.key === "oragze";
 
-  const pageClass = isStudio
+  const pageClass = isWhiteRose
+    ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
+    : isStudio
     ? "min-h-screen bg-slate-950 text-slate-100"
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
@@ -57,7 +60,9 @@ export default function ShoppingCartPage() {
         ? "min-h-screen bg-rose-50/50 text-slate-900"
         : "min-h-screen bg-gray-50";
 
-  const panelClass = isStudio
+  const panelClass = isWhiteRose
+    ? "template-surface-card bg-white border border-[#dfe3eb] text-[#172337] rounded-[24px] shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
+    : isStudio
     ? "template-surface-card bg-slate-900/80 border border-slate-800 text-slate-100 rounded-md"
     : isTrend
       ? "template-surface-card bg-white border border-rose-200 rounded-[1.4rem]"
@@ -65,7 +70,7 @@ export default function ShoppingCartPage() {
         ? "template-surface-card bg-white border border-slate-200 rounded-xl"
         : "template-surface-card bg-white border border-slate-200 rounded-2xl";
 
-  const mutedTextClass = isStudio ? "text-slate-300" : "text-slate-500";
+  const mutedTextClass = isStudio ? "text-slate-300" : isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500";
 
   const formatAttrs = (attrs?: Record<string, any>) => {
     if (!attrs) return "";
@@ -173,7 +178,9 @@ export default function ShoppingCartPage() {
                       ? "bg-slate-900 text-slate-200 border-slate-700"
                       : isTrend
                         ? "bg-rose-50 text-slate-700 border-rose-200"
-                        : "bg-gray-50 text-gray-700 border-slate-200"
+                        : isWhiteRose
+                          ? "bg-[#f8fafc] text-[#172337] border-[#dfe3eb]"
+                          : "bg-gray-50 text-gray-700 border-slate-200"
                   }`}
                 >
                   <div className="col-span-1"></div>
@@ -192,7 +199,9 @@ export default function ShoppingCartPage() {
                           ? "border-slate-700"
                           : isTrend
                             ? "border-rose-200"
-                            : "border-slate-200"
+                            : isWhiteRose
+                              ? "border-[#edf1f5]"
+                              : "border-slate-200"
                       }`}
                     >
                       <div className="col-span-1">
@@ -203,7 +212,9 @@ export default function ShoppingCartPage() {
                               ? "border-slate-600 hover:bg-slate-800"
                               : isTrend
                                 ? "border-rose-200 hover:bg-rose-50"
-                                : "border-gray-300 hover:bg-gray-100"
+                                : isWhiteRose
+                                  ? "border-[#dfe3eb] hover:bg-[#eef4ff]"
+                                  : "border-gray-300 hover:bg-gray-100"
                           }`}
                         >
                           <X size={16} className={isStudio ? "text-slate-200" : "text-gray-600"} />
@@ -251,7 +262,9 @@ export default function ShoppingCartPage() {
                               ? "border-slate-600 bg-slate-900 text-slate-100"
                               : isTrend
                                 ? "border-rose-200 bg-white"
-                                : "border-gray-300"
+                                : isWhiteRose
+                                  ? "border-[#dfe3eb] bg-[#f8fafc]"
+                                  : "border-gray-300"
                           }`}
                         />
                         <span className="sr-only">{item.quantity} quantity</span>
@@ -274,25 +287,29 @@ export default function ShoppingCartPage() {
                     value={couponCode}
                     onChange={(e) => setCouponCode(e.target.value)}
                     placeholder="Coupon code"
-                    className={`flex-1 px-4 py-3 border rounded-lg template-focus-accent ${
-                      isStudio
-                        ? "border-slate-600 bg-slate-900 text-slate-100"
-                        : isTrend
-                          ? "border-rose-200 bg-white"
+                  className={`flex-1 px-4 py-3 border rounded-lg template-focus-accent ${
+                    isStudio
+                      ? "border-slate-600 bg-slate-900 text-slate-100"
+                      : isTrend
+                        ? "border-rose-200 bg-white"
+                        : isWhiteRose
+                          ? "border-[#dfe3eb] bg-[#f8fafc]"
                           : "border-gray-300"
-                    }`}
-                  />
-                  <button className="template-primary-button text-white px-8 py-3 rounded-lg font-semibold transition-colors template-accent-bg template-accent-bg-hover">
-                    Apply coupon
-                  </button>
-                  <button
-                    className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
-                      isStudio
-                        ? "bg-slate-800 hover:bg-slate-700 text-slate-100"
-                        : isTrend
-                          ? "bg-rose-50 hover:bg-rose-100 text-rose-700"
+                  }`}
+                />
+                <button className="template-primary-button text-white px-8 py-3 rounded-lg font-semibold transition-colors template-accent-bg template-accent-bg-hover">
+                  Apply coupon
+                </button>
+                <button
+                  className={`px-8 py-3 rounded-lg font-semibold transition-colors ${
+                    isStudio
+                      ? "bg-slate-800 hover:bg-slate-700 text-slate-100"
+                      : isTrend
+                        ? "bg-rose-50 hover:bg-rose-100 text-rose-700"
+                        : isWhiteRose
+                          ? "bg-[#eef4ff] hover:bg-[#dce9ff] text-[#174ea6]"
                           : "bg-gray-100 hover:bg-gray-200 text-gray-700"
-                    }`}
+                  }`}
                     onClick={() => {
                       loadCart().then(() => setShowNotification(true));
                     }}
@@ -311,7 +328,9 @@ export default function ShoppingCartPage() {
                       ? "text-slate-100 border-slate-700"
                       : isTrend
                         ? "text-slate-900 border-rose-200"
-                        : "text-gray-900 border-slate-200"
+                        : isWhiteRose
+                          ? "text-[#172337] border-[#dfe3eb]"
+                          : "text-gray-900 border-slate-200"
                   }`}
                 >
                   Cart totals
@@ -326,8 +345,10 @@ export default function ShoppingCartPage() {
                     className={`flex justify-between font-semibold text-lg pt-4 border-t ${
                       isStudio
                         ? "text-slate-100 border-slate-700"
-                        : isTrend
-                          ? "text-slate-900 border-rose-200"
+                      : isTrend
+                        ? "text-slate-900 border-rose-200"
+                        : isWhiteRose
+                          ? "text-[#172337] border-[#dfe3eb]"
                           : "text-gray-900 border-slate-200"
                     }`}
                   >

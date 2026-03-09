@@ -8,102 +8,64 @@ import { useSelector } from 'react-redux'
 import {
   ChevronDown,
   Heart,
+  MapPin,
   Menu,
   Search,
   ShoppingCart,
   UserRound,
   X,
 } from 'lucide-react'
+
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildTemplateScopedPath } from '@/lib/template-route'
 
-type TemplateProduct = {
-  _id?: string
-  productName?: string
-  productCategory?: { _id?: string; name?: string; title?: string; categoryName?: string } | string
-  productCategoryName?: string
-}
-
-const toSlug = (value: string) =>
-  value
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/(^-|-$)+/g, '')
-
-const getCategoryLabel = (product: TemplateProduct) => {
-  if (product.productCategoryName) return product.productCategoryName
-  if (typeof product.productCategory === 'string') {
-    return /^[a-f\d]{24}$/i.test(product.productCategory)
-      ? ''
-      : product.productCategory
-  }
-  return (
-    product.productCategory?.name ||
-    product.productCategory?.title ||
-    product.productCategory?.categoryName ||
-    ''
-  )
-}
-
-const getCategoryId = (product: TemplateProduct) => {
-  if (typeof product.productCategory === 'string') {
-    return /^[a-f\d]{24}$/i.test(product.productCategory)
-      ? product.productCategory
-      : undefined
-  }
-  return product.productCategory?._id
-}
-
-const FALLBACK_CATEGORY_LABELS = [
-  'Living Room',
-  'Bed Room',
-  'Dining Room',
-  'Home Office',
-  'Kids Furniture',
-  'Plastic Chairs',
-  'Utility',
-  'Premium Furniture',
-  'Mattress',
-]
+import {
+  type WhiteRoseProduct,
+  toWhiteRoseSlug,
+  whiteRoseGetCategoryDetails,
+} from './whiterose-utils'
 
 export function WhiteRoseNavbar() {
   const params = useParams()
   const pathname = usePathname()
   const router = useRouter()
   const vendorId = String((params as any)?.vendor_id || '')
+
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [pagesOpen, setPagesOpen] = useState(false)
+  const [departmentsOpen, setDepartmentsOpen] = useState(false)
   const [searchText, setSearchText] = useState('')
   const [cartCount, setCartCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
   const products = useSelector(
-    (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
+    (state: any) => (state?.alltemplatepage?.products || []) as WhiteRoseProduct[]
   )
 
   const customPages =
     template?.components?.custom_pages?.filter((page: any) => page?.isPublished !== false) || []
 
+  const toTemplatePath = (suffix = '') =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || '/',
+      suffix,
+    })
+
   const categoryEntries = useMemo(() => {
     const map = new Map<string, { label: string; href: string }>()
     products.forEach((product) => {
-      const label = getCategoryLabel(product)
-      if (!label) return
-      const id = getCategoryId(product)
-      const slug = id || toSlug(label)
-      if (!slug) return
-      const href = `/template/${vendorId}/category/${slug}`
-      if (!map.has(href)) map.set(href, { label, href })
+      const category = whiteRoseGetCategoryDetails(product)
+      if (!category.label) return
+      const slug = category.id || toWhiteRoseSlug(category.label)
+      const href = toTemplatePath(`category/${slug}`)
+      if (!map.has(href)) {
+        map.set(href, { label: category.label, href })
+      }
     })
-
-    const entries = Array.from(map.values())
-    if (entries.length > 0) return entries.slice(0, 10)
-    return FALLBACK_CATEGORY_LABELS.map((label) => ({
-      label,
-      href: vendorId ? `/template/${vendorId}/all-products` : '#',
-    }))
-  }, [products, vendorId])
+    return Array.from(map.values()).slice(0, 10)
+  }, [products, pathname, vendorId])
 
   const productSuggestions = useMemo(() => {
     const query = searchText.trim().toLowerCase()
@@ -113,65 +75,20 @@ export function WhiteRoseNavbar() {
       .slice(0, 6)
   }, [products, searchText])
 
-  const homeHref = vendorId ? `/template/${vendorId}` : '#'
-  const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
-  const shopHref = vendorId ? `/template/${vendorId}/all-products` : '#'
-  const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
-  const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
-  const checkoutHref = vendorId ? `/template/${vendorId}/checkout` : '#'
-  const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
-  const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
-  const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
-  const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
-  const firstProductHref =
-    vendorId && products?.[0]?._id ? `/template/${vendorId}/product/${products[0]._id}` : shopHref
-
-  const mobileNavItems = useMemo(() => {
-    const seen = new Set<string>()
-    const items = [
-      { id: 'home', label: 'Home', href: homeHref },
-      { id: 'about', label: 'About Us', href: aboutHref },
-      { id: 'products', label: 'All Products', href: shopHref },
-      { id: 'contact', label: 'Contact Us', href: contactHref },
-      { id: 'cart', label: 'Cart', href: cartHref },
-      { id: 'checkout', label: 'Checkout', href: checkoutHref },
-      { id: 'orders', label: 'Orders', href: ordersHref },
-      {
-        id: 'auth',
-        label: isLoggedIn ? 'Profile' : 'Login',
-        href: isLoggedIn ? profileHref : loginHref,
-      },
-      { id: 'register', label: 'Register', href: registerHref },
-      { id: 'featured', label: 'Featured Product', href: firstProductHref },
-      ...customPages.map((page: any, index: number) => ({
-        id: String(page?.id || page?.slug || `custom-${index}`),
-        label: page?.title || 'Custom Page',
-        href: `/template/${vendorId}/page/${page?.slug || page?.id}`,
+  const navigationItems = useMemo(
+    () => [
+      { label: 'Home', href: toTemplatePath('') },
+      { label: 'All Products', href: toTemplatePath('all-products') },
+      { label: 'Categories', href: toTemplatePath('category') },
+      { label: 'About', href: toTemplatePath('about') },
+      { label: 'Contact', href: toTemplatePath('contact') },
+      ...customPages.map((page: any) => ({
+        label: page?.title || 'Page',
+        href: toTemplatePath(`page/${page?.slug || page?.id}`),
       })),
-    ]
-
-    return items.filter((item) => {
-      const fingerprint = `${item.label}|${item.href}`
-      if (seen.has(fingerprint)) return false
-      seen.add(fingerprint)
-      return true
-    })
-  }, [
-    aboutHref,
-    cartHref,
-    checkoutHref,
-    contactHref,
-    customPages,
-    firstProductHref,
-    homeHref,
-    isLoggedIn,
-    loginHref,
-    ordersHref,
-    profileHref,
-    registerHref,
-    shopHref,
-    vendorId,
-  ])
+    ],
+    [customPages, pathname, vendorId]
+  )
 
   useEffect(() => {
     if (!vendorId) return
@@ -188,15 +105,15 @@ export function WhiteRoseNavbar() {
         const quantity = Number(data?.cart?.total_quantity)
         if (Number.isFinite(quantity) && quantity >= 0) {
           setCartCount(quantity)
-        } else {
-          const fallback = Array.isArray(data?.cart?.items)
-            ? data.cart.items.reduce(
-                (sum: number, item: any) => sum + Number(item?.quantity || 0),
-                0
-              )
-            : 0
-          setCartCount(fallback)
+          return
         }
+        const fallback = Array.isArray(data?.cart?.items)
+          ? data.cart.items.reduce(
+              (sum: number, item: any) => sum + Number(item?.quantity || 0),
+              0
+            )
+          : 0
+        setCartCount(fallback)
       } catch {
         setCartCount(0)
       }
@@ -231,56 +148,31 @@ export function WhiteRoseNavbar() {
     event.preventDefault()
     const normalized = searchText.trim().toLowerCase()
     if (!normalized) {
-      router.push(shopHref)
+      router.push(toTemplatePath('all-products'))
       return
     }
     const exact = products.find(
       (product) => String(product?.productName || '').toLowerCase() === normalized
     )
     if (exact?._id) {
-      router.push(`/template/${vendorId}/product/${exact._id}`)
+      router.push(toTemplatePath(`product/${exact._id}`))
       return
     }
     const partial = products.find((product) =>
       String(product?.productName || '').toLowerCase().includes(normalized)
     )
     if (partial?._id) {
-      router.push(`/template/${vendorId}/product/${partial._id}`)
+      router.push(toTemplatePath(`product/${partial._id}`))
       return
     }
-    router.push(shopHref)
+    router.push(toTemplatePath('all-products'))
   }
 
   return (
-    <header className='sticky top-0 z-50 border-b border-[#dce0e8] bg-white shadow-[0_1px_8px_rgba(15,23,42,0.06)]'>
-      <div className='hidden border-b border-[#e9edf3] bg-[#f8fafc] lg:block'>
-        <div className='mx-auto flex max-w-[1500px] items-center justify-between px-8 py-2 text-[14px] text-[#4b5563]'>
-          <div className='space-x-4'>
-            <Link href={contactHref} className='hover:text-[#0b74c6]'>
-              Franchise Enquiry
-            </Link>
-            <span>|</span>
-            <Link href={registerHref} className='hover:text-[#0b74c6]'>
-              Warranty Registration
-            </Link>
-            <span>|</span>
-            <Link href={ordersHref} className='hover:text-[#0b74c6]'>
-              Track your order
-            </Link>
-          </div>
-          <div>
-            <span className='font-semibold text-[#0b74c6]'>Best Deals</span>
-          </div>
-        </div>
-      </div>
-
+    <header className='sticky top-0 z-50 border-b border-[#dfe3eb] bg-white shadow-[0_8px_24px_rgba(15,23,42,0.08)]'>
       <div className='mx-auto flex max-w-[1500px] items-center gap-4 px-4 py-4 md:px-8'>
-        <Link
-          href={homeHref}
-          className='flex shrink-0 items-center gap-2'
-          data-template-section='branding'
-        >
-          <div className='h-11 w-11 overflow-hidden rounded-sm border border-[#d9dfe8] bg-white'>
+        <Link href={toTemplatePath('')} className='flex shrink-0 items-center gap-3' data-template-section='branding'>
+          <div className='h-12 w-12 overflow-hidden rounded-xl border border-[#dfe3eb] bg-white shadow-sm'>
             <img
               src={
                 template?.components?.logo ||
@@ -293,35 +185,46 @@ export function WhiteRoseNavbar() {
               data-template-component='components.logo'
             />
           </div>
-          <span className='hidden text-[20px] font-semibold text-[#0b74c6] sm:block'>
-            {template?.business_name || 'White Rose'}
-          </span>
+          <div className='hidden min-w-0 sm:block'>
+            <p className='line-clamp-1 text-lg font-semibold text-[#172337]'>
+              {template?.business_name || vendor?.registrar_name || vendor?.name || 'White Rose Market'}
+            </p>
+            <p className='text-xs font-medium uppercase tracking-[0.16em] text-[#2874f0]'>
+              B2C marketplace
+            </p>
+          </div>
         </Link>
 
         <form
           onSubmit={handleSearchSubmit}
-          className='relative hidden min-w-0 flex-1 items-center rounded-full border border-[#d6dbe5] bg-white px-4 py-2 lg:flex'
+          className='relative hidden min-w-0 flex-1 items-center overflow-visible rounded-2xl border border-[#cfd7e6] bg-[#f8fafc] px-4 py-2 shadow-inner lg:flex'
         >
+          <button
+            type='button'
+            className='mr-3 inline-flex h-9 items-center rounded-xl bg-[#2874f0] px-3 text-xs font-semibold uppercase tracking-[0.14em] text-white'
+          >
+            All
+          </button>
           <input
             value={searchText}
             onChange={(event) => setSearchText(event.target.value)}
-            placeholder='Search for products'
-            className='min-w-0 flex-1 bg-transparent text-[16px] text-[#2f3640] outline-none placeholder:text-[#7b8492]'
+            placeholder='Search for products, categories, and brands'
+            className='min-w-0 flex-1 bg-transparent text-[15px] text-[#172337] outline-none placeholder:text-[#7a8797]'
           />
           <button
             type='submit'
-            className='inline-flex h-9 w-9 items-center justify-center rounded-full text-[#6b7280] transition hover:bg-[#f1f4f8] hover:text-[#0b74c6]'
+            className='inline-flex h-10 w-10 items-center justify-center rounded-xl bg-[#ff9f00] text-white transition hover:bg-[#f08b00]'
           >
             <Search className='h-5 w-5' />
           </button>
 
           {productSuggestions.length > 0 ? (
-            <div className='absolute left-0 right-0 top-[calc(100%+10px)] z-50 rounded-xl border border-[#dce2eb] bg-white p-2 shadow-xl'>
+            <div className='absolute left-0 right-0 top-[calc(100%+10px)] z-50 rounded-2xl border border-[#dfe3eb] bg-white p-2 shadow-2xl'>
               {productSuggestions.map((product) => (
                 <Link
                   key={product?._id || product?.productName}
-                  href={product?._id ? `/template/${vendorId}/product/${product._id}` : shopHref}
-                  className='block rounded-md px-3 py-2 text-[15px] text-[#2f3640] transition hover:bg-[#f5f7fb]'
+                  href={product?._id ? toTemplatePath(`product/${product._id}`) : toTemplatePath('all-products')}
+                  className='block rounded-xl px-3 py-2 text-[15px] text-[#172337] transition hover:bg-[#f5f7fb]'
                   onClick={() => setSearchText('')}
                 >
                   {product?.productName || 'Product'}
@@ -332,21 +235,24 @@ export function WhiteRoseNavbar() {
         </form>
 
         <div className='ml-auto hidden items-center gap-5 lg:flex'>
-          <Link href={shopHref} className='text-[#1f2937] transition hover:text-[#0b74c6]' title='Wishlist'>
+          <div className='hidden items-center gap-2 rounded-xl bg-[#f8fafc] px-3 py-2 xl:inline-flex'>
+            <MapPin className='h-4 w-4 text-[#2874f0]' />
+            <span className='text-sm text-[#42526b]'>
+              {vendor?.city || vendor?.state || 'Across India'}
+            </span>
+          </div>
+          <Link href={toTemplatePath('all-products')} className='text-[#172337] transition hover:text-[#2874f0]' title='Wishlist'>
             <Heart className='h-6 w-6' />
           </Link>
-          <Link href={cartHref} className='relative text-[#1f2937] transition hover:text-[#0b74c6]' title='Cart'>
+          <Link href={toTemplatePath('cart')} className='relative text-[#172337] transition hover:text-[#2874f0]' title='Cart'>
             <ShoppingCart className='h-6 w-6' />
-            <span className='absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#0b74c6] px-1 text-[11px] font-bold text-white'>
+            <span className='absolute -right-2 -top-2 inline-flex h-5 min-w-5 items-center justify-center rounded-full bg-[#2874f0] px-1 text-[11px] font-bold text-white'>
               {cartCount}
             </span>
           </Link>
-          <Link
-            href={isLoggedIn ? profileHref : loginHref}
-            className='inline-flex items-center gap-2 text-[18px] font-medium text-[#1f2937] hover:text-[#0b74c6]'
-          >
-            <UserRound className='h-6 w-6' />
-            {isLoggedIn ? 'My Account' : 'Login / Register'}
+          <Link href={isLoggedIn ? toTemplatePath('profile') : toTemplatePath('login')} className='inline-flex items-center gap-2 text-sm font-semibold text-[#172337] transition hover:text-[#2874f0]'>
+            <UserRound className='h-5 w-5' />
+            {isLoggedIn ? 'My Account' : 'Sign in'}
           </Link>
           {isLoggedIn ? (
             <button
@@ -356,134 +262,146 @@ export function WhiteRoseNavbar() {
                 setIsLoggedIn(false)
                 setCartCount(0)
               }}
-              className='text-sm font-semibold uppercase tracking-[0.08em] text-[#6b7280] transition hover:text-[#0b74c6]'
+              className='rounded-xl border border-[#cfd7e6] px-3 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-[#172337] transition hover:border-[#2874f0] hover:text-[#2874f0]'
             >
               Logout
             </button>
-          ) : null}
+          ) : (
+            <Link href={toTemplatePath('register')} className='rounded-xl bg-[#ff9f00] px-4 py-2 text-xs font-semibold uppercase tracking-[0.14em] text-white transition hover:bg-[#f08b00]'>
+              Register
+            </Link>
+          )}
         </div>
 
         <button
           type='button'
           onClick={() => setMobileMenuOpen((prev) => !prev)}
-          className='ml-auto inline-flex items-center justify-center rounded-md border border-[#d6dbe5] p-2 text-[#374151] lg:hidden'
+          className='ml-auto inline-flex items-center justify-center rounded-xl border border-[#dfe3eb] p-2 text-[#172337] lg:hidden'
         >
           {mobileMenuOpen ? <X className='h-6 w-6' /> : <Menu className='h-6 w-6' />}
         </button>
       </div>
 
-      <div className='hidden border-t border-[#edf0f5] lg:block'>
-        <div className='mx-auto flex max-w-[1500px] items-center gap-7 px-8 py-3 text-[30px] font-medium text-[#2f3640]'>
-          <Link
-            href={homeHref}
-            className={`transition hover:text-[#0b74c6] ${pathname === homeHref ? 'text-[#0b74c6]' : ''}`}
-          >
-            Home
-          </Link>
-          <Link
-            href={aboutHref}
-            className={`transition hover:text-[#0b74c6] ${pathname?.includes('/about') ? 'text-[#0b74c6]' : ''}`}
-          >
-            About Us
-          </Link>
+      <div className='hidden border-t border-[#edf1f5] bg-[#f8fafc] lg:block'>
+        <div className='mx-auto flex max-w-[1500px] items-center gap-7 px-8 py-3 text-sm font-semibold text-[#172337]'>
           <div className='relative'>
             <button
               type='button'
-              onClick={() => setPagesOpen((prev) => !prev)}
-              className='inline-flex items-center gap-1 transition hover:text-[#0b74c6]'
+              onClick={() => setDepartmentsOpen((prev) => !prev)}
+              className='inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 transition hover:text-[#2874f0]'
             >
-              Products
-              <ChevronDown className={`h-5 w-5 transition ${pagesOpen ? 'rotate-180' : ''}`} />
+              Departments
+              <ChevronDown className={`h-4 w-4 transition ${departmentsOpen ? 'rotate-180' : ''}`} />
             </button>
-            {pagesOpen ? (
-              <div className='absolute left-0 top-[calc(100%+10px)] z-50 max-h-[420px] w-[340px] overflow-auto rounded-xl border border-[#dce2eb] bg-white p-2 shadow-xl'>
+            {departmentsOpen ? (
+              <div className='absolute left-0 top-[calc(100%+10px)] z-50 max-h-[420px] w-[340px] overflow-auto rounded-2xl border border-[#dfe3eb] bg-white p-2 shadow-2xl'>
                 <Link
-                  href={shopHref}
-                  className='block rounded-md px-3 py-2 text-[16px] text-[#2f3640] hover:bg-[#f5f7fb]'
-                  onClick={() => setPagesOpen(false)}
+                  href={toTemplatePath('all-products')}
+                  className='block rounded-xl px-3 py-2 text-[15px] text-[#172337] hover:bg-[#f5f7fb]'
+                  onClick={() => setDepartmentsOpen(false)}
                 >
-                  All Products
+                  View full catalog
                 </Link>
                 {categoryEntries.map((category, index) => (
                   <Link
-                    key={`${category.href}-${category.label}-${index}`}
+                    key={`${category.href}-${index}`}
                     href={category.href}
-                    className='block rounded-md px-3 py-2 text-[16px] text-[#2f3640] hover:bg-[#f5f7fb]'
-                    onClick={() => setPagesOpen(false)}
+                    className='block rounded-xl px-3 py-2 text-[15px] text-[#172337] hover:bg-[#f5f7fb]'
+                    onClick={() => setDepartmentsOpen(false)}
                   >
                     {category.label}
-                  </Link>
-                ))}
-                {customPages.map((page: any) => (
-                  <Link
-                    key={page?.id || page?.slug || page?.title}
-                    href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
-                    className='block rounded-md px-3 py-2 text-[16px] text-[#2f3640] hover:bg-[#f5f7fb]'
-                    onClick={() => setPagesOpen(false)}
-                  >
-                    {page?.title || 'Custom Page'}
                   </Link>
                 ))}
               </div>
             ) : null}
           </div>
-          <Link
-            href={contactHref}
-            className={`transition hover:text-[#0b74c6] ${pathname?.includes('/contact') ? 'text-[#0b74c6]' : ''}`}
-          >
-            Contact Us
+
+          {navigationItems.slice(0, 5).map((item) => (
+            <Link
+              key={`${item.label}-${item.href}`}
+              href={item.href}
+              className={`transition hover:text-[#2874f0] ${pathname === item.href ? 'text-[#2874f0]' : ''}`}
+            >
+              {item.label}
+            </Link>
+          ))}
+
+          {customPages.slice(0, 2).map((page: any, index: number) => (
+            <Link
+              key={`${page?.slug || page?.id || index}`}
+              href={toTemplatePath(`page/${page?.slug || page?.id}`)}
+              className='transition hover:text-[#2874f0]'
+            >
+              {page?.title || 'Page'}
+            </Link>
+          ))}
+
+          <Link href={toTemplatePath('orders')} className='transition hover:text-[#2874f0]'>
+            Orders
           </Link>
-          <Link
-            href={shopHref}
-            className='ml-auto rounded-md bg-[#0b74c6] px-6 py-2 text-[18px] font-semibold text-white transition hover:bg-[#085ea0]'
-          >
-            GET A QUOTE
+
+          <Link href={toTemplatePath('contact')} className='ml-auto transition hover:text-[#2874f0]'>
+            Customer Care
           </Link>
         </div>
       </div>
 
       {mobileMenuOpen ? (
-        <div className='border-t border-[#edf0f5] bg-white px-4 py-5 lg:hidden'>
+        <div className='border-t border-[#edf1f5] bg-white px-4 py-5 lg:hidden'>
           <form onSubmit={handleSearchSubmit} className='mb-4 flex items-center gap-2'>
             <input
               value={searchText}
               onChange={(event) => setSearchText(event.target.value)}
-              placeholder='Search for products'
-              className='min-w-0 flex-1 rounded-lg border border-[#d6dbe5] px-3 py-2 text-[15px] outline-none'
+              placeholder='Search products'
+              className='min-w-0 flex-1 rounded-xl border border-[#dfe3eb] bg-[#f8fafc] px-3 py-2.5 text-[15px] outline-none'
             />
-            <button
-              type='submit'
-              className='inline-flex h-10 w-10 items-center justify-center rounded-lg bg-[#0b74c6] text-white'
-            >
+            <button type='submit' className='inline-flex h-11 w-11 items-center justify-center rounded-xl bg-[#ff9f00] text-white'>
               <Search className='h-5 w-5' />
             </button>
           </form>
 
-          <div className='flex flex-col gap-2 text-[16px] text-[#2f3640]'>
-            {mobileNavItems.map((item, index) => (
+          <div className='flex flex-col gap-2 text-[15px] text-[#172337]'>
+            {navigationItems.map((item, index) => (
               <Link
-                key={`${item.id}-${item.href}-${index}`}
+                key={`${item.href}-${index}`}
                 href={item.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className='rounded-md px-1 py-1.5 transition hover:text-[#0b74c6]'
+                className='rounded-xl px-2 py-2 transition hover:bg-[#f5f7fb] hover:text-[#2874f0]'
               >
                 {item.label}
               </Link>
             ))}
-            <div className='mt-2 border-t border-[#eceff4] pt-3'>
-              <p className='mb-2 text-xs uppercase tracking-[0.12em] text-[#6b7280]'>Categories</p>
-              <div className='grid grid-cols-2 gap-2'>
-                {categoryEntries.slice(0, 8).map((category, index) => (
-                  <Link
-                    key={`mobile-${category.href}-${category.label}-${index}`}
-                    href={category.href}
-                    onClick={() => setMobileMenuOpen(false)}
-                    className='rounded-md border border-[#e4e7ee] px-2 py-1.5 text-sm text-[#374151] hover:border-[#0b74c6] hover:text-[#0b74c6]'
-                  >
-                    {category.label}
-                  </Link>
-                ))}
-              </div>
+            <Link
+              href={toTemplatePath('cart')}
+              onClick={() => setMobileMenuOpen(false)}
+              className='rounded-xl px-2 py-2 transition hover:bg-[#f5f7fb] hover:text-[#2874f0]'
+            >
+              Cart ({cartCount})
+            </Link>
+            <Link
+              href={isLoggedIn ? toTemplatePath('profile') : toTemplatePath('login')}
+              onClick={() => setMobileMenuOpen(false)}
+              className='rounded-xl px-2 py-2 transition hover:bg-[#f5f7fb] hover:text-[#2874f0]'
+            >
+              {isLoggedIn ? 'My Account' : 'Sign in'}
+            </Link>
+          </div>
+
+          <div className='mt-4 border-t border-[#edf1f5] pt-4'>
+            <p className='mb-3 text-xs font-semibold uppercase tracking-[0.18em] text-[#7a8797]'>
+              Departments
+            </p>
+            <div className='grid grid-cols-2 gap-2'>
+              {categoryEntries.slice(0, 8).map((category, index) => (
+                <Link
+                  key={`mobile-${category.href}-${index}`}
+                  href={category.href}
+                  onClick={() => setMobileMenuOpen(false)}
+                  className='rounded-xl border border-[#dfe3eb] bg-[#f8fafc] px-3 py-2 text-sm text-[#172337] hover:border-[#2874f0] hover:text-[#2874f0]'
+                >
+                  {category.label}
+                </Link>
+              ))}
             </div>
           </div>
         </div>

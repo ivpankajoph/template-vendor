@@ -63,7 +63,7 @@ export const TEMPLATE_VARIANTS: TemplateVariant[] = [
     key: 'whiterose',
     name: 'White Rose',
     description:
-      'Modern furniture storefront with premium category rails, launch cards, and clean utility navigation.',
+      'Amazon/Flipkart-style B2C storefront with department rails, trust-led merchandising, and conversion-first catalog pages.',
   },
 ]
 
