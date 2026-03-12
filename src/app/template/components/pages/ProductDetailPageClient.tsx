@@ -416,9 +416,9 @@ export default function ProductDetailPage() {
   const subtotal = basePrice * quantity;
 
   const productDescription =
-    selectedVariant?.variantMetaDescription ||
     product?.description ||
     product?.shortDescription ||
+    selectedVariant?.variantMetaDescription ||
     "No description available.";
   const productShortDescription = String(product?.shortDescription || "").trim();
 
