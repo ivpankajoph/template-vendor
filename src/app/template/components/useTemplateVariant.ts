@@ -67,7 +67,7 @@ export const TEMPLATE_VARIANTS: TemplateVariant[] = [
   },
 ]
 
-export const DEFAULT_TEMPLATE_VARIANT: TemplateVariantKey = 'classic'
+export const DEFAULT_TEMPLATE_VARIANT: TemplateVariantKey = 'mquiq'
 
 const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => {
   if (typeof value !== 'string') return undefined
@@ -153,7 +153,11 @@ export function useTemplateVariant() {
       storedKey ||
       normalizeVariantKey(rawKey)
     const match = TEMPLATE_VARIANTS.find((item) => item.key === key)
-    return match || TEMPLATE_VARIANTS[0]
+    return (
+      match ||
+      TEMPLATE_VARIANTS.find((item) => item.key === DEFAULT_TEMPLATE_VARIANT) ||
+      TEMPLATE_VARIANTS[0]
+    )
   }, [pathname, rawKey, templateQuery, vendorId])
 
   useEffect(() => {
