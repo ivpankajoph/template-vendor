@@ -9,6 +9,7 @@ import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildTemplateScopedPath } from "@/lib/template-route";
+import { getRichTextPreview, stripRichTextToPlainText } from "@/lib/rich-text";
 import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
 import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
 
@@ -122,7 +123,7 @@ export default function CategoryProductsPage() {
 
     const searched = list.filter((product: any) => {
       const name = normalize(product?.productName).toLowerCase();
-      const desc = normalize(product?.shortDescription).toLowerCase();
+      const desc = normalize(stripRichTextToPlainText(product?.shortDescription || "")).toLowerCase();
       const term = searchTerm.toLowerCase();
       return name.includes(term) || desc.includes(term);
     });
@@ -247,7 +248,7 @@ export default function CategoryProductsPage() {
                 <p
                   className={`${isStudio ? "text-slate-400" : isTrend ? "text-slate-600" : "text-gray-500"} text-sm mb-2 line-clamp-2`}
                 >
-                  {product.shortDescription || "No description"}
+                  {getRichTextPreview(product.shortDescription || "No description", 120)}
                 </p>
                 <p className="text-lg font-semibold">
                   ₹{product?.variants?.[0]?.finalPrice || product?.finalPrice || "--"}

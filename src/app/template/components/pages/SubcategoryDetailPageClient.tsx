@@ -7,6 +7,7 @@ import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useSelector } from "react-redux";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { getRichTextPreview } from "@/lib/rich-text";
 
 type Subcategory = {
   _id?: string;
@@ -191,7 +192,7 @@ export default function SubcategoryDetailPageClient() {
                     {product.productName || "Untitled Product"}
                   </p>
                   <p className="line-clamp-2 text-xs text-slate-500">
-                    {product.shortDescription || "No description yet."}
+                    {getRichTextPreview(product.shortDescription || "No description yet.", 120)}
                   </p>
                   <span className="text-sm font-semibold text-slate-900">
                     Rs. {getMinPrice(product.variants).toLocaleString()}

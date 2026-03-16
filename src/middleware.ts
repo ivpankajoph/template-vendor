@@ -26,6 +26,11 @@ const normalizeSlug = (value?: string) =>
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const normalizeWebsiteId = (value?: string) => String(value || "").trim();
+
+const getWebsiteIdFromUrl = (url: URL) =>
+  normalizeWebsiteId(url.searchParams.get("website") || url.searchParams.get("website_id") || "");
+
 const getPreviewContext = (segments: string[]) => {
   if (!(segments[0] === "template" && segments[1] && segments[2] === "preview" && segments[3])) {
     return null;
@@ -54,6 +59,10 @@ const getCityFromStandardTemplatePath = (segments: string[]) => {
 export function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-current-path", request.nextUrl.pathname || "/");
+  const requestWebsiteId = getWebsiteIdFromUrl(request.nextUrl);
+  if (requestWebsiteId) {
+    requestHeaders.set("x-template-website", requestWebsiteId);
+  }
 
   const pathname = request.nextUrl.pathname || "/";
   const segments = pathname.split("/").filter(Boolean);
@@ -128,6 +137,7 @@ export function middleware(request: NextRequest) {
       try {
         const refererUrl = new URL(referer);
         const refererSegments = refererUrl.pathname.split("/").filter(Boolean);
+        const refererWebsiteId = getWebsiteIdFromUrl(refererUrl);
         const previewContext =
           refererSegments[0] === "template" && refererSegments[1] === vendorId
             ? getPreviewContext(refererSegments)
@@ -139,6 +149,9 @@ export function middleware(request: NextRequest) {
           redirectUrl.pathname = `/template/${vendorId}/preview/${previewContext.templateKey}/${previewContext.citySlug}${
             rest ? `/${rest}` : ""
           }`;
+          if (!requestWebsiteId && refererWebsiteId) {
+            redirectUrl.searchParams.set("website", refererWebsiteId);
+          }
           return NextResponse.redirect(redirectUrl);
         }
 
@@ -152,6 +165,9 @@ export function middleware(request: NextRequest) {
           const rest = segments.slice(2).join("/");
           const redirectUrl = request.nextUrl.clone();
           redirectUrl.pathname = `/template/${vendorId}/${refererCity}${rest ? `/${rest}` : ""}`;
+          if (!requestWebsiteId && refererWebsiteId) {
+            redirectUrl.searchParams.set("website", refererWebsiteId);
+          }
           return NextResponse.redirect(redirectUrl);
         }
       } catch {

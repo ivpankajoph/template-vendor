@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { usePathname } from 'next/navigation'
+import { usePathname, useSearchParams } from 'next/navigation'
 import { fetchAlltemplatepageTemplate } from '@/store/slices/alltemplateslice'
 import { fetchVendorProfile } from '@/store/slices/vendorProfileSlice'
 import type { AppDispatch, RootState } from '@/store'
 import { getTemplateCityFromPath } from '@/lib/template-route'
+import { getTemplateWebsiteIdFromSearch } from '@/lib/template-website'
 
 type Props = {
   vendorId?: string
@@ -19,16 +20,19 @@ const REQUEST_RETRY_COOLDOWN_MS = 30 * 1000
 export function TemplateDataLoader({ vendorId }: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const pathname = usePathname()
+  const searchParams = useSearchParams()
   const focusRefreshRef = useRef(0)
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
   const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
-  const templateRequestKey = `${vendorId || ''}::${citySlug}`
+  const websiteId = getTemplateWebsiteIdFromSearch(searchParams)
+  const templateRequestKey = `${vendorId || ''}::${citySlug}::${websiteId || 'default'}`
   const {
     templateData,
     templateLoading,
     templateVendorId,
     templateCitySlug,
+    templateWebsiteId,
     templateLastFetchedAt,
     vendorProfile,
     vendorLoading,
@@ -39,6 +43,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
     templateLoading: Boolean(state.alltemplatepage?.loading),
     templateVendorId: state.alltemplatepage?.currentVendorId || null,
     templateCitySlug: state.alltemplatepage?.currentCitySlug || null,
+    templateWebsiteId: state.alltemplatepage?.currentWebsiteId || null,
     templateLastFetchedAt: state.alltemplatepage?.lastFetchedAt || null,
     vendorProfile: state.vendorprofilepage?.vendor,
     vendorLoading: Boolean(state.vendorprofilepage?.loading),
@@ -64,6 +69,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
     const templateIsFresh =
       templateVendorId === vendorId &&
       (templateCitySlug || 'all') === citySlug &&
+      (templateWebsiteId || '') === (websiteId || '') &&
       Boolean(templateData) &&
       typeof templateLastFetchedAt === 'number' &&
       now - templateLastFetchedAt < DATA_STALE_MS
@@ -79,7 +85,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
       !templateLoading &&
       canDispatchRequest(templateRequestByVendorRef.current, templateRequestKey, now)
     ) {
-      dispatch(fetchAlltemplatepageTemplate({ vendorId, citySlug }))
+      dispatch(fetchAlltemplatepageTemplate({ vendorId, citySlug, websiteId }))
     }
     if (
       !vendorIsFresh &&
@@ -95,8 +101,10 @@ export function TemplateDataLoader({ vendorId }: Props) {
     templateLastFetchedAt,
     templateLoading,
     templateVendorId,
+    templateWebsiteId,
     vendorId,
     citySlug,
+    websiteId,
     templateRequestKey,
     vendorLastFetchedAt,
     vendorLoading,

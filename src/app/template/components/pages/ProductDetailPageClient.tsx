@@ -25,7 +25,7 @@ import ProductEnquiryDialog from "@/app/template/components/pages/ProductEnquiry
 import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
-import HyperlinkText from "@/components/HyperlinkText";
+import RichTextContent from "@/components/RichTextContent";
 
 type VariantImage = {
   url?: string;
@@ -712,7 +712,7 @@ export default function ProductDetailPage() {
                 </div>
               </div>
               {productShortDescription ? (
-                <HyperlinkText
+                <RichTextContent
                   text={productShortDescription}
                   className={`mt-3 text-sm leading-relaxed ${
                     subtleTextClass
@@ -976,7 +976,7 @@ export default function ProductDetailPage() {
           <div className="py-6">
             {activeTab === "description" && (
               <div className={`rounded-2xl p-5 ${panelClass}`}>
-                <HyperlinkText
+                <RichTextContent
                   text={productDescription}
                   className={`${isStudio ? "text-slate-300" : "text-slate-700"} leading-relaxed`}
                 />

@@ -17,6 +17,7 @@ import {
   Factory,
   RefreshCw,
 } from 'lucide-react'
+import { getRichTextPreview } from '@/lib/rich-text'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 
 type TemplateProduct = {
@@ -353,7 +354,7 @@ export function MquiqHome() {
       title: product?.productName || `Product ${index + 1}`,
       subtitle:
         product?.brand ||
-        product?.shortDescription ||
+        getRichTextPreview(product?.shortDescription || '', 100) ||
         'Industrial-grade storage solution',
       image: getProductImage(
         product,

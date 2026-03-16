@@ -11,6 +11,7 @@ import { MquiqHome } from './mquiq/MquiqHome'
 import { PoupqzHome } from './poupqz/PoupqzHome'
 import { OragzeHome } from './oragze/OragzeHome'
 import { WhiteRoseHome } from './whiterose/WhiteRoseHome'
+import { getRichTextPreview } from '@/lib/rich-text'
 
 type Product = {
   _id?: string
@@ -549,7 +550,7 @@ export function TemplateHomeRenderer() {
                     </p>
                   </Link>
                   <p className='mt-1 line-clamp-2 text-xs text-slate-500'>
-                    {product.shortDescription || 'No description yet.'}
+                    {getRichTextPreview(product.shortDescription || 'No description yet.', 120)}
                   </p>
                   <div className='mt-3 flex items-center justify-between gap-2'>
                     <span className='text-lg font-bold text-slate-900'>
@@ -771,7 +772,7 @@ export function TemplateHomeRenderer() {
                   </p>
                 </Link>
                 <p className='line-clamp-2 text-xs text-slate-500'>
-                  {product.shortDescription || 'No description yet.'}
+                  {getRichTextPreview(product.shortDescription || 'No description yet.', 120)}
                 </p>
                 <div className='flex items-center justify-between gap-3'>
                   <span className='text-sm font-semibold text-slate-900'>

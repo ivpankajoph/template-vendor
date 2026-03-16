@@ -162,8 +162,16 @@ const normalizeCitySlug = (value: unknown) =>
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "") || "all";
 
-const buildMetadataScopeKey = (vendorId: string, citySlug: string) =>
-  `${vendorId}::${normalizeCitySlug(citySlug)}`;
+const normalizeWebsiteId = (value: unknown) => String(value || "").trim();
+
+const buildMetadataScopeKey = (
+  vendorId: string,
+  citySlug: string,
+  websiteId?: string
+) =>
+  `${vendorId}::${normalizeCitySlug(citySlug)}::${
+    normalizeWebsiteId(websiteId) || "default"
+  }`;
 
 const toCityLabel = (citySlug: string) => {
   const normalized = normalizeCitySlug(citySlug);
@@ -243,6 +251,19 @@ const getRequestCitySlug = async () => {
   }
 };
 
+const getRequestWebsiteId = async () => {
+  try {
+    const headerStore = await headers();
+    return normalizeWebsiteId(
+      headerStore.get("x-template-website") ||
+        headerStore.get("x-website-id") ||
+        ""
+    );
+  } catch {
+    return "";
+  }
+};
+
 type FetchJsonResult = {
   ok: boolean;
   status: number;
@@ -276,14 +297,19 @@ const fetchJson = async (url: string): Promise<FetchJsonResult> => {
 };
 
 const fetchTemplatePreview = cache(
-  async (vendorId: string, citySlug: string = "all"): Promise<TemplatePreviewPayload> => {
+  async (
+    vendorId: string,
+    citySlug: string = "all",
+    websiteId?: string
+  ): Promise<TemplatePreviewPayload> => {
     const apiBase = getApiBase();
     if (!apiBase || !vendorId) {
       return { template: null, products: [] };
     }
 
     const resolvedCity = normalizeCitySlug(citySlug);
-    const scopeKey = buildMetadataScopeKey(vendorId, resolvedCity);
+    const resolvedWebsiteId = normalizeWebsiteId(websiteId);
+    const scopeKey = buildMetadataScopeKey(vendorId, resolvedCity, resolvedWebsiteId);
 
     const now = Date.now();
     const blockedUntil = metadataNotFoundByVendor.get(scopeKey) || 0;
@@ -292,8 +318,11 @@ const fetchTemplatePreview = cache(
     }
 
     const cityQuery = `city=${encodeURIComponent(resolvedCity)}`;
-    const previewUrl = `${apiBase}/templates/${encodeURIComponent(vendorId)}/preview?${cityQuery}`;
-    const fallbackUrl = `${apiBase}/templates/template-all?vendor_id=${encodeURIComponent(vendorId)}&${cityQuery}`;
+    const websiteQuery = resolvedWebsiteId
+      ? `&website_id=${encodeURIComponent(resolvedWebsiteId)}`
+      : "";
+    const previewUrl = `${apiBase}/templates/${encodeURIComponent(vendorId)}/preview?${cityQuery}${websiteQuery}`;
+    const fallbackUrl = `${apiBase}/templates/template-all?vendor_id=${encodeURIComponent(vendorId)}&${cityQuery}${websiteQuery}`;
     const preferredEndpoint = metadataEndpointPreference.get(scopeKey);
     const endpointOrder =
       preferredEndpoint === "fallback"
@@ -446,6 +475,7 @@ export async function buildTemplateMetadata(
 ): Promise<Metadata> {
   const { vendorId, page, productId, categoryId, slug } = options;
   const citySlug = await getRequestCitySlug();
+  const websiteId = await getRequestWebsiteId();
   const pagePath = buildTemplatePath(options);
   const applyAdminSeo = async (metadata: Metadata) => {
     const override = await fetchSeoOverride({
@@ -454,7 +484,11 @@ export async function buildTemplateMetadata(
     });
     return mergeMetadataWithSeoOverride(metadata, override);
   };
-  const { template, products } = await fetchTemplatePreview(vendorId, citySlug);
+  const { template, products } = await fetchTemplatePreview(
+    vendorId,
+    citySlug,
+    websiteId
+  );
   const storeName = getStoreName(template);
   const homePage = template?.components?.home_page;
   const aboutPage = template?.components?.about_page;

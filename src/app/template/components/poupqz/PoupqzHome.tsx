@@ -22,6 +22,7 @@ import {
   BadgeDollarSign,
   Medal,
 } from 'lucide-react'
+import { getRichTextPreview } from '@/lib/rich-text'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import type { ComponentType } from 'react'
 
@@ -306,7 +307,7 @@ export function PoupqzHome() {
         _id: product?._id || '',
         variantId: primary?._id || '',
         title: product?.productName || `Product ${index + 1}`,
-        subtitle: product?.brand || product?.shortDescription || '',
+        subtitle: product?.brand || getRichTextPreview(product?.shortDescription || '', 100) || '',
         image: getProductImage(
           product,
           FEATURED_FALLBACK_IMAGES[index % FEATURED_FALLBACK_IMAGES.length]

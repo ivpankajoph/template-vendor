@@ -12,6 +12,7 @@ interface TemplateState {
   lastErrorAt: number | null;
   currentVendorId: string | null;
   currentCitySlug: string | null;
+  currentWebsiteId: string | null;
   lastFetchedAt: number | null;
 }
 
@@ -24,6 +25,7 @@ const initialState: TemplateState = {
   lastErrorAt: null,
   currentVendorId: null,
   currentCitySlug: null,
+  currentWebsiteId: null,
   lastFetchedAt: null,
 };
 
@@ -46,6 +48,7 @@ type TemplateThunkState = {
 type TemplateFetchArg = {
   vendorId: string;
   citySlug?: string;
+  websiteId?: string;
 };
 
 const normalizeCitySlug = (value?: string) => {
@@ -57,8 +60,10 @@ const normalizeCitySlug = (value?: string) => {
   return slug || "all";
 };
 
-const getRequestKey = (vendorId: string, citySlug?: string) =>
-  `${vendorId}::${normalizeCitySlug(citySlug)}`;
+const normalizeWebsiteId = (value?: string) => String(value || "").trim();
+
+const getRequestKey = (vendorId: string, citySlug?: string, websiteId?: string) =>
+  `${vendorId}::${normalizeCitySlug(citySlug)}::${normalizeWebsiteId(websiteId) || "default"}`;
 
 const asRecord = (value: unknown): Record<string, any> =>
   value && typeof value === "object" && !Array.isArray(value)
@@ -94,14 +99,17 @@ const mergeTemplateDraft = (
   return merged;
 };
 
-const fetchTemplatePayload = async (vendorId: string, citySlug?: string) => {
-  const requestKey = getRequestKey(vendorId, citySlug);
+const fetchTemplatePayload = async (vendorId: string, citySlug?: string, websiteId?: string) => {
+  const requestKey = getRequestKey(vendorId, citySlug, websiteId);
   const preferredEndpoint = templateEndpointPreference.get(requestKey);
   const normalizedCity = normalizeCitySlug(citySlug);
+  const websiteQuery = normalizeWebsiteId(websiteId)
+    ? `&website_id=${encodeURIComponent(normalizeWebsiteId(websiteId))}`
+    : "";
   const previewUrl = `${BASE_URL}/templates/${vendorId}/preview?city=${encodeURIComponent(
     normalizedCity
-  )}`;
-  const fallbackUrl = `${BASE_URL}/templates/template-all?vendor_id=${vendorId}`;
+  )}${websiteQuery}`;
+  const fallbackUrl = `${BASE_URL}/templates/template-all?vendor_id=${vendorId}${websiteQuery}`;
 
   const fetchPreview = async () => {
     const response = await axios.get(previewUrl, { timeout: REQUEST_TIMEOUT_MS });
@@ -138,7 +146,7 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
   "template/fetchAlltemplatepageTemplate",
   async (arg: TemplateFetchArg, { rejectWithValue }) => {
     try {
-      return await fetchTemplatePayload(arg.vendorId, arg.citySlug);
+      return await fetchTemplatePayload(arg.vendorId, arg.citySlug, arg.websiteId);
     } catch (error: any) {
       const status =
         typeof error?.response?.status === "number"
@@ -162,10 +170,11 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
     condition: (arg, { getState }) => {
       const vendor_id = String(arg?.vendorId || "");
       const citySlug = normalizeCitySlug(arg?.citySlug);
+      const websiteId = normalizeWebsiteId(arg?.websiteId);
       if (!vendor_id) return false;
 
       const now = Date.now();
-      const requestKey = getRequestKey(vendor_id, citySlug);
+      const requestKey = getRequestKey(vendor_id, citySlug, websiteId);
       const lastRequestedAt = templateLastRequestByVendorCity.get(requestKey) || 0;
       if (now - lastRequestedAt < MIN_REQUEST_GAP_MS) {
         return false;
@@ -175,7 +184,8 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
       if (
         state?.loading &&
         state.currentVendorId === vendor_id &&
-        normalizeCitySlug(state.currentCitySlug || "all") === citySlug
+        normalizeCitySlug(state.currentCitySlug || "all") === citySlug &&
+        normalizeWebsiteId(state.currentWebsiteId || "") === websiteId
       ) {
         return false;
       }
@@ -183,6 +193,7 @@ export const fetchAlltemplatepageTemplate = createAsyncThunk<
       const inNotFoundCooldown =
         state?.currentVendorId === vendor_id &&
         normalizeCitySlug(state.currentCitySlug || "all") === citySlug &&
+        normalizeWebsiteId(state.currentWebsiteId || "") === websiteId &&
         state.errorStatus === 404 &&
         typeof state.lastErrorAt === "number" &&
         now - state.lastErrorAt < NOT_FOUND_RETRY_MS;
@@ -211,6 +222,7 @@ const templateSlice = createSlice({
       state.lastErrorAt = null;
       state.currentVendorId = null;
       state.currentCitySlug = null;
+      state.currentWebsiteId = null;
       state.lastFetchedAt = null;
     },
     applyTemplatePreviewUpdate: (
@@ -240,9 +252,11 @@ const templateSlice = createSlice({
       .addCase(fetchAlltemplatepageTemplate.pending, (state, action) => {
         const requestedVendorId = action.meta.arg.vendorId;
         const requestedCitySlug = normalizeCitySlug(action.meta.arg.citySlug);
+        const requestedWebsiteId = normalizeWebsiteId(action.meta.arg.websiteId);
         const hasCachedData =
           state.currentVendorId === requestedVendorId &&
           normalizeCitySlug(state.currentCitySlug || "all") === requestedCitySlug &&
+          normalizeWebsiteId(state.currentWebsiteId || "") === requestedWebsiteId &&
           Boolean(state.data);
         state.loading = !hasCachedData;
         state.error = null;
@@ -258,6 +272,7 @@ const templateSlice = createSlice({
           state.loading = false;
           state.currentVendorId = action.meta.arg.vendorId;
           state.currentCitySlug = normalizeCitySlug(action.meta.arg.citySlug);
+          state.currentWebsiteId = normalizeWebsiteId(action.meta.arg.websiteId) || null;
           state.lastFetchedAt = Date.now();
           const payload = action.payload;
           const template =
@@ -286,9 +301,11 @@ const templateSlice = createSlice({
         (state, action) => {
           const requestedVendorId = action?.meta?.arg?.vendorId;
           const requestedCitySlug = normalizeCitySlug(action?.meta?.arg?.citySlug);
+          const requestedWebsiteId = normalizeWebsiteId(action?.meta?.arg?.websiteId);
           const hasCachedData =
             state.currentVendorId === requestedVendorId &&
             normalizeCitySlug(state.currentCitySlug || "all") === requestedCitySlug &&
+            normalizeWebsiteId(state.currentWebsiteId || "") === requestedWebsiteId &&
             Boolean(state.data);
           const payload = action.payload as TemplateApiError | undefined;
           state.loading = false;
@@ -297,6 +314,7 @@ const templateSlice = createSlice({
             state.products = [];
             state.currentVendorId = requestedVendorId || state.currentVendorId;
             state.currentCitySlug = requestedCitySlug || state.currentCitySlug;
+            state.currentWebsiteId = requestedWebsiteId || state.currentWebsiteId;
           }
           state.error = payload?.message || "Failed to fetch template";
           state.errorStatus = payload?.status ?? null;

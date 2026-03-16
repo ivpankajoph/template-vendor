@@ -10,6 +10,7 @@ import {
   whiteRoseGetPricing,
   whiteRoseGetRating,
 } from "./whiterose-utils";
+import { getRichTextPreview } from "@/lib/rich-text";
 
 type WhiteRoseProductCardProps = {
   product: WhiteRoseProduct;
@@ -102,7 +103,10 @@ export function WhiteRoseProductCard({
         </Link>
 
         <p className="line-clamp-2 text-sm leading-5 text-[#5f6c7b]">
-          {product?.shortDescription || "Trusted product listing from this seller catalog."}
+          {getRichTextPreview(
+            product?.shortDescription || "Trusted product listing from this seller catalog.",
+            120
+          )}
         </p>
 
         <div className="flex items-center gap-2 text-sm">
