@@ -25,7 +25,7 @@ export function TemplateDataLoader({ vendorId }: Props) {
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
   const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
-  const websiteId = getTemplateWebsiteIdFromSearch(searchParams)
+  const websiteId = getTemplateWebsiteIdFromSearch(pathname || '/', searchParams)
   const templateRequestKey = `${vendorId || ''}::${citySlug}::${websiteId || 'default'}`
   const {
     templateData,

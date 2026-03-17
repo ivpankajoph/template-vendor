@@ -14,6 +14,7 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "profile",
   "register",
   "subcategory",
+  "website",
 ]);
 
 const normalizeSegment = (value?: string) =>
@@ -27,6 +28,7 @@ export type TemplateRouteContext = {
   isPreview: boolean;
   templateKey?: string;
   citySlug: string;
+  websiteSlug?: string;
 };
 
 export const getTemplateRouteContext = (
@@ -37,29 +39,41 @@ export const getTemplateRouteContext = (
   const targetVendorId = String(vendorId || "");
 
   if (segments[0] !== "template" || !segments[1] || (targetVendorId && segments[1] !== targetVendorId)) {
-    return { isPreview: false, citySlug: "all" };
+    return { isPreview: false, citySlug: "all", websiteSlug: "" };
   }
 
   if (segments[2] === "preview" && segments[3]) {
-    const candidateCity = normalizeSegment(segments[4]);
-    const citySlug =
-      candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity)
-        ? candidateCity
-        : "all";
+    let index = 4;
+    const candidateCity = normalizeSegment(segments[index]);
+    const hasCity = candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity);
+    const citySlug = hasCity ? candidateCity : "all";
+    if (hasCity) index += 1;
+
+    const websiteSlug =
+      segments[index] === "website" && segments[index + 1]
+        ? normalizeSegment(segments[index + 1])
+        : "";
+
     return {
       isPreview: true,
       templateKey: segments[3],
       citySlug,
+      websiteSlug,
     };
   }
 
-  const candidateCity = normalizeSegment(segments[2]);
-  const citySlug =
-    candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity)
-      ? candidateCity
-      : "all";
+  let index = 2;
+  const candidateCity = normalizeSegment(segments[index]);
+  const hasCity = candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity);
+  const citySlug = hasCity ? candidateCity : "all";
+  if (hasCity) index += 1;
 
-  return { isPreview: false, citySlug };
+  const websiteSlug =
+    segments[index] === "website" && segments[index + 1]
+      ? normalizeSegment(segments[index + 1])
+      : "";
+
+  return { isPreview: false, citySlug, websiteSlug };
 };
 
 export const buildTemplateScopedPath = ({
@@ -75,13 +89,19 @@ export const buildTemplateScopedPath = ({
   const normalizedSuffix = String(suffix || "").replace(/^\/+/, "");
   const suffixPart = normalizedSuffix ? `/${normalizedSuffix}` : "";
   const cityPart = context.citySlug ? `/${context.citySlug}` : "/all";
+  const websitePart = context.websiteSlug
+    ? `/website/${encodeURIComponent(context.websiteSlug)}`
+    : "";
 
   if (context.isPreview && context.templateKey) {
-    return `/template/${vendorId}/preview/${context.templateKey}${cityPart}${suffixPart}`;
+    return `/template/${vendorId}/preview/${context.templateKey}${cityPart}${websitePart}${suffixPart}`;
   }
 
-  return `/template/${vendorId}${cityPart}${suffixPart}`;
+  return `/template/${vendorId}${cityPart}${websitePart}${suffixPart}`;
 };
 
 export const getTemplateCityFromPath = (pathname: string, vendorId?: string) =>
   getTemplateRouteContext(pathname, vendorId).citySlug || "all";
+
+export const getTemplateWebsiteFromPath = (pathname: string, vendorId?: string) =>
+  getTemplateRouteContext(pathname, vendorId).websiteSlug || "";

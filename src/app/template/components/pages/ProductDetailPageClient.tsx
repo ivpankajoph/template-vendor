@@ -51,6 +51,7 @@ type ProductFaq = {
 
 type Product = {
   _id: string;
+  slug?: string;
   productName?: string;
   shortDescription?: string;
   description?: string;
@@ -223,11 +224,6 @@ export default function ProductDetailPage() {
   const productId = params.product_id as string;
   const vendorId = params.vendor_id as string;
   const citySlug = getTemplateCityFromPath(pathname || "/", vendorId);
-  const productPath = buildTemplateScopedPath({
-    vendorId,
-    pathname: pathname || "/",
-    suffix: `product/${productId}`,
-  });
   const loginPath = buildTemplateScopedPath({
     vendorId,
     pathname: pathname || "/",
@@ -240,6 +236,7 @@ export default function ProductDetailPage() {
   const [activeTab, setActiveTab] = useState<ProductTab>("specifications");
   const [adding, setAdding] = useState(false);
   const [message, setMessage] = useState("");
+  const [loadError, setLoadError] = useState("");
   const [selectedVariantId, setSelectedVariantId] = useState<string>("");
   const [selectedImage, setSelectedImage] = useState<string>("");
   const [templateToken, setTemplateToken] = useState<string | null>(null);
@@ -316,18 +313,45 @@ export default function ProductDetailPage() {
   useEffect(() => {
     if (!productId) return;
     let active = true;
+    const notFoundMessage =
+      citySlug && citySlug !== "all"
+        ? "Product not found in this city."
+        : "Product not found.";
 
     const load = async () => {
+      if (active) {
+        setLoading(true);
+        setLoadError("");
+      }
+
       try {
         const cityQuery =
           citySlug && citySlug !== "all"
             ? `?city=${encodeURIComponent(citySlug)}`
             : "";
         const response = await fetch(`${NEXT_PUBLIC_API_URL}/products/${productId}${cityQuery}`);
-        const data = await response.json();
-        if (active) setProduct((data?.product || null) as Product | null);
+        const data = await response.json().catch(() => null);
+
+        if (!active) return;
+
+        const nextProduct = (data?.product || null) as Product | null;
+        if (!response.ok || !nextProduct) {
+          setProduct(null);
+          setLoadError(
+            typeof data?.message === "string" && data.message.trim()
+              ? data.message.trim()
+              : notFoundMessage
+          );
+          return;
+        }
+
+        setProduct(nextProduct);
+        setLoadError("");
       } catch {
-        if (active) setProduct(null);
+        if (active) {
+          setProduct(null);
+          setLoadError(notFoundMessage);
+        }
       } finally {
         if (active) setLoading(false);
       }
@@ -469,6 +493,14 @@ export default function ProductDetailPage() {
     return candidates.slice(0, 4).map((entry) => entry.item);
   }, [product, templateProducts]);
 
+  const productRecordId = String(product?._id || "").trim();
+  const productSlug = String(product?.slug || productId || "").trim();
+  const productPath = buildTemplateScopedPath({
+    vendorId,
+    pathname: pathname || "/",
+    suffix: `product/${productSlug || productId}`,
+  });
+
   const summarySpecs = useMemo(() => {
     const rows: Array<[string, string]> = [];
 
@@ -531,6 +563,11 @@ export default function ProductDetailPage() {
       return;
     }
 
+    if (!productRecordId) {
+      setMessage("Product not available");
+      return;
+    }
+
     if (stockQuantity <= 0) {
       setMessage("This variant is out of stock");
       return;
@@ -541,7 +578,7 @@ export default function ProductDetailPage() {
       await templateApiFetch(vendorId, "/cart", {
         method: "POST",
         body: JSON.stringify({
-          product_id: productId,
+          product_id: productRecordId,
           variant_id: selectedVariant._id,
           quantity,
         }),
@@ -550,7 +587,7 @@ export default function ProductDetailPage() {
       trackAddToCart({
         vendorId,
         userId: auth?.user?.id,
-        productId,
+        productId: productRecordId,
         productName: product?.productName,
         productPrice: basePrice,
         quantity,
@@ -579,7 +616,7 @@ export default function ProductDetailPage() {
   if (!product) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-gray-500">Product not found.</div>
+        <div className="text-gray-500">{loadError || "Product not found."}</div>
       </div>
     );
   }
@@ -1044,7 +1081,7 @@ export default function ProductDetailPage() {
 
             {activeTab === "reviews" && (
               <ProductReviewsSection
-                productId={productId}
+                productId={productRecordId}
                 token={templateToken}
                 loginPath={`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`}
                 onSummaryChange={setReviewSummary}
@@ -1076,7 +1113,7 @@ export default function ProductDetailPage() {
                 const relatedPath = buildTemplateScopedPath({
                   vendorId,
                   pathname: pathname || "/",
-                  suffix: `product/${item._id}`,
+                  suffix: `product/${item.slug || item._id}`,
                 });
 
                 return (
@@ -1136,7 +1173,7 @@ export default function ProductDetailPage() {
 
       <ProductEnquiryDialog
         vendorId={vendorId}
-        productId={productId}
+        productId={productRecordId}
         productName={product.productName}
         triggerClassName={enquiryTriggerClass}
         triggerContent={

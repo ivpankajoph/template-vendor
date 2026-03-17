@@ -159,59 +159,11 @@ const FALLBACK_PROMO_IMAGES = [
 const FALLBACK_BANNER_IMAGE =
   'https://images.unsplash.com/photo-1622597467836-f3285f2131b8?auto=format&fit=crop&w=1800&q=80'
 
-const FALLBACK_PRODUCTS: ProductCard[] = [
-  {
-    _id: '',
-    variantId: '',
-    title: 'Greek Style Plain Yogurt',
-    image:
-      'https://images.unsplash.com/photo-1571212515416-fca88d63f89c?auto=format&fit=crop&w=1200&q=80',
-    price: 18,
-    oldPrice: 24,
-    discountPercent: 25,
-    rating: 4.5,
-    reviews: 222,
-    stockQuantity: 10,
-  },
-  {
-    _id: '',
-    variantId: '',
-    title: 'Pure Squeezed No Pulp Orange Juice',
-    image:
-      'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80',
-    price: 18,
-    oldPrice: 24,
-    discountPercent: 25,
-    rating: 4.5,
-    reviews: 222,
-    stockQuantity: 10,
-  },
-  {
-    _id: '',
-    variantId: '',
-    title: 'Fresh Oranges',
-    image:
-      'https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&w=1200&q=80',
-    price: 18,
-    oldPrice: 24,
-    discountPercent: 25,
-    rating: 4.5,
-    reviews: 222,
-    stockQuantity: 10,
-  },
-  {
-    _id: '',
-    variantId: '',
-    title: 'Gourmet Dark Chocolate Bars',
-    image:
-      'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=1200&q=80',
-    price: 18,
-    oldPrice: 24,
-    discountPercent: 25,
-    rating: 4.5,
-    reviews: 222,
-    stockQuantity: 10,
-  },
+const FALLBACK_PRODUCT_IMAGES = [
+  'https://images.unsplash.com/photo-1571212515416-fca88d63f89c?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1544145945-f90425340c7e?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1611080626919-7cf5a9dbab5b?auto=format&fit=crop&w=1200&q=80',
+  'https://images.unsplash.com/photo-1511381939415-e44015466834?auto=format&fit=crop&w=1200&q=80',
 ]
 
 
@@ -240,7 +192,7 @@ export function OragzeHome() {
   const heroImage = home?.backgroundImage || FALLBACK_HERO_IMAGE
 
   const featuredProducts = useMemo(() => {
-    const mapped = products.slice(0, 8).map((product: TemplateProduct, index: number) => {
+    return products.slice(0, 8).map((product: TemplateProduct, index: number) => {
       const pricing = getProductPriceDetails(product)
       const primaryVariant = getPrimaryVariant(product)
       const stockQuantity = toNumber(primaryVariant?.stockQuantity)
@@ -249,7 +201,10 @@ export function OragzeHome() {
         _id: String(product?._id || ''),
         variantId: primaryVariant?._id || '',
         title: product?.productName || `Product ${index + 1}`,
-        image: getProductImage(product, FALLBACK_PRODUCTS[index % FALLBACK_PRODUCTS.length].image),
+        image: getProductImage(
+          product,
+          FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length]
+        ),
         price: pricing.finalPrice || 18,
         oldPrice: pricing.actualPrice || (pricing.finalPrice ? pricing.finalPrice + 6 : 24),
         discountPercent: pricing.discountPercent,
@@ -258,17 +213,6 @@ export function OragzeHome() {
         stockQuantity: stockQuantity,
       } satisfies ProductCard
     })
-
-    if (mapped.length === 0) {
-      return FALLBACK_PRODUCTS.map((fallback: ProductCard, index: number) => ({
-        ...fallback,
-        variantId: '',
-        discountPercent: 0,
-        stockQuantity: 10,
-      }))
-    }
-
-    return mapped
   }, [products])
 
   const handleAddToCart = async (product: Partial<ProductCard>) => {
@@ -324,18 +268,7 @@ export function OragzeHome() {
         })
       }
     })
-    const list = Array.from(map.values())
-    if (list.length > 0) return list.slice(0, 10)
-    
-    return [
-      { id: '1', name: 'Ethnic Wear', image: 'https://images.unsplash.com/photo-1583391733958-623bb58be0a5?auto=format&fit=crop&w=300&q=80' },
-      { id: '2', name: 'Western Dresses', image: 'https://images.unsplash.com/photo-1550639525-c97d455acf70?auto=format&fit=crop&w=300&q=80' },
-      { id: '3', name: 'Menswear', image: 'https://images.unsplash.com/photo-1617137984095-74e4e5e3613f?auto=format&fit=crop&w=300&q=80' },
-      { id: '4', name: 'Footwear', image: 'https://images.unsplash.com/photo-1542291026-7eec264c27ff?auto=format&fit=crop&w=300&q=80' },
-      { id: '5', name: 'Home Decor', image: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=300&q=80' },
-      { id: '6', name: 'Beauty', image: 'https://images.unsplash.com/photo-1596462502278-27bfdc403348?auto=format&fit=crop&w=300&q=80' },
-      { id: '7', name: 'Accessories', image: 'https://images.unsplash.com/photo-1509319117193-57bab727e09d?auto=format&fit=crop&w=300&q=80' },
-    ]
+    return Array.from(map.values()).slice(0, 10)
   }, [products])
 
   return (
@@ -343,27 +276,28 @@ export function OragzeHome() {
       <section id='hero' className='bg-white border-b border-slate-200' data-template-section='hero'>
         <div className='mx-auto max-w-[1320px] px-4 py-8 md:px-8'>
           
-          {/* Circular Categories */}
-          <div className='mb-10 flex gap-4 md:gap-7 overflow-x-auto pb-4 no-scrollbar items-start'>
-            {categories.map((cat, idx) => (
-              <Link
-                key={`${cat.id}-${idx}`}
-                href={vendorId ? `/template/${vendorId}/category/${toSlug(cat.name)}` : '#'}
-                className='group flex flex-col items-center min-w-[70px] md:min-w-[90px] shrink-0'
-              >
-                <div className='h-[70px] w-[70px] overflow-hidden rounded-full border border-pink-100 bg-white shadow-sm md:h-[90px] md:w-[90px] p-0.5 transition-transform duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-pink-300'>
-                   <img
-                     src={cat.image}
-                     alt={cat.name}
-                     className='h-full w-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500'
-                   />
-                </div>
-                <span className='mt-3 text-center text-[12px] font-semibold text-slate-700 md:text-[14px] leading-tight group-hover:text-pink-600 transition-colors px-1 max-w-full'>
-                  {cat.name}
-                </span>
-              </Link>
-            ))}
-          </div>
+          {categories.length > 0 ? (
+            <div className='mb-10 flex gap-4 md:gap-7 overflow-x-auto pb-4 no-scrollbar items-start'>
+              {categories.map((cat, idx) => (
+                <Link
+                  key={`${cat.id}-${idx}`}
+                  href={vendorId ? `/template/${vendorId}/category/${toSlug(cat.name)}` : '#'}
+                  className='group flex flex-col items-center min-w-[70px] md:min-w-[90px] shrink-0'
+                >
+                  <div className='h-[70px] w-[70px] overflow-hidden rounded-full border border-pink-100 bg-white shadow-sm md:h-[90px] md:w-[90px] p-0.5 transition-transform duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-pink-300'>
+                     <img
+                       src={cat.image}
+                       alt={cat.name}
+                       className='h-full w-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500'
+                     />
+                  </div>
+                  <span className='mt-3 text-center text-[12px] font-semibold text-slate-700 md:text-[14px] leading-tight group-hover:text-pink-600 transition-colors px-1 max-w-full'>
+                    {cat.name}
+                  </span>
+                </Link>
+              ))}
+            </div>
+          ) : null}
 
           {/* Banner Hero */}
           <div className='relative overflow-hidden rounded-[20px] bg-gradient-to-r from-[#ffd391] to-[#ffbda8] shadow-sm'>
@@ -552,36 +486,10 @@ export function OragzeHome() {
             {productsSubtitle}
           </p>
 
-          <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
-            {featuredProducts.map((product: ProductCard, index: number) => (
-              <article key={`${product.title}-${index}`} className='flex flex-col group overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl'>
-                <Link
-                  href={
-                    product._id
-                      ? `/template/${vendorId}/product/${product._id}`
-                      : vendorId
-                        ? `/template/${vendorId}/all-products`
-                        : '#'
-                  }
-                  className='block overflow-hidden relative aspect-square bg-slate-50'
-                >
-                  <img
-                    src={product.image}
-                    alt={product.title}
-                    className='h-full w-full object-contain transition duration-500 group-hover:scale-105 p-6'
-                  />
-                  {product.discountPercent > 0 && (
-                    <div className="absolute top-0 left-0 bg-red-600 text-white text-[12px] font-black px-3 py-1 lg:py-1.5 tracking-tight">
-                      {product.discountPercent}% OFF
-                    </div>
-                  )}
-                  <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white shadow-lg text-pink-600">
-                      <ShoppingCart className="h-5 w-5" />
-                    </div>
-                  </div>
-                </Link>
-                <div className='flex flex-col flex-grow p-4'>
+          {featuredProducts.length > 0 ? (
+            <div className='grid gap-6 sm:grid-cols-2 lg:grid-cols-4'>
+              {featuredProducts.map((product: ProductCard, index: number) => (
+                <article key={`${product.title}-${index}`} className='flex flex-col group overflow-hidden border border-slate-200 bg-white transition-all duration-300 hover:shadow-xl'>
                   <Link
                     href={
                       product._id
@@ -590,66 +498,101 @@ export function OragzeHome() {
                           ? `/template/${vendorId}/all-products`
                           : '#'
                     }
-                    className='line-clamp-2 min-h-[40px] text-[15px] font-medium leading-[1.3] text-slate-800 hover:text-pink-600 transition-colors'
+                    className='block overflow-hidden relative aspect-square bg-slate-50'
                   >
-                    {product.title}
-                  </Link>
-
-                  <div className='mt-1.5 flex items-center gap-1'>
-                    <div className='flex items-center text-amber-500'>
-                      {[...Array(5)].map((_, i) => (
-                        <Star key={i} className={`h-3 w-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
-                      ))}
+                    <img
+                      src={product.image}
+                      alt={product.title}
+                      className='h-full w-full object-contain transition duration-500 group-hover:scale-105 p-6'
+                    />
+                    {product.discountPercent > 0 && (
+                      <div className="absolute top-0 left-0 bg-red-600 text-white text-[12px] font-black px-3 py-1 lg:py-1.5 tracking-tight">
+                        {product.discountPercent}% OFF
+                      </div>
+                    )}
+                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="h-10 w-10 flex items-center justify-center rounded-full bg-white shadow-lg text-pink-600">
+                        <ShoppingCart className="h-5 w-5" />
+                      </div>
                     </div>
-                    <span className='text-[12px] text-slate-500 font-medium'>({product.reviews})</span>
-                  </div>
-
-                  <div className='mt-2.5 flex items-baseline gap-2'>
-                    <span className='text-[22px] font-black text-slate-900'>
-                      {formatPrice(product.price)}
-                    </span>
-                    {product.oldPrice > product.price ? (
-                      <span className='text-[14px] text-slate-400 line-through font-medium'>
-                        {formatPrice(product.oldPrice)}
-                      </span>
-                    ) : null}
-                  </div>
-                  
-                  <div className="mt-1 flex items-center gap-1.5 uppercase text-[11px] font-black text-green-600">
-                    <Truck className="h-3.5 w-3.5" />
-                    FREE DELIVERY
-                  </div>
-
-                  <div className='mt-4 mt-auto space-y-2'>
-                    <button
-                      type='button'
-                      onClick={(e) => {
-                        e.preventDefault()
-                        handleAddToCart(product)
-                      }}
-                      disabled={
-                        !product?._id ||
-                        !product?.variantId ||
-                        product.stockQuantity <= 0 ||
-                        addingId === product._id
+                  </Link>
+                  <div className='flex flex-col flex-grow p-4'>
+                    <Link
+                      href={
+                        product._id
+                          ? `/template/${vendorId}/product/${product._id}`
+                          : vendorId
+                            ? `/template/${vendorId}/all-products`
+                            : '#'
                       }
-                      className='flex w-full items-center justify-center gap-2 rounded-lg bg-pink-600 py-2.5 text-[14px] font-black text-white transition hover:bg-pink-700 active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed'
+                      className='line-clamp-2 min-h-[40px] text-[15px] font-medium leading-[1.3] text-slate-800 hover:text-pink-600 transition-colors'
                     >
-                      {addingId === product._id ? (
-                        <RefreshCcw className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <ShoppingCart className='h-4 w-4' />
-                      )}
-                      {addingId === product._id ? 'ADDING...' : product.stockQuantity > 0 || !product._id ? 'Add to Cart' : 'Out of Stock'}
-                    </button>
-                    {product.stockQuantity < 10 && product.stockQuantity > 0 && product._id ? (
-                      <p className='text-center text-[10px] font-black text-red-600 uppercase tracking-tighter'>Only {product.stockQuantity} items left!</p>
-                    ) : null}
+                      {product.title}
+                    </Link>
+
+                    <div className='mt-1.5 flex items-center gap-1'>
+                      <div className='flex items-center text-amber-500'>
+                        {[...Array(5)].map((_, i) => (
+                          <Star key={i} className={`h-3 w-3 ${i < Math.floor(product.rating) ? 'fill-current' : 'text-slate-200'}`} />
+                        ))}
+                      </div>
+                      <span className='text-[12px] text-slate-500 font-medium'>({product.reviews})</span>
+                    </div>
+
+                    <div className='mt-2.5 flex items-baseline gap-2'>
+                      <span className='text-[22px] font-black text-slate-900'>
+                        {formatPrice(product.price)}
+                      </span>
+                      {product.oldPrice > product.price ? (
+                        <span className='text-[14px] text-slate-400 line-through font-medium'>
+                          {formatPrice(product.oldPrice)}
+                        </span>
+                      ) : null}
+                    </div>
+                    
+                    <div className="mt-1 flex items-center gap-1.5 uppercase text-[11px] font-black text-green-600">
+                      <Truck className="h-3.5 w-3.5" />
+                      FREE DELIVERY
+                    </div>
+
+                    <div className='mt-4 mt-auto space-y-2'>
+                      <button
+                        type='button'
+                        onClick={(e) => {
+                          e.preventDefault()
+                          handleAddToCart(product)
+                        }}
+                        disabled={
+                          !product?._id ||
+                          !product?.variantId ||
+                          product.stockQuantity <= 0 ||
+                          addingId === product._id
+                        }
+                        className='flex w-full items-center justify-center gap-2 rounded-lg bg-pink-600 py-2.5 text-[14px] font-black text-white transition hover:bg-pink-700 active:scale-[0.98] disabled:bg-slate-200 disabled:text-slate-400 disabled:cursor-not-allowed'
+                      >
+                        {addingId === product._id ? (
+                          <RefreshCcw className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <ShoppingCart className='h-4 w-4' />
+                        )}
+                        {addingId === product._id ? 'ADDING...' : product.stockQuantity > 0 || !product._id ? 'Add to Cart' : 'Out of Stock'}
+                      </button>
+                      {product.stockQuantity < 10 && product.stockQuantity > 0 && product._id ? (
+                        <p className='text-center text-[10px] font-black text-red-600 uppercase tracking-tighter'>Only {product.stockQuantity} items left!</p>
+                      ) : null}
+                    </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <div className='rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm'>
+              <h3 className='text-[22px] font-semibold text-slate-900'>You do not have any products yet.</h3>
+              <p className='mx-auto mt-3 max-w-2xl text-sm text-slate-600 md:text-base'>
+                Add products from your vendor dashboard and they will appear here instead of demo items.
+              </p>
+            </div>
+          )}
           {actionMessage ? <p className='col-span-full mt-6 rounded-md bg-white p-3 text-center text-[15px] font-semibold text-slate-700 shadow-sm border border-slate-200'>{actionMessage}</p> : null}
         </div>
       </section>

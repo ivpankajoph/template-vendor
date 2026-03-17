@@ -245,32 +245,38 @@ export function TemplateHomeRenderer() {
               View all
             </Link>
           </div>
-          <div className='mt-6 grid gap-6 md:grid-cols-3'>
-            {products.slice(0, 6).map((product: any) => (
-              <Link
-                key={product?._id}
-                href={`/template/${vendorId}/product/${product?._id}`}
-                className='group rounded-xl border border-slate-800 bg-slate-900/70 p-4'
-              >
-                <div className='aspect-[4/3] overflow-hidden rounded-lg bg-slate-800'>
-                  {product?.defaultImages?.[0]?.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={product.defaultImages[0].url}
-                      alt={product.productName}
-                      className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
-                    />
-                  ) : null}
-                </div>
-                <p className='mt-4 text-sm text-slate-400'>
-                  {product?.productCategoryName || 'Collection'}
-                </p>
-                <p className='mt-1 text-lg font-semibold text-white'>
-                  {product?.productName || 'Product'}
-                </p>
-              </Link>
-            ))}
-          </div>
+          {products.length > 0 ? (
+            <div className='mt-6 grid gap-6 md:grid-cols-3'>
+              {products.slice(0, 6).map((product: any) => (
+                <Link
+                  key={product?._id}
+                  href={`/template/${vendorId}/product/${product?._id}`}
+                  className='group rounded-xl border border-slate-800 bg-slate-900/70 p-4'
+                >
+                  <div className='aspect-[4/3] overflow-hidden rounded-lg bg-slate-800'>
+                    {product?.defaultImages?.[0]?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.defaultImages[0].url}
+                        alt={product.productName}
+                        className='h-full w-full object-cover transition-transform duration-300 group-hover:scale-105'
+                      />
+                    ) : null}
+                  </div>
+                  <p className='mt-4 text-sm text-slate-400'>
+                    {product?.productCategoryName || 'Collection'}
+                  </p>
+                  <p className='mt-1 text-lg font-semibold text-white'>
+                    {product?.productName || 'Product'}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className='mt-6 rounded-xl border border-dashed border-slate-700 bg-slate-900/60 p-8 text-center text-sm text-slate-300'>
+              You do not have any products yet.
+            </div>
+          )}
         </section>
       </div>
     )
@@ -345,32 +351,38 @@ export function TemplateHomeRenderer() {
         </section>
 
         <section className='mx-auto max-w-6xl px-6 pb-16'>
-          <div className='grid gap-8 md:grid-cols-2'>
-            {products.slice(0, 4).map((product: any) => (
-              <Link
-                key={product?._id}
-                href={`/template/${vendorId}/product/${product?._id}`}
-                className='rounded-3xl border border-slate-200 bg-white p-5'
-              >
-                <div className='aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100'>
-                  {product?.defaultImages?.[0]?.url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={product.defaultImages[0].url}
-                      alt={product.productName}
-                      className='h-full w-full object-cover'
-                    />
-                  ) : null}
-                </div>
-                <p className='mt-4 text-xs uppercase tracking-[0.3em] text-slate-400'>
-                  {product?.productCategoryName || 'Category'}
-                </p>
-                <p className='mt-2 text-lg font-semibold text-slate-900'>
-                  {product?.productName || 'Product'}
-                </p>
-              </Link>
-            ))}
-          </div>
+          {products.length > 0 ? (
+            <div className='grid gap-8 md:grid-cols-2'>
+              {products.slice(0, 4).map((product: any) => (
+                <Link
+                  key={product?._id}
+                  href={`/template/${vendorId}/product/${product?._id}`}
+                  className='rounded-3xl border border-slate-200 bg-white p-5'
+                >
+                  <div className='aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100'>
+                    {product?.defaultImages?.[0]?.url ? (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img
+                        src={product.defaultImages[0].url}
+                        alt={product.productName}
+                        className='h-full w-full object-cover'
+                      />
+                    ) : null}
+                  </div>
+                  <p className='mt-4 text-xs uppercase tracking-[0.3em] text-slate-400'>
+                    {product?.productCategoryName || 'Category'}
+                  </p>
+                  <p className='mt-2 text-lg font-semibold text-slate-900'>
+                    {product?.productName || 'Product'}
+                  </p>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <div className='rounded-3xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500'>
+              You do not have any products yet.
+            </div>
+          )}
         </section>
       </div>
     )
