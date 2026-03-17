@@ -106,7 +106,7 @@ const FileInput = memo(({ name, label, error, onChange }: any) => (
 
 // ✅ Multi Select with removable chips
 const MultiSelectInput = memo(
-  ({ name, label, options, values, error, onChange }: any) => {
+  ({ name, label, options, values, error, onChange, note }: any) => {
     const [query, setQuery] = useState("");
     const filteredOptions = options.filter((opt: string) =>
       opt.toLowerCase().includes(query.toLowerCase()),
@@ -131,7 +131,10 @@ const MultiSelectInput = memo(
 
     return (
       <div>
-        <label className="block text-sm font-medium mb-1">{label}</label>
+        <label className="block text-sm font-medium mb-1">
+          {label}
+          {note && <span className="ml-2 text-xs text-gray-400 font-normal italic">{note}</span>}
+        </label>
 
         <Select onValueChange={handleSelect}>
         <SelectTrigger>
@@ -208,7 +211,7 @@ export default function BusinessDetails() {
     categories: [] as string[],
     return_policy: "", operating_hours: "",
     established_year: "", business_nature: "", annual_turnover: "",
-    dealing_area: "", office_employees: "",
+    dealing_area: [] as string[], office_employees: "",
     gst_cert: null as File | null, pan_card: null as File | null,
     avatar: null as File | null,
   });
@@ -503,8 +506,9 @@ export default function BusinessDetails() {
                     options={BUSINESS_NATURES} onChange={handleSelectChange} error={errors.business_nature} />
                   <SelectInput name="annual_turnover" label="Annual Turnover" value={form.annual_turnover}
                     options={ANNUAL_TURNOVER} onChange={handleSelectChange} error={errors.annual_turnover} />
-                  <SelectInput name="dealing_area" label="Dealing Area" value={form.dealing_area}
-                    options={DEALING_AREA} onChange={handleSelectChange} error={errors.dealing_area} />
+                  <MultiSelectInput name="dealing_area" label="Dealing Country" values={form.dealing_area}
+                    options={DEALING_AREA} onChange={updateField} error={errors.dealing_area}
+                    note="(If you deal with multiple countries, you can select more than one.)" />
                   <SelectInput name="office_employees" label="Number of Office Employees" value={form.office_employees}
                     options={NUMBER_OF_EMPLOYEES} onChange={handleSelectChange} error={errors.office_employees} />
                 </CardContent>
