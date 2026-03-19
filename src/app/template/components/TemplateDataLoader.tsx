@@ -11,13 +11,14 @@ import { getTemplateWebsiteIdFromSearch } from '@/lib/template-website'
 
 type Props = {
   vendorId?: string
+  websiteId?: string
 }
 
 const DATA_STALE_MS = 2 * 60 * 1000
 const FOCUS_REFRESH_COOLDOWN_MS = 20 * 1000
 const REQUEST_RETRY_COOLDOWN_MS = 30 * 1000
 
-export function TemplateDataLoader({ vendorId }: Props) {
+export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const pathname = usePathname()
   const searchParams = useSearchParams()
@@ -25,7 +26,8 @@ export function TemplateDataLoader({ vendorId }: Props) {
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
   const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
-  const websiteId = getTemplateWebsiteIdFromSearch(pathname || '/', searchParams)
+  const routeWebsiteId = getTemplateWebsiteIdFromSearch(pathname || '/', searchParams)
+  const websiteId = routeWebsiteId || websiteIdProp || undefined
   const templateRequestKey = `${vendorId || ''}::${citySlug}::${websiteId || 'default'}`
   const {
     templateData,

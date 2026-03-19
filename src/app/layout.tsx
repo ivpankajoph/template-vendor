@@ -62,14 +62,17 @@ export async function generateMetadata(): Promise<Metadata> {
   }
 }
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const headerStore = await headers();
+  const templateVendorId = String(headerStore.get("x-template-vendor") || "").trim();
   return (
     <html lang="en">
       <body
+        data-template-vendor={templateVendorId}
         className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${sora.variable} antialiased`}
       >
         <VendorProvider>

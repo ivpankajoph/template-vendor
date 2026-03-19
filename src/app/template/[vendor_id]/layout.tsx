@@ -1,5 +1,6 @@
 import React from "react";
 import type { Metadata } from "next";
+import { headers } from "next/headers";
 import Navbar from "../components/Navbar";
 import Footer from "../components/Footer";
 import { TemplateThemeProvider } from "../components/TemplateThemeProvider";
@@ -23,11 +24,13 @@ export default async function VendorLayout({
   params,
 }: LayoutProps) {
   const { vendor_id } = await params;
+  const headerStore = await headers();
+  const websiteId = String(headerStore.get("x-template-website") || "").trim();
   return (
     <TemplateThemeProvider>
       <div className="template-site-shell min-h-screen flex flex-col">
         <TemplatePreviewRealtimeSync vendorId={vendor_id} />
-        <TemplateDataLoader vendorId={vendor_id} />
+        <TemplateDataLoader vendorId={vendor_id} websiteId={websiteId} />
         <TemplateInlineEditorBridge />
         <Navbar />
         <main className="template-site-main flex-grow">{children}</main>

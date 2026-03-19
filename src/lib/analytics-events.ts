@@ -42,13 +42,22 @@ const getTemplateMeta = () => {
   };
 };
 
-const getVendorIdFromPath = (path: string) => {
-  const match = path.match(/\/template\/([^/?#]+)/);
-  return match?.[1] || "";
+const getDocumentVendorId = () => {
+  if (typeof document === "undefined") return "";
+  return (
+    document.body?.dataset?.templateVendor ||
+    document.documentElement?.dataset?.templateVendor ||
+    ""
+  );
 };
 
-const getSourceFromPath = (path: string) =>
-  path.startsWith("/template/") ? "template" : "ophmart";
+const getVendorIdFromPath = (path: string) => {
+  const match = path.match(/\/template\/([^/?#]+)/);
+  return match?.[1] || getDocumentVendorId();
+};
+
+const getSourceFromPath = (path: string, vendorId = "") =>
+  path.startsWith("/template/") || Boolean(vendorId) ? "template" : "ophmart";
 
 type AnalyticsPayload = {
   eventType: "add_to_cart" | "checkout" | "purchase";
@@ -67,8 +76,8 @@ const sendAnalyticsEvent = async (payload: AnalyticsPayload) => {
   if (!API_BASE || typeof window === "undefined") return;
 
   const path = window.location.pathname;
-  const source = getSourceFromPath(path);
   const vendorId = payload.vendorId || getVendorIdFromPath(path);
+  const source = getSourceFromPath(path, vendorId);
   const metadata = { ...getTemplateMeta(), ...(payload.metadata || {}) };
 
   const body = {

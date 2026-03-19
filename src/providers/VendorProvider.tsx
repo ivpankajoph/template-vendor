@@ -9,6 +9,15 @@ export default function VendorProvider({ children }: { children: React.ReactNode
   const [vendorId, setVendorId] = useState("default");
 
   useEffect(() => {
+    const bodyVendorId =
+      document.body?.dataset?.templateVendor ||
+      document.documentElement?.dataset?.templateVendor ||
+      "";
+    if (bodyVendorId) {
+      setVendorId(bodyVendorId);
+      return;
+    }
+
     const parts = window.location.pathname.split("/");
     const id = parts[2];
     if (id) setVendorId(id);

@@ -21,13 +21,22 @@ const getStorageId = (key: string, storage: Storage) => {
   }
 };
 
-const getVendorIdFromPath = (path: string) => {
-  const match = path.match(/\/template\/([^/?#]+)/);
-  return match?.[1] || "";
+const getDocumentVendorId = () => {
+  if (typeof document === "undefined") return "";
+  return (
+    document.body?.dataset?.templateVendor ||
+    document.documentElement?.dataset?.templateVendor ||
+    ""
+  );
 };
 
-const getSourceFromPath = (path: string) =>
-  path.startsWith("/template/") ? "template" : "ophmart";
+const getVendorIdFromPath = (path: string, fallback = "") => {
+  const match = path.match(/\/template\/([^/?#]+)/);
+  return match?.[1] || fallback || getDocumentVendorId();
+};
+
+const getSourceFromPath = (path: string, vendorId = "") =>
+  path.startsWith("/template/") || Boolean(vendorId) ? "template" : "ophmart";
 
 const buildMetadata = (searchParams: URLSearchParams | null) => {
   if (!searchParams) return {};
@@ -152,7 +161,11 @@ export default function AnalyticsTracker() {
     const path = `${window.location.pathname}${window.location.search}`;
     const fullUrl = window.location.href;
     const now = Date.now();
-    const source = getSourceFromPath(window.location.pathname);
+    const fallbackVendorId =
+      String(templateData?.vendor_id || templateData?.vendorId || "").trim() ||
+      getDocumentVendorId();
+    const vendorId = getVendorIdFromPath(window.location.pathname, fallbackVendorId);
+    const source = getSourceFromPath(window.location.pathname, vendorId);
 
     if (!apiBase) {
       if (isDev) {
@@ -217,8 +230,8 @@ export default function AnalyticsTracker() {
         sessionId: sessionIdRef.current,
         visitorId: visitorIdRef.current,
         userId: userIdRef.current,
-        vendorId: getVendorIdFromPath(prev.path),
-        source: getSourceFromPath(prev.path),
+        vendorId: getVendorIdFromPath(prev.path, fallbackVendorId),
+        source: getSourceFromPath(prev.path, fallbackVendorId),
         durationMs: Math.max(0, now - prev.startedAt),
         metadata: { ...metadata, ...templateMetaRef.current },
       });
@@ -233,7 +246,7 @@ export default function AnalyticsTracker() {
       sessionId: sessionIdRef.current,
       visitorId: visitorIdRef.current,
       userId: userIdRef.current,
-      vendorId: getVendorIdFromPath(path),
+      vendorId,
       source,
       screen: { width: window.screen.width, height: window.screen.height },
       viewport: { width: window.innerWidth, height: window.innerHeight },
@@ -309,8 +322,14 @@ export default function AnalyticsTracker() {
         sessionId: sessionIdRef.current,
         visitorId: visitorIdRef.current,
         userId: userIdRef.current,
-        vendorId: getVendorIdFromPath(prev.path),
-        source: getSourceFromPath(prev.path),
+        vendorId: getVendorIdFromPath(
+          prev.path,
+          String(templateData?.vendor_id || templateData?.vendorId || "").trim()
+        ),
+        source: getSourceFromPath(
+          prev.path,
+          String(templateData?.vendor_id || templateData?.vendorId || "").trim()
+        ),
         durationMs: Math.max(0, Date.now() - prev.startedAt),
         metadata: { ...metadataRef.current, ...templateMetaRef.current },
       });

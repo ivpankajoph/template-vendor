@@ -29,6 +29,83 @@ const normalizeSlug = (value?: string) =>
 
 const normalizeWebsiteIdentifier = (value?: string) => String(value || "").trim();
 
+const normalizeHostname = (value?: string | null) =>
+  String(value || "")
+    .trim()
+    .toLowerCase()
+    .replace(/:\d+$/, "")
+    .replace(/\.+$/, "");
+
+const getPlatformHosts = () =>
+  new Set(
+    [
+      "localhost",
+      "127.0.0.1",
+      "34.55.96.220",
+      "sellerslogin.com",
+      "www.sellerslogin.com",
+      "admin.sellerslogin.com",
+      "template.sellerslogin.com",
+      "web.sellerslogin.com",
+      process.env.CUSTOM_DOMAIN_TARGET_HOST,
+      process.env.NEXT_PUBLIC_VENDOR_TEMPLATE_HOST,
+      process.env.NEXT_PUBLIC_VENDOR_TEMPLATE_URL,
+      process.env.NEXT_PUBLIC_APP_URL,
+      process.env.NEXT_PUBLIC_FRONTEND_URL,
+      ...(process.env.CUSTOM_DOMAIN_PLATFORM_HOSTS || "").split(","),
+    ]
+      .map((item) => normalizeHostname(item))
+      .filter(Boolean)
+  );
+
+const getRequestHost = (request: NextRequest) =>
+  normalizeHostname(
+    request.headers.get("x-forwarded-host") ||
+      request.headers.get("host") ||
+      request.nextUrl.host
+  );
+
+const isCustomDomainHost = (request: NextRequest) => {
+  const hostname = getRequestHost(request);
+  if (!hostname) return false;
+  return !getPlatformHosts().has(hostname);
+};
+
+const getApiBaseUrl = () =>
+  String(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+
+const resolveCustomDomainHost = async (host: string) => {
+  const apiBase = getApiBaseUrl();
+  if (!apiBase || !host) return null;
+
+  try {
+    const response = await fetch(
+      `${apiBase}/templates/domains/resolve?host=${encodeURIComponent(host)}`,
+      {
+        cache: "no-store",
+        headers: {
+          "Content-Type": "application/json",
+        },
+      }
+    );
+
+    if (!response.ok) return null;
+
+    const payload = await response.json();
+    const data = payload?.data || payload;
+
+    if (!data?.vendorId) return null;
+
+    return {
+      vendorId: String(data.vendorId),
+      websiteId: normalizeWebsiteIdentifier(data.websiteId),
+      hostname: normalizeHostname(data.hostname),
+    };
+  } catch {
+    return null;
+  }
+};
+
 const buildTemplatePathWithContext = ({
   vendorId,
   isPreview = false,
@@ -130,7 +207,7 @@ const getWebsiteIdentifierFromUrl = (url: URL) => {
   );
 };
 
-export function middleware(request: NextRequest) {
+export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-current-path", request.nextUrl.pathname || "/");
 
@@ -144,9 +221,52 @@ export function middleware(request: NextRequest) {
     requestHeaders.set("x-template-website", requestWebsiteIdentifier);
   }
 
+  const customDomainRequest = isCustomDomainHost(request);
+  if (customDomainRequest) {
+    const resolvedDomain = await resolveCustomDomainHost(getRequestHost(request));
+
+    if (!resolvedDomain?.vendorId) {
+      const notConfiguredUrl = request.nextUrl.clone();
+      notConfiguredUrl.pathname = "/domain-not-configured";
+      notConfiguredUrl.search = "";
+      return NextResponse.rewrite(notConfiguredUrl, {
+        request: {
+          headers: requestHeaders,
+        },
+      });
+    }
+
+    requestHeaders.set("x-template-domain-host", resolvedDomain.hostname);
+    requestHeaders.set("x-template-vendor", resolvedDomain.vendorId);
+    if (resolvedDomain.websiteId) {
+      requestHeaders.set("x-template-website", resolvedDomain.websiteId);
+    }
+
+    if (segments[0] === "template") {
+      const cleanSegments =
+        segments[1] === resolvedDomain.vendorId ? segments.slice(2) : [];
+      const redirectUrl = request.nextUrl.clone();
+      redirectUrl.pathname = cleanSegments.length ? `/${cleanSegments.join("/")}` : "/";
+      return NextResponse.redirect(redirectUrl);
+    }
+
+    const rewriteUrl = request.nextUrl.clone();
+    rewriteUrl.pathname =
+      pathname === "/"
+        ? `/template/${resolvedDomain.vendorId}`
+        : `/template/${resolvedDomain.vendorId}${pathname}`;
+
+    return NextResponse.rewrite(rewriteUrl, {
+      request: {
+        headers: requestHeaders,
+      },
+    });
+  }
+
   const isAllowedBasePath =
     pathname === "/" ||
     pathname === "/template" ||
+    pathname === "/domain-not-configured" ||
     pathname.startsWith("/template/") ||
     pathname.startsWith("/api/") ||
     pathname.startsWith("/_next/") ||
