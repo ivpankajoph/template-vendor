@@ -18,6 +18,7 @@ import {
   X,
 } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 type Product = {
   _id?: string
@@ -73,18 +74,26 @@ export function MquiqNavbar() {
   const phone =
     configuredPhone || vendor?.phone || vendor?.alternate_contact_phone || '+91-9999999999'
   const email = vendor?.email || 'info@storage.com'
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
 
-  const homeHref = vendorId ? `/template/${vendorId}` : '#'
-  const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
-  const whyUsHref = vendorId ? `/template/${vendorId}#why-us` : '#'
-  const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
-  const allProductsHref = vendorId ? `/template/${vendorId}/all-products` : '#'
-  const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
-  const checkoutHref = vendorId ? `/template/${vendorId}/checkout` : '#'
-  const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
-  const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
-  const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
-  const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
+  const homeHref = toStorefrontPath('')
+  const aboutHref = toStorefrontPath('about')
+  const whyUsHref = `${toStorefrontPath('')}#why-us`
+  const contactHref = toStorefrontPath('contact')
+  const allProductsHref = toStorefrontPath('all-products')
+  const cartHref = toStorefrontPath('cart')
+  const checkoutHref = toStorefrontPath('checkout')
+  const ordersHref = toStorefrontPath('orders')
+  const profileHref = toStorefrontPath('profile')
+  const loginHref = toStorefrontPath('login')
+  const registerHref = toStorefrontPath('register')
   const catalogButtonLabel =
     String(homePageConfig?.catalog_button_label || '').trim() ||
     'Download Catalog'
@@ -269,7 +278,7 @@ export function MquiqNavbar() {
                         {productLinks.map((product) => (
                           <Link
                             key={product.id}
-                            href={`/template/${vendorId}/product/${product.id}`}
+                            href={toStorefrontPath(`product/${product.id}`)}
                             className='block text-base font-medium text-[#2f3136] transition hover:text-[#f4b400]'
                           >
                             {product.label}
@@ -308,7 +317,7 @@ export function MquiqNavbar() {
                       {customPages.map((page: any) => (
                         <Link
                           key={page?.id || page?.slug || page?.title}
-                          href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
+                          href={toStorefrontPath(`page/${page?.slug || page?.id}`)}
                           className='block rounded-md px-3 py-2 text-sm font-medium text-[#2f3136] transition hover:bg-slate-50 hover:text-[#f4b400]'
                         >
                           {page?.title || 'Custom Page'}
@@ -481,7 +490,7 @@ export function MquiqNavbar() {
                     {customPages.map((page: any) => (
                       <Link
                         key={page?.id || page?.slug || page?.title}
-                        href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
+                        href={toStorefrontPath(`page/${page?.slug || page?.id}`)}
                         className='block text-sm font-medium text-slate-700'
                         onClick={() => setMobileMenuOpen(false)}
                       >
@@ -508,7 +517,7 @@ export function MquiqNavbar() {
                     productLinks.map((product) => (
                       <Link
                         key={product.id}
-                        href={`/template/${vendorId}/product/${product.id}`}
+                        href={toStorefrontPath(`product/${product.id}`)}
                         className='block text-sm font-medium text-slate-700'
                         onClick={() => setMobileMenuOpen(false)}
                       >

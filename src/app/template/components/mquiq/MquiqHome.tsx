@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ChevronDown,
@@ -19,6 +19,7 @@ import {
 } from 'lucide-react'
 import { getRichTextPreview } from '@/lib/rich-text'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
@@ -265,7 +266,16 @@ const getAdvantageIcon = (icon: AdvantageIconKey) => {
 
 export function MquiqHome() {
   const params = useParams()
+  const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
 
@@ -452,7 +462,9 @@ export function MquiqHome() {
     if (!vendorId || !product?._id) return
     const auth = getTemplateAuth(vendorId)
     if (!auth?.token) {
-      window.location.href = `/template/${vendorId}/login?next=/template/${vendorId}/all-products`
+      window.location.href = `${toStorefrontPath('login')}?next=${encodeURIComponent(
+        toStorefrontPath('all-products')
+      )}`
       return
     }
     if (!product.variantId) {
@@ -535,7 +547,7 @@ export function MquiqHome() {
 
                 <div className='mt-7 flex flex-wrap items-center gap-3'>
                   <Link
-                    href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                    href={toStorefrontPath('all-products')}
                     className='inline-flex items-center rounded-full px-6 py-3 text-sm font-semibold shadow-lg transition hover:-translate-y-0.5'
                     data-template-path='components.home_page.button_header'
                     data-template-section='hero'
@@ -612,9 +624,9 @@ export function MquiqHome() {
                   <Link
                     href={
                       vendorId && product?._id
-                        ? `/template/${vendorId}/product/${product._id}`
+                        ? toStorefrontPath(`product/${product._id}`)
                         : vendorId
-                          ? `/template/${vendorId}/all-products`
+                          ? toStorefrontPath('all-products')
                           : '#'
                     }
                     className='block'
@@ -841,7 +853,7 @@ export function MquiqHome() {
 
             <div className='mt-6'>
               <Link
-                href={vendorId ? `/template/${vendorId}/contact` : '#'}
+                href={toStorefrontPath('contact')}
                 className='inline-flex items-center rounded-full bg-[#f4b400] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#da9f00]'
                 data-template-path='components.home_page.advantage.ctaLabel'
                 data-template-section='description'

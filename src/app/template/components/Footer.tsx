@@ -21,6 +21,7 @@ import { MquiqFooter } from "./mquiq/MquiqFooter";
 import { PoupqzFooter } from "./poupqz/PoupqzFooter";
 import { OragzeFooter } from "./oragze/OragzeFooter";
 import { WhiteRoseFooter } from "./whiterose/WhiteRoseFooter";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 export default function Footer() {
   const variant = useTemplateVariant();
@@ -32,6 +33,12 @@ export default function Footer() {
   const isWhiteRose = variant.key === "whiterose";
   const params = useParams();
   const vendor_id = params.vendor_id as string;
+  const vendorId = String(vendor_id || "");
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      suffix,
+    });
 
   const contact = useSelector((state: any) => state?.vendorprofilepage?.vendor);
   const { homepage, products } = useSelector((state: RootState) => ({
@@ -74,17 +81,19 @@ export default function Footer() {
       if (!rawId || !label) return;
 
       const path = /^[a-f\d]{24}$/i.test(rawId)
-        ? `/template/${vendor_id}/category/${rawId}`
-        : `/template/${vendor_id}/category/${encodeURIComponent(
-            String(label).toLowerCase().replace(/\s+/g, "-")
-          )}`;
+        ? toTemplatePath(`category/${rawId}`)
+        : toTemplatePath(
+            `category/${encodeURIComponent(
+              String(label).toLowerCase().replace(/\s+/g, "-")
+            )}`
+          );
 
       if (!map.has(path)) {
         map.set(path, { path, label: String(label) });
       }
     });
     return Array.from(map.values()).slice(0, 6);
-  }, [products, vendor_id]);
+  }, [products, vendorId]);
 
   if (isMquiq) {
     return <MquiqFooter />;
@@ -152,13 +161,13 @@ export default function Footer() {
             <h3 className="text-base md:text-lg font-semibold mb-4">Quick Links</h3>
             <ul className="space-y-2 md:space-y-3 text-sm md:text-base">
               {[
-                { name: "Home", path: `/template/${vendor_id}` },
-                { name: "Shop", path: `/template/${vendor_id}/all-products` },
-                { name: "About Us", path: `/template/${vendor_id}/about` },
-                { name: "Contact", path: `/template/${vendor_id}/contact` },
+                { name: "Home", path: toTemplatePath("") },
+                { name: "Shop", path: toTemplatePath("all-products") },
+                { name: "About Us", path: toTemplatePath("about") },
+                { name: "Contact", path: toTemplatePath("contact") },
                 ...customPages.map((page: any) => ({
                   name: page.title || "Page",
-                  path: `/template/${vendor_id}/page/${page.slug || page.id}`,
+                  path: toTemplatePath(`page/${page.slug || page.id}`),
                 })),
               ].map((item) => (
                 <li key={item.name}>
@@ -187,7 +196,7 @@ export default function Footer() {
               ) : (
                 <li>
                   <Link
-                    href={`/template/${vendor_id}/all-products`}
+                    href={toTemplatePath("all-products")}
                     className="opacity-75 hover:opacity-100 transition"
                   >
                     All Products
@@ -263,7 +272,7 @@ export default function Footer() {
             {["Privacy Policy", "Terms of Service", "Cookie Policy"].map((link) => (
               <Link
                 key={link}
-                href={`/template/${vendor_id}/${link.toLowerCase().replace(/ /g, "-")}`}
+                href={toTemplatePath(link.toLowerCase().replace(/ /g, "-"))}
                 className="hover:opacity-100 transition template-accent-hover"
               >
                 {link}

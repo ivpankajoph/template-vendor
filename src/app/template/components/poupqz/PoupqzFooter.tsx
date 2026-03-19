@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ArrowUp,
@@ -15,6 +15,7 @@ import {
   MessageCircle,
   ChevronRight,
 } from 'lucide-react'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 type Product = {
   _id?: string
@@ -40,7 +41,16 @@ const toWhatsappHref = (value: unknown, fallbackPhone: string) => {
 
 export function PoupqzFooter() {
   const params = useParams()
+  const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const products = useSelector(
@@ -71,10 +81,10 @@ export function PoupqzFooter() {
     .join(', ')
 
   const quickLinks = [
-    { label: 'Home', href: vendorId ? `/template/${vendorId}` : '#' },
-    { label: 'About Us', href: vendorId ? `/template/${vendorId}#about-us` : '#' },
-    { label: 'Products', href: vendorId ? `/template/${vendorId}#products` : '#' },
-    { label: 'Contact Us', href: vendorId ? `/template/${vendorId}#contact-us` : '#' },
+    { label: 'Home', href: toStorefrontPath('') },
+    { label: 'About Us', href: `${toStorefrontPath('')}#about-us` },
+    { label: 'Products', href: `${toStorefrontPath('')}#products` },
+    { label: 'Contact Us', href: `${toStorefrontPath('')}#contact-us` },
   ]
 
   const productLinks = useMemo(() => {
@@ -83,7 +93,7 @@ export function PoupqzFooter() {
       .filter((item) => item?._id && item?.productName)
       .map((item) => ({
         label: String(item.productName),
-        href: `/template/${vendorId}/product/${item._id}`,
+        href: toStorefrontPath(`product/${item._id}`),
       }))
       .filter((item) => {
         const key = item.label.toLowerCase().trim()
@@ -96,13 +106,13 @@ export function PoupqzFooter() {
     if (list.length > 0) return list
 
     return [
-      { label: 'Mezzanine Floor', href: vendorId ? `/template/${vendorId}#products` : '#' },
-      { label: 'Industrial Storage Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
-      { label: 'Warehouse Storage Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
-      { label: 'Slotted Angle Rack', href: vendorId ? `/template/${vendorId}#products` : '#' },
-      { label: 'Cable Tray & Raceway', href: vendorId ? `/template/${vendorId}#products` : '#' },
+      { label: 'Mezzanine Floor', href: `${toStorefrontPath('')}#products` },
+      { label: 'Industrial Storage Rack', href: `${toStorefrontPath('')}#products` },
+      { label: 'Warehouse Storage Rack', href: `${toStorefrontPath('')}#products` },
+      { label: 'Slotted Angle Rack', href: `${toStorefrontPath('')}#products` },
+      { label: 'Cable Tray & Raceway', href: `${toStorefrontPath('')}#products` },
     ]
-  }, [products, vendorId])
+  }, [products, toStorefrontPath, vendorId])
 
   const whatsappHref = toWhatsappHref(social?.whatsapp, phonePrimary)
 

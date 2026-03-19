@@ -8,6 +8,7 @@ import {
   getTemplateAuth,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
@@ -77,6 +78,10 @@ export default function TemplateCheckoutAddressPageClient() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
+  const paymentPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/payment" });
+  const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
 
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<TemplateCart | null>(null);
@@ -278,11 +283,7 @@ export default function TemplateCheckoutAddressPageClient() {
               Sign in to continue checkout.
             </p>
             <button
-              onClick={() =>
-                router.push(
-                  `/template/${vendorId}/login?next=/template/${vendorId}/checkout/address`,
-                )
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(addressPath)}`)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go to login
@@ -302,7 +303,7 @@ export default function TemplateCheckoutAddressPageClient() {
           <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
             <p className="text-lg font-semibold text-slate-900">Your bag is empty.</p>
             <button
-              onClick={() => router.push(`/template/${vendorId}/checkout/bag`)}
+              onClick={() => router.push(bagPath)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go To Bag
@@ -576,7 +577,7 @@ export default function TemplateCheckoutAddressPageClient() {
           </div>
           <button
             disabled={!selectedAddress}
-            onClick={() => router.push(`/template/${vendorId}/checkout/payment`)}
+            onClick={() => router.push(paymentPath)}
             className="template-checkout-accent mt-5 h-11 w-full rounded-md bg-[#ff3f6c] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#e93861] disabled:opacity-50"
           >
             CONTINUE

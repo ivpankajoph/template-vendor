@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 const DynamicMap = dynamic(() => import("@/app/template/components/MapComponent"), {
   ssr: false,
@@ -24,6 +25,11 @@ export default function ContactPage() {
   );
   const params = useParams();
   const vendor_id = params.vendor_id as string;
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId: String(vendor_id || ""),
+      suffix,
+    });
 
   const categories = useMemo(() => {
     const map = new Map<string, { id: string; label: string; count: number }>();
@@ -177,7 +183,7 @@ export default function ContactPage() {
                   return (
                     <Link
                       key={category.id}
-                      href={`/template/${vendor_id}/category/${categoryPath}`}
+                      href={toTemplatePath(`category/${categoryPath}`)}
                       className={`flex items-center justify-between rounded-xl border border-transparent px-3 py-2 text-sm transition ${
                         isStudio
                           ? "text-slate-200 hover:border-slate-700 hover:bg-slate-800/70"

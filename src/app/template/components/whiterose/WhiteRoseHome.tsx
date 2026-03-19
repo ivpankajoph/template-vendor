@@ -94,11 +94,15 @@ export function WhiteRoseHome() {
   const advantage = home?.advantage || {}
 
   const heroImage = home?.backgroundImage || whiteRoseGetLeadImage(products?.[0]) || HERO_FALLBACK
-  const homePath = buildTemplateScopedPath({
-    vendorId,
-    pathname: pathname || '/',
-    suffix: '',
-  })
+  const toTemplatePath = (suffix = '') =>
+    buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || '/',
+      suffix,
+    })
+  const homePath = toTemplatePath('')
+  const allProductsPath = toTemplatePath('all-products')
+  const categoryPath = toTemplatePath('category')
 
   const categoryCards = useMemo<CategoryCard[]>(() => {
     const map = new Map<string, CategoryCard>()
@@ -106,7 +110,7 @@ export function WhiteRoseHome() {
       const category = whiteRoseGetCategoryDetails(product)
       if (!category.label) return
       const slug = category.id || toWhiteRoseSlug(category.label)
-      const href = `/template/${vendorId}/category/${slug}`
+      const href = toTemplatePath(`category/${slug}`)
       const current = map.get(href)
       if (current) {
         current.count += 1
@@ -125,7 +129,7 @@ export function WhiteRoseHome() {
       })
     })
     return Array.from(map.values()).slice(0, 6)
-  }, [products, vendorId])
+  }, [pathname, products, vendorId])
 
   const benefitCards =
     Array.isArray(benefits?.cards) && benefits.cards.length > 0
@@ -331,7 +335,7 @@ export function WhiteRoseHome() {
 
               <div className='flex flex-wrap items-center gap-3'>
                 <Link
-                  href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                  href={vendorId ? allProductsPath : '#'}
                   className='inline-flex items-center gap-2 rounded-xl bg-[#ff9f00] px-6 py-3 text-sm font-semibold text-white transition hover:bg-[#f08b00]'
                   data-template-path='components.home_page.button_header'
                   data-template-section='hero'
@@ -340,7 +344,7 @@ export function WhiteRoseHome() {
                   <ArrowRight className='h-4 w-4' />
                 </Link>
                 <Link
-                  href={vendorId ? `/template/${vendorId}/category` : '#'}
+                  href={vendorId ? categoryPath : '#'}
                   className='rounded-xl border border-[#c8d4ea] bg-white px-6 py-3 text-sm font-semibold text-[#172337] transition hover:border-[#2874f0] hover:text-[#2874f0]'
                   data-template-path='components.home_page.button_secondary'
                   data-template-section='hero'
@@ -449,8 +453,8 @@ export function WhiteRoseHome() {
                           key={product?._id || `${product?.productName || 'hero-product'}-${index}`}
                           href={
                             vendorId && product?._id
-                              ? `/template/${vendorId}/product/${product._id}`
-                              : `/template/${vendorId}/all-products`
+                              ? toTemplatePath(`product/${product._id}`)
+                              : allProductsPath
                           }
                           className='flex items-center justify-between gap-3 rounded-[18px] bg-white/10 px-4 py-3 transition hover:bg-white/15'
                         >
@@ -495,7 +499,7 @@ export function WhiteRoseHome() {
               </h2>
             </div>
             <Link
-              href={vendorId ? `/template/${vendorId}/category` : '#'}
+              href={vendorId ? categoryPath : '#'}
               className='text-sm font-semibold text-[#2874f0] transition hover:text-[#174ea6]'
             >
               See all categories
@@ -570,7 +574,7 @@ export function WhiteRoseHome() {
                 </p>
                 {railIndex === 2 ? (
                   <Link
-                    href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                    href={vendorId ? allProductsPath : '#'}
                     className='inline-flex items-center gap-2 rounded-xl bg-[#2874f0] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#174ea6]'
                     data-template-path='components.home_page.advantage.ctaLabel'
                     data-template-section='products'
@@ -592,8 +596,8 @@ export function WhiteRoseHome() {
                       product={product}
                       href={
                         vendorId && product?._id
-                          ? `/template/${vendorId}/product/${product._id}`
-                          : `/template/${vendorId}/all-products`
+                          ? toTemplatePath(`product/${product._id}`)
+                          : allProductsPath
                       }
                       categoryLabel={category.label || 'Top category'}
                       badgeLabel={`${rail.badgePrefix} ${index + 1}`}

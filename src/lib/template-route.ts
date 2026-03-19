@@ -82,12 +82,20 @@ export const buildTemplateScopedPath = ({
   suffix = "",
 }: {
   vendorId: string;
-  pathname: string;
+  pathname?: string;
   suffix?: string;
 }) => {
-  const context = getTemplateRouteContext(pathname, vendorId);
+  const activePathname =
+    String(pathname || "").trim() ||
+    (typeof window !== "undefined" ? window.location.pathname || "/" : "/");
+  const context = getTemplateRouteContext(activePathname, vendorId);
   const normalizedSuffix = String(suffix || "").replace(/^\/+/, "");
   const suffixPart = normalizedSuffix ? `/${normalizedSuffix}` : "";
+
+  if (!isPlatformTemplatePath(activePathname, vendorId)) {
+    return suffixPart || "/";
+  }
+
   const cityPart = context.citySlug ? `/${context.citySlug}` : "/all";
   const websitePart = context.websiteSlug
     ? `/website/${encodeURIComponent(context.websiteSlug)}`
@@ -99,6 +107,28 @@ export const buildTemplateScopedPath = ({
 
   return `/template/${vendorId}${cityPart}${websitePart}${suffixPart}`;
 };
+
+export const isPlatformTemplatePath = (pathname: string, vendorId?: string) => {
+  const normalizedVendorId = String(vendorId || '').trim()
+  const normalizedPathname = String(pathname || '').trim()
+  if (!normalizedVendorId || !normalizedPathname) return false
+  return normalizedPathname.startsWith(`/template/${normalizedVendorId}`)
+}
+
+export const buildStorefrontScopedPath = ({
+  vendorId,
+  pathname,
+  suffix = '',
+}: {
+  vendorId: string
+  pathname?: string
+  suffix?: string
+}) =>
+  buildTemplateScopedPath({
+    vendorId,
+    pathname,
+    suffix,
+  })
 
 export const getTemplateCityFromPath = (pathname: string, vendorId?: string) =>
   getTemplateRouteContext(pathname, vendorId).citySlug || "all";

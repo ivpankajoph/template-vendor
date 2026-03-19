@@ -11,6 +11,7 @@ import {
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { trackCheckout } from "@/lib/analytics-events";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
@@ -52,6 +53,12 @@ export default function TemplateCheckoutBagPageClient() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const homePath = buildTemplateScopedPath({ vendorId, suffix: "" });
+  const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
+  const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
+  const productPath = (productId?: string) =>
+    productId ? buildTemplateScopedPath({ vendorId, suffix: `product/${productId}` }) : "#";
 
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<TemplateCart | null>(null);
@@ -196,11 +203,7 @@ export default function TemplateCheckoutBagPageClient() {
               Sign in to continue checkout.
             </p>
             <button
-              onClick={() =>
-                router.push(
-                  `/template/${vendorId}/login?next=/template/${vendorId}/checkout/bag`,
-                )
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(bagPath)}`)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go to login
@@ -222,7 +225,7 @@ export default function TemplateCheckoutBagPageClient() {
           <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
             <p className="text-lg font-semibold text-slate-900">Your bag is empty.</p>
             <button
-              onClick={() => router.push(`/template/${vendorId}`)}
+              onClick={() => router.push(homePath)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Continue Shopping
@@ -259,7 +262,7 @@ export default function TemplateCheckoutBagPageClient() {
                 </p>
               </div>
               <button
-                onClick={() => router.push(`/template/${vendorId}/checkout/address`)}
+                onClick={() => router.push(addressPath)}
                 className="template-checkout-accent-outline h-10 rounded-md border border-[#ff3f6c] px-5 text-sm font-semibold text-[#ff3f6c] hover:bg-[#fff1f5]"
               >
                 CHANGE ADDRESS
@@ -285,7 +288,7 @@ export default function TemplateCheckoutBagPageClient() {
                 >
                   <div className="flex items-start gap-4">
                     <Link
-                      href={`/template/${vendorId}/product/${item.product_id}`}
+                      href={productPath(item.product_id)}
                       className="relative h-28 w-24 flex-shrink-0 overflow-hidden rounded-md bg-slate-100"
                     >
                       <Image
@@ -299,7 +302,7 @@ export default function TemplateCheckoutBagPageClient() {
                     <div className="flex min-w-0 flex-1 justify-between gap-4">
                       <div className="min-w-0">
                         <Link
-                          href={`/template/${vendorId}/product/${item.product_id}`}
+                          href={productPath(item.product_id)}
                           className="block text-lg font-semibold text-slate-900 hover:text-[#ff3f6c]"
                         >
                           {item.product_name}
@@ -372,7 +375,7 @@ export default function TemplateCheckoutBagPageClient() {
             <span>{formatAmount(totalAmount)}</span>
           </div>
           <button
-            onClick={() => router.push(`/template/${vendorId}/checkout/address`)}
+            onClick={() => router.push(addressPath)}
             className="template-checkout-accent mt-5 h-11 w-full rounded-md bg-[#ff3f6c] text-sm font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#e93861]"
           >
             PLACE ORDER

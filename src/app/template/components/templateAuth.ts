@@ -1,6 +1,7 @@
 "use client";
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
+import { buildStorefrontScopedPath } from "@/lib/template-route";
 
 export type TemplateAuthPayload = {
   token: string;
@@ -48,12 +49,20 @@ const isJwtExpired = (token: string): boolean => {
 const redirectToTemplateLogin = (vendorId: string) => {
   if (typeof window === "undefined") return;
 
-  const loginPath = `/template/${vendorId}/login`;
+  const currentPath = window.location.pathname || "/";
+  const loginPath = buildStorefrontScopedPath({
+    vendorId,
+    pathname: currentPath,
+    suffix: "login",
+  });
   if (window.location.pathname.startsWith(loginPath)) return;
 
   const nextPath =
     `${window.location.pathname}${window.location.search}${window.location.hash}` ||
-    `/template/${vendorId}`;
+    buildStorefrontScopedPath({
+      vendorId,
+      pathname: currentPath,
+    });
 
   window.location.replace(`${loginPath}?next=${encodeURIComponent(nextPath)}`);
 };

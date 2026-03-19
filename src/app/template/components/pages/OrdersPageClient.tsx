@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   getTemplateAuth,
@@ -8,6 +9,7 @@ import {
 } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type Order = {
   _id: string;
@@ -40,6 +42,12 @@ export default function TemplateOrdersPage() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
+  const productPath = (productId?: string) =>
+    productId ? buildTemplateScopedPath({ vendorId, suffix: `product/${productId}` }) : "#";
+  const orderDetailPath = (orderId?: string) =>
+    orderId ? buildTemplateScopedPath({ vendorId, suffix: `orders/${orderId}` }) : "#";
 
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -133,9 +141,7 @@ export default function TemplateOrdersPage() {
             <h1 className={isStudio ? "text-2xl font-bold text-slate-100" : "text-2xl font-bold text-slate-900"}>Login required</h1>
             <p className={isStudio ? "mt-2 text-sm text-slate-300" : isWhiteRose ? "mt-2 text-sm text-[#5f6c7b]" : "mt-2 text-sm text-slate-500"}>Sign in to view your orders.</p>
             <button
-              onClick={() =>
-                router.push(`/template/${vendorId}/login?next=/template/${vendorId}/orders`)
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(ordersPath)}`)}
               className="template-primary-button mt-6 rounded-lg px-6 py-3 text-sm font-semibold text-white"
             >
               Go to login
@@ -177,9 +183,9 @@ export default function TemplateOrdersPage() {
 
                 <div className={`mt-4 grid gap-3 text-sm ${isStudio ? "text-slate-300" : isWhiteRose ? "text-[#5f6c7b]" : "text-slate-600"}`}>
                   {order.items.map((item, index) => (
-                    <a
+                    <Link
                       key={`${order._id}-${item._id || index}`}
-                      href={item.product_id ? `/template/${vendorId}/product/${item.product_id}` : "#"}
+                      href={productPath(item.product_id)}
                       className={`template-product-card flex items-start justify-between gap-3 rounded-lg border p-3 transition ${isStudio ? "border-slate-700 bg-slate-900 hover:border-slate-600" : isTrend ? "border-rose-200 bg-white hover:border-rose-300" : isWhiteRose ? "border-[#dfe3eb] bg-[#f8fafc] hover:border-[#2874f0]" : "border-slate-200 bg-white hover:border-slate-300"}`}
                     >
                       <div className="flex items-start gap-3">
@@ -203,7 +209,7 @@ export default function TemplateOrdersPage() {
                       <span className={isStudio ? "text-sm font-semibold text-slate-100" : "text-sm font-semibold text-slate-900"}>
                         {formatMoney(item.total_price || 0)}
                       </span>
-                    </a>
+                    </Link>
                   ))}
                 </div>
 
@@ -212,12 +218,12 @@ export default function TemplateOrdersPage() {
                     {order.items?.length || 0} items
                   </span>
                   <div className="flex flex-wrap gap-2">
-                    <a
-                      href={`/template/${vendorId}/orders/${order._id}`}
+                    <Link
+                      href={orderDetailPath(order._id)}
                       className={`inline-flex items-center rounded-lg border px-4 py-2 text-xs font-semibold ${isStudio ? "border-slate-700 text-slate-200 hover:border-slate-600" : isTrend ? "border-rose-200 text-rose-700 hover:border-rose-300" : isWhiteRose ? "border-[#dfe3eb] text-[#172337] hover:border-[#2874f0] hover:text-[#2874f0]" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}
                     >
                       View details
-                    </a>
+                    </Link>
                     <button
                       type="button"
                       onClick={() => downloadInvoice(order._id, order.order_number)}

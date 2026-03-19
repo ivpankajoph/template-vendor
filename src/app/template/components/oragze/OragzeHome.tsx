@@ -21,6 +21,7 @@ import {
   Tags,
 } from 'lucide-react'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildTemplateScopedPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
@@ -180,6 +181,13 @@ export function OragzeHome() {
   )
 
   const home = template?.components?.home_page || {}
+  const toTemplatePath = (suffix = '') =>
+    buildTemplateScopedPath({
+      vendorId,
+      suffix,
+    })
+  const allProductsPath = toTemplatePath('all-products')
+  const loginPath = toTemplatePath('login')
 
   const heroTitle = home?.header_text || 'Organic Foods at your Doorsteps'
   const heroSubtitle =
@@ -221,7 +229,7 @@ export function OragzeHome() {
     if (!vendorId || !product?._id) return
     const auth = getTemplateAuth(vendorId)
     if (!auth?.token) {
-      window.location.href = `/template/${vendorId}/login?next=/template/${vendorId}/all-products`
+      window.location.href = `${loginPath}?next=${encodeURIComponent(allProductsPath)}`
       return
     }
     if (!product.variantId) {
@@ -281,7 +289,7 @@ export function OragzeHome() {
               {categories.map((cat, idx) => (
                 <Link
                   key={`${cat.id}-${idx}`}
-                  href={vendorId ? `/template/${vendorId}/category/${toSlug(cat.name)}` : '#'}
+                  href={vendorId ? toTemplatePath(`category/${toSlug(cat.name)}`) : '#'}
                   className='group flex flex-col items-center min-w-[70px] md:min-w-[90px] shrink-0'
                 >
                   <div className='h-[70px] w-[70px] overflow-hidden rounded-full border border-pink-100 bg-white shadow-sm md:h-[90px] md:w-[90px] p-0.5 transition-transform duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-pink-300'>
@@ -318,7 +326,7 @@ export function OragzeHome() {
                    {heroSubtitle}
                  </p>
                  <Link
-                   href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                   href={vendorId ? allProductsPath : '#'}
                    className='inline-block mt-4 rounded-md bg-white px-8 py-3.5 text-[17px] font-bold tracking-wide text-red-600 shadow-lg transition-transform hover:-translate-y-1 hover:scale-105 duration-300'
                  >
                    {heroButtonPrimary}
@@ -379,7 +387,7 @@ export function OragzeHome() {
                 Discounts up to 30%
               </p>
               <Link
-                href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                href={vendorId ? allProductsPath : '#'}
                 className='mt-5 inline-flex items-center gap-2 border-b-2 border-white pb-1 text-[16px] font-bold tracking-wide text-white transition hover:gap-4'
               >
                 SHOP NOW
@@ -405,7 +413,7 @@ export function OragzeHome() {
                   Up to 50% Off
                 </p>
                 <Link
-                  href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                  href={vendorId ? allProductsPath : '#'}
                   className='mt-4 inline-flex items-center gap-1 border-b border-white pb-0.5 text-[14px] font-bold transition hover:gap-2'
                 > 
                   SHOP NOW
@@ -430,7 +438,7 @@ export function OragzeHome() {
                   Extra 40% Off
                 </p>
                 <Link
-                  href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                  href={vendorId ? allProductsPath : '#'}
                   className='mt-4 inline-flex items-center gap-1 border-b border-white pb-0.5 text-[14px] font-bold transition hover:gap-2'
                 >
                   COLLECT NOW
@@ -459,7 +467,7 @@ export function OragzeHome() {
             </h2>
             <div className='flex items-center gap-3'>
               <Link
-                href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                href={vendorId ? allProductsPath : '#'}
                 className='rounded-lg bg-[#69b64a] px-4 py-2 text-[16px] font-semibold text-white transition hover:bg-[#5aa13f] md:px-6 md:py-3 md:text-[20px]'
               >
                 View All
@@ -493,9 +501,9 @@ export function OragzeHome() {
                   <Link
                     href={
                       product._id
-                        ? `/template/${vendorId}/product/${product._id}`
+                        ? toTemplatePath(`product/${product._id}`)
                         : vendorId
-                          ? `/template/${vendorId}/all-products`
+                          ? allProductsPath
                           : '#'
                     }
                     className='block overflow-hidden relative aspect-square bg-slate-50'
@@ -520,9 +528,9 @@ export function OragzeHome() {
                     <Link
                       href={
                         product._id
-                          ? `/template/${vendorId}/product/${product._id}`
+                          ? toTemplatePath(`product/${product._id}`)
                           : vendorId
-                            ? `/template/${vendorId}/all-products`
+                            ? allProductsPath
                             : '#'
                       }
                       className='line-clamp-2 min-h-[40px] text-[15px] font-medium leading-[1.3] text-slate-800 hover:text-pink-600 transition-colors'

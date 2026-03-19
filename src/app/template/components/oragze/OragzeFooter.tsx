@@ -5,6 +5,7 @@ import { useMemo } from 'react'
 import { useParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import { Facebook, Instagram, Leaf, Twitter, Youtube, Mail, MapPin, Phone } from 'lucide-react'
+import { buildTemplateScopedPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
@@ -20,6 +21,11 @@ const resolveHref = (value: unknown) => {
 export function OragzeFooter() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toTemplatePath = (suffix = '') =>
+    buildTemplateScopedPath({
+      vendorId,
+      suffix,
+    })
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const products = useSelector(
@@ -30,26 +36,26 @@ export function OragzeFooter() {
   const businessName = template?.business_name || 'Organic'
 
   const organicLinks = [
-    { label: 'About us', href: vendorId ? `/template/${vendorId}/about` : '#' },
-    { label: 'Conditions', href: vendorId ? `/template/${vendorId}/checkout` : '#' },
-    { label: 'Our Journals', href: vendorId ? `/template/${vendorId}/all-products` : '#' },
-    { label: 'Careers', href: vendorId ? `/template/${vendorId}/contact` : '#' },
-    { label: 'Affiliate Programme', href: vendorId ? `/template/${vendorId}/register` : '#' },
+    { label: 'About us', href: vendorId ? toTemplatePath('about') : '#' },
+    { label: 'Conditions', href: vendorId ? toTemplatePath('checkout') : '#' },
+    { label: 'Our Journals', href: vendorId ? toTemplatePath('all-products') : '#' },
+    { label: 'Careers', href: vendorId ? toTemplatePath('contact') : '#' },
+    { label: 'Affiliate Programme', href: vendorId ? toTemplatePath('register') : '#' },
   ]
 
   const quickLinks = [
-    { label: 'Offers', href: vendorId ? `/template/${vendorId}` : '#' },
-    { label: 'Discount Coupons', href: vendorId ? `/template/${vendorId}/all-products` : '#' },
-    { label: 'Stores', href: vendorId ? `/template/${vendorId}/contact` : '#' },
-    { label: 'Track Order', href: vendorId ? `/template/${vendorId}/orders` : '#' },
-    { label: 'Shop', href: vendorId ? `/template/${vendorId}/all-products` : '#' },
+    { label: 'Offers', href: vendorId ? toTemplatePath('') : '#' },
+    { label: 'Discount Coupons', href: vendorId ? toTemplatePath('all-products') : '#' },
+    { label: 'Stores', href: vendorId ? toTemplatePath('contact') : '#' },
+    { label: 'Track Order', href: vendorId ? toTemplatePath('orders') : '#' },
+    { label: 'Shop', href: vendorId ? toTemplatePath('all-products') : '#' },
   ]
 
   const customerService = [
-    { label: 'Contact', href: vendorId ? `/template/${vendorId}/contact` : '#' },
-    { label: 'Privacy Policy', href: vendorId ? `/template/${vendorId}/privacy-policy` : '#' },
-    { label: 'Returns & Refunds', href: vendorId ? `/template/${vendorId}/returns-refunds` : '#' },
-    { label: 'Delivery Information', href: vendorId ? `/template/${vendorId}/delivery-information` : '#' },
+    { label: 'Contact', href: vendorId ? toTemplatePath('contact') : '#' },
+    { label: 'Privacy Policy', href: vendorId ? toTemplatePath('privacy-policy') : '#' },
+    { label: 'Returns & Refunds', href: vendorId ? toTemplatePath('returns-refunds') : '#' },
+    { label: 'Delivery Information', href: vendorId ? toTemplatePath('delivery-information') : '#' },
   ]
 
   return (

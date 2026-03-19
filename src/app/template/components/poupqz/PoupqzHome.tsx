@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { useMemo, useState, useEffect } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ChevronDown,
@@ -23,6 +23,7 @@ import {
   Medal,
 } from 'lucide-react'
 import { getRichTextPreview } from '@/lib/rich-text'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import type { ComponentType } from 'react'
 
@@ -258,7 +259,16 @@ const FAQ_FALLBACK: FaqItem[] = [
 
 export function PoupqzHome() {
   const params = useParams()
+  const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
 
   // Use products already loaded into Redux store by TemplateDataLoader
@@ -367,7 +377,9 @@ export function PoupqzHome() {
     if (!vendorId || !product?._id) return
     const auth = getTemplateAuth(vendorId)
     if (!auth) {
-      window.location.href = `/template/${vendorId}/login?next=/template/${vendorId}`
+      window.location.href = `${toStorefrontPath('login')}?next=${encodeURIComponent(
+        toStorefrontPath('')
+      )}`
       return
     }
     if (!product.variantId) {
@@ -449,7 +461,7 @@ export function PoupqzHome() {
 
             <div className='mt-12 flex flex-wrap items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300'>
               <Link
-                href={vendorId ? `/template/${vendorId}/all-products` : '#'}
+                href={toStorefrontPath('all-products')}
                 className='group relative inline-flex items-center gap-3 overflow-hidden rounded-xl bg-white px-10 py-5 text-base font-black text-[#0c4a6e] transition-all hover:scale-[1.02] hover:shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95'
                 data-template-path='components.home_page.button_header'
                 data-template-section='hero'
@@ -526,9 +538,9 @@ export function PoupqzHome() {
                   <Link
                     href={
                       vendorId && product?._id
-                        ? `/template/${vendorId}/product/${product._id}`
+                        ? toStorefrontPath(`product/${product._id}`)
                         : vendorId
-                          ? `/template/${vendorId}/all-products`
+                          ? toStorefrontPath('all-products')
                           : '#'
                     }
                     className='block flex-1'

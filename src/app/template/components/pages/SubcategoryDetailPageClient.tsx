@@ -8,6 +8,7 @@ import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useSelector } from "react-redux";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { getRichTextPreview } from "@/lib/rich-text";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type Subcategory = {
   _id?: string;
@@ -65,6 +66,11 @@ export default function SubcategoryDetailPageClient() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const subcategoryId = params.subcategory_id as string;
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      suffix,
+    });
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   );
@@ -142,8 +148,8 @@ export default function SubcategoryDetailPageClient() {
           <Link
             href={
               parentCategoryId
-                ? `/template/${vendorId}/category/${parentCategoryId}`
-                : `/template/${vendorId}/category`
+                ? toTemplatePath(`category/${parentCategoryId}`)
+                : toTemplatePath("category")
             }
             className="inline-flex items-center gap-2 rounded-full border border-slate-200 bg-white px-4 py-2 text-xs font-semibold text-slate-600"
           >
@@ -170,7 +176,7 @@ export default function SubcategoryDetailPageClient() {
             {filteredProducts.map((product, index) => (
               <Link
                 key={product._id || `${product.productName}-${index}`}
-                href={product._id ? `/template/${vendorId}/product/${product._id}` : "#"}
+                href={product._id ? toTemplatePath(`product/${product._id}`) : "#"}
                 className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="aspect-[4/3] overflow-hidden bg-slate-100">

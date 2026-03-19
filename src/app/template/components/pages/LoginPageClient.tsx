@@ -1,17 +1,24 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildStorefrontScopedPath } from "@/lib/template-route";
 
 export default function TemplateLoginPage() {
   const variant = useTemplateVariant();
   const params = useParams();
   const vendorId = params.vendor_id as string;
+  const pathname = usePathname();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const nextPath = searchParams.get("next") || `/template/${vendorId}`;
+  const nextPath =
+    searchParams.get("next") ||
+    buildStorefrontScopedPath({
+      vendorId,
+      pathname: pathname || undefined,
+    });
 
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
@@ -120,7 +127,11 @@ export default function TemplateLoginPage() {
           <p className={`mt-6 text-center text-sm ${isStudio ? "text-slate-300" : "text-slate-500"}`}>
             New here?{" "}
             <a
-              href={`/template/${vendorId}/register`}
+              href={buildStorefrontScopedPath({
+                vendorId,
+                pathname: pathname || undefined,
+                suffix: "register",
+              })}
               className={isStudio ? "font-semibold text-slate-100 hover:underline" : "font-semibold text-slate-900 hover:underline"}
             >
               Create an account

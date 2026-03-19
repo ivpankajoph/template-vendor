@@ -1,14 +1,16 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import { useParams, usePathname, useRouter } from "next/navigation";
 import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildStorefrontScopedPath } from "@/lib/template-route";
 
 export default function TemplateRegisterPage() {
   const variant = useTemplateVariant();
   const params = useParams();
   const vendorId = params.vendor_id as string;
+  const pathname = usePathname();
   const router = useRouter();
 
   const [name, setName] = useState("");
@@ -60,7 +62,12 @@ export default function TemplateRegisterPage() {
         }),
       });
       setTemplateAuth(vendorId, { token: data.token, user: data.user });
-      router.push(`/template/${vendorId}`);
+      router.push(
+        buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+        })
+      );
     } catch (err: any) {
       setError(err.message || "Registration failed");
     } finally {
@@ -141,7 +148,11 @@ export default function TemplateRegisterPage() {
           <p className={`mt-6 text-center text-sm ${isStudio ? "text-slate-300" : "text-slate-500"}`}>
             Already have an account?{" "}
             <a
-              href={`/template/${vendorId}/login`}
+              href={buildStorefrontScopedPath({
+                vendorId,
+                pathname: pathname || undefined,
+                suffix: "login",
+              })}
               className={isStudio ? "font-semibold text-slate-100 hover:underline" : "font-semibold text-slate-900 hover:underline"}
             >
               Sign in

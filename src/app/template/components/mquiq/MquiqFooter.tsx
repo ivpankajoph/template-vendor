@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
 import { useMemo } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ChevronRight,
@@ -15,6 +15,7 @@ import {
   MessageCircle,
   ArrowUp,
 } from 'lucide-react'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 type Product = {
   _id?: string
@@ -50,7 +51,12 @@ const resolveHref = (value: unknown) => {
 const isExternalHref = (value: string) =>
   value.startsWith('http://') || value.startsWith('https://')
 
-const resolveTemplateHref = (value: unknown, vendorId: string, fallback: string) => {
+const resolveTemplateHref = (
+  value: unknown,
+  vendorId: string,
+  pathname: string | undefined,
+  fallback: string
+) => {
   if (typeof value !== 'string' || !value.trim()) return fallback
   const href = value.trim()
 
@@ -59,11 +65,19 @@ const resolveTemplateHref = (value: unknown, vendorId: string, fallback: string)
   }
 
   if (href === '/') {
-    return vendorId ? `/template/${vendorId}` : href
+    return vendorId
+      ? buildStorefrontScopedPath({ vendorId, pathname, suffix: '' })
+      : href
   }
 
   if (href.startsWith('/')) {
-    return vendorId ? `/template/${vendorId}${href}` : href
+    return vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname,
+          suffix: href.replace(/^\/+/, ''),
+        })
+      : href
   }
 
   return href
@@ -71,7 +85,16 @@ const resolveTemplateHref = (value: unknown, vendorId: string, fallback: string)
 
 export function MquiqFooter() {
   const params = useParams()
+  const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
 
   const homepage = useSelector((state: any) => state?.alltemplatepage?.data)
   const products = useSelector(
@@ -127,9 +150,9 @@ export function MquiqFooter() {
 
   const quickLinks = useMemo<FooterQuickLink[]>(() => {
     const defaults: FooterQuickLink[] = [
-      { label: 'Home', href: vendorId ? `/template/${vendorId}` : '#' },
-      { label: 'About Us', href: vendorId ? `/template/${vendorId}/about` : '#' },
-      { label: 'Contact Us', href: vendorId ? `/template/${vendorId}/contact` : '#' },
+      { label: 'Home', href: toStorefrontPath('') },
+      { label: 'About Us', href: toStorefrontPath('about') },
+      { label: 'Contact Us', href: toStorefrontPath('contact') },
     ]
 
     const configured: unknown[] = Array.isArray(footer?.quick_links)
@@ -143,24 +166,30 @@ export function MquiqFooter() {
           href: resolveTemplateHref(
             row?.href,
             vendorId,
-            defaults[index]?.href || (vendorId ? `/template/${vendorId}` : '#')
+            pathname || undefined,
+            defaults[index]?.href || toStorefrontPath('')
           ),
         }
       })
       .filter((item: { label: string }) => Boolean(item.label))
 
     return normalized.length ? normalized : defaults
-  }, [footer?.quick_links, vendorId])
+  }, [footer?.quick_links, pathname, toStorefrontPath, vendorId])
 
   const productLinks = useMemo<FooterQuickLink[]>(() => {
     const configured = Array.isArray(footer?.product_links) ? footer.product_links : []
     const configuredList = configured
       .map((item: unknown, index: number) => {
         const row = item as { label?: unknown; href?: unknown }
-        const defaultHref = vendorId ? `/template/${vendorId}/all-products` : '#'
+        const defaultHref = toStorefrontPath('all-products')
         return {
           label: String(row?.label || '').trim(),
-          href: resolveTemplateHref(row?.href, vendorId, defaultHref),
+          href: resolveTemplateHref(
+            row?.href,
+            vendorId,
+            pathname || undefined,
+            defaultHref
+          ),
         }
       })
       .filter((item: FooterQuickLink) => Boolean(item.label))
@@ -172,7 +201,7 @@ export function MquiqFooter() {
       .filter((item) => item?._id && item?.productName)
       .map((item) => ({
         label: String(item.productName),
-        href: `/template/${vendorId}/product/${item._id}`,
+        href: toStorefrontPath(`product/${item._id}`),
       }))
       .filter((item) => {
         const key = item.label.toLowerCase()
@@ -187,30 +216,30 @@ export function MquiqFooter() {
     return [
       {
         label: '5 Shelves Rack',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
       {
         label: '6 Feet Slotted Angle Rack',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
       {
         label: 'Adjustable Rack',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
       {
         label: 'Barrel Storage Rack',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
       {
         label: 'Bin Storage Rack',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
       {
         label: 'Body Part Storage Racks',
-        href: vendorId ? `/template/${vendorId}/all-products` : '#',
+        href: toStorefrontPath('all-products'),
       },
     ]
-  }, [footer?.product_links, products, vendorId])
+  }, [footer?.product_links, pathname, products, toStorefrontPath, vendorId])
 
   const whatsappHref = toWhatsappHref(social?.whatsapp, phone)
   const showPhoneButton = social?.show_phone_button !== false && Boolean(phone)

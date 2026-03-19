@@ -36,6 +36,31 @@ const normalizeHostname = (value?: string | null) =>
     .replace(/:\d+$/, "")
     .replace(/\.+$/, "");
 
+const applyStorefrontContextHeaders = (
+  response: NextResponse,
+  context: {
+    vendorId?: string;
+    websiteId?: string;
+    hostname?: string;
+  } = {}
+) => {
+  response.headers.set("x-sellerslogin-storefront-context", "template-storefront");
+
+  if (context.vendorId) {
+    response.headers.set("x-sellerslogin-template-vendor", context.vendorId);
+  }
+
+  if (context.websiteId) {
+    response.headers.set("x-sellerslogin-template-website", context.websiteId);
+  }
+
+  if (context.hostname) {
+    response.headers.set("x-sellerslogin-domain-host", context.hostname);
+  }
+
+  return response;
+};
+
 const getPlatformHosts = () =>
   new Set(
     [
@@ -247,7 +272,11 @@ export async function middleware(request: NextRequest) {
         segments[1] === resolvedDomain.vendorId ? segments.slice(2) : [];
       const redirectUrl = request.nextUrl.clone();
       redirectUrl.pathname = cleanSegments.length ? `/${cleanSegments.join("/")}` : "/";
-      return NextResponse.redirect(redirectUrl);
+      return applyStorefrontContextHeaders(NextResponse.redirect(redirectUrl), {
+        vendorId: resolvedDomain.vendorId,
+        websiteId: resolvedDomain.websiteId,
+        hostname: resolvedDomain.hostname,
+      });
     }
 
     const rewriteUrl = request.nextUrl.clone();
@@ -256,11 +285,18 @@ export async function middleware(request: NextRequest) {
         ? `/template/${resolvedDomain.vendorId}`
         : `/template/${resolvedDomain.vendorId}${pathname}`;
 
-    return NextResponse.rewrite(rewriteUrl, {
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    return applyStorefrontContextHeaders(
+      NextResponse.rewrite(rewriteUrl, {
+        request: {
+          headers: requestHeaders,
+        },
+      }),
+      {
+        vendorId: resolvedDomain.vendorId,
+        websiteId: resolvedDomain.websiteId,
+        hostname: resolvedDomain.hostname,
+      }
+    );
   }
 
   const isAllowedBasePath =

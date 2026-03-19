@@ -7,6 +7,7 @@ import {
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type Profile = {
   name?: string;
@@ -41,6 +42,8 @@ export default function TemplateProfilePage() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const profilePath = buildTemplateScopedPath({ vendorId, suffix: "profile" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
 
   const [profile, setProfile] = useState<Profile | null>(null);
   const [addresses, setAddresses] = useState<Address[]>([]);
@@ -106,9 +109,7 @@ export default function TemplateProfilePage() {
               Sign in to view your profile.
             </p>
             <button
-              onClick={() =>
-                router.push(`/template/${vendorId}/login?next=/template/${vendorId}/profile`)
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(profilePath)}`)}
               className="mt-6 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
             >
               Go to login

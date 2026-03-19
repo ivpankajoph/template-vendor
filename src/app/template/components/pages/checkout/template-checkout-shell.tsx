@@ -3,6 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import type { TemplateCheckoutStep } from "./template-checkout-utils";
 
@@ -59,21 +60,27 @@ export default function TemplateCheckoutShell({
       : "text-[#03a685]";
   const stepIdleClass = isStudio ? "text-slate-500" : "text-slate-500";
 
+  const toTemplatePath = (suffix = "") =>
+    buildTemplateScopedPath({
+      vendorId,
+      suffix,
+    });
+
   const steps: Array<{
     id: TemplateCheckoutStep;
     label: string;
     href: string;
   }> = [
-    { id: "bag", label: "BAG", href: `/template/${vendorId}/checkout/bag` },
+    { id: "bag", label: "BAG", href: toTemplatePath("checkout/bag") },
     {
       id: "address",
       label: "ADDRESS",
-      href: `/template/${vendorId}/checkout/address`,
+      href: toTemplatePath("checkout/address"),
     },
     {
       id: "payment",
       label: "PAYMENT",
-      href: `/template/${vendorId}/checkout/payment`,
+      href: toTemplatePath("checkout/payment"),
     },
   ];
 

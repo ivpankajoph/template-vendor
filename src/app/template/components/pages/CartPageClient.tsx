@@ -9,6 +9,7 @@ import {
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type CartItem = {
   _id: string;
@@ -35,6 +36,11 @@ export default function ShoppingCartPage() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const cartPath = buildTemplateScopedPath({ vendorId, suffix: "cart" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
+  const checkoutBagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
+  const productPath = (productId?: string) =>
+    productId ? buildTemplateScopedPath({ vendorId, suffix: `product/${productId}` }) : "#";
 
   const [cart, setCart] = useState<Cart | null>(null);
   const [loading, setLoading] = useState(true);
@@ -136,9 +142,7 @@ export default function ShoppingCartPage() {
               Sign in to view your cart for this store.
             </p>
             <button
-              onClick={() =>
-                router.push(`/template/${vendorId}/login?next=/template/${vendorId}/cart`)
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(cartPath)}`)}
               className="template-primary-button mt-6 rounded-lg px-6 py-3 text-sm font-semibold text-white"
             >
               Go to login
@@ -231,7 +235,7 @@ export default function ShoppingCartPage() {
 
                       <div className="col-span-5 flex items-center gap-4">
                         <Link
-                          href={`/template/${vendorId}/product/${item.product_id}`}
+                          href={productPath(item.product_id)}
                           className="flex items-center gap-4"
                         >
                           <img
@@ -366,7 +370,7 @@ export default function ShoppingCartPage() {
                 </div>
 
                 <button
-                  onClick={() => router.push(`/template/${vendorId}/checkout/bag`)}
+                  onClick={() => router.push(checkoutBagPath)}
                   className="template-primary-button w-full text-white py-4 rounded-full font-semibold transition-colors text-lg template-accent-bg template-accent-bg-hover"
                 >
                   Proceed to checkout

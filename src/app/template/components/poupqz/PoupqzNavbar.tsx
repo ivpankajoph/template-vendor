@@ -7,11 +7,20 @@ import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import { Menu, ShoppingBag, UserCircle2, X } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 export function PoupqzNavbar() {
   const params = useParams()
   const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
+  const toStorefrontPath = (suffix = '') =>
+    vendorId
+      ? buildStorefrontScopedPath({
+          vendorId,
+          pathname: pathname || undefined,
+          suffix,
+        })
+      : '#'
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
@@ -19,13 +28,13 @@ export function PoupqzNavbar() {
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
 
   // simple nav items, no dropdowns
-  const homeHref = vendorId ? `/template/${vendorId}` : '#'
-  const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
-  const productsHref = vendorId ? `/template/${vendorId}/all-products` : '#'
-  const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
-  const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
-  const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
-  const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
+  const homeHref = toStorefrontPath('')
+  const aboutHref = toStorefrontPath('about')
+  const productsHref = toStorefrontPath('all-products')
+  const contactHref = toStorefrontPath('contact')
+  const cartHref = toStorefrontPath('cart')
+  const profileHref = toStorefrontPath('profile')
+  const loginHref = toStorefrontPath('login')
 
   const logo =
     template?.components?.logo ||

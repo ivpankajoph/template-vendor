@@ -17,6 +17,7 @@ import {
   X,
 } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
@@ -79,6 +80,12 @@ export function OragzeNavbar() {
 
   const customPages =
     template?.components?.custom_pages?.filter((page: any) => page?.isPublished !== false) || []
+  const toStorefrontPath = (suffix = '') =>
+    buildStorefrontScopedPath({
+      vendorId,
+      pathname: pathname || '/',
+      suffix,
+    })
 
   const categoryEntries = useMemo(() => {
     const map = new Map<string, { label: string; href: string }>()
@@ -88,11 +95,11 @@ export function OragzeNavbar() {
       const id = getCategoryId(product)
       const slug = id || toSlug(label)
       if (!slug) return
-      const href = `/template/${vendorId}/category/${slug}`
+      const href = toStorefrontPath(`category/${slug}`)
       if (!map.has(href)) map.set(href, { label, href })
     })
     return Array.from(map.values()).slice(0, 14)
-  }, [products, vendorId])
+  }, [pathname, products, vendorId])
 
   const productSuggestions = useMemo(() => {
     const query = searchText.trim().toLowerCase()
@@ -102,17 +109,18 @@ export function OragzeNavbar() {
       .slice(0, 5)
   }, [products, searchText])
 
-  const homeHref = vendorId ? `/template/${vendorId}` : '#'
-  const aboutHref = vendorId ? `/template/${vendorId}/about` : '#'
-  const shopHref = vendorId ? `/template/${vendorId}/all-products` : '#'
-  const contactHref = vendorId ? `/template/${vendorId}/contact` : '#'
-  const cartHref = vendorId ? `/template/${vendorId}/cart` : '#'
-  const checkoutHref = vendorId ? `/template/${vendorId}/checkout` : '#'
-  const profileHref = vendorId ? `/template/${vendorId}/profile` : '#'
-  const ordersHref = vendorId ? `/template/${vendorId}/orders` : '#'
-  const loginHref = vendorId ? `/template/${vendorId}/login` : '#'
-  const registerHref = vendorId ? `/template/${vendorId}/register` : '#'
-  const firstProductHref =vendorId && products?.[0]?._id ? `/template/${vendorId}/product/${products[0]._id}` : shopHref
+  const homeHref = vendorId ? toStorefrontPath('') : '#'
+  const aboutHref = vendorId ? toStorefrontPath('about') : '#'
+  const shopHref = vendorId ? toStorefrontPath('all-products') : '#'
+  const contactHref = vendorId ? toStorefrontPath('contact') : '#'
+  const cartHref = vendorId ? toStorefrontPath('cart') : '#'
+  const checkoutHref = vendorId ? toStorefrontPath('checkout') : '#'
+  const profileHref = vendorId ? toStorefrontPath('profile') : '#'
+  const ordersHref = vendorId ? toStorefrontPath('orders') : '#'
+  const loginHref = vendorId ? toStorefrontPath('login') : '#'
+  const registerHref = vendorId ? toStorefrontPath('register') : '#'
+  const firstProductHref =
+    vendorId && products?.[0]?._id ? toStorefrontPath(`product/${products[0]._id}`) : shopHref
 
   useEffect(() => {
     if (!vendorId) return
@@ -289,7 +297,7 @@ export function OragzeNavbar() {
               {productSuggestions.map((product) => (
                 <Link
                   key={product?._id || product?.productName}
-                  href={product?._id ? `/template/${vendorId}/product/${product._id}` : shopHref}
+                  href={product?._id ? toStorefrontPath(`product/${product._id}`) : shopHref}
                   className='block rounded-md px-3 py-2 text-[15px] text-slate-700 transition hover:bg-slate-50'
                   onClick={() => setSearchText('')}
                 >
@@ -330,7 +338,7 @@ export function OragzeNavbar() {
                   { label: isLoggedIn ? 'My Account' : 'Login', href: isLoggedIn ? profileHref : loginHref },
                   ...customPages.map((page: any) => ({
                     label: page?.title || 'Custom Page',
-                    href: `/template/${vendorId}/page/${page?.slug || page?.id}`,
+                    href: toStorefrontPath(`page/${page?.slug || page?.id}`),
                   })),
                 ].map((page) => (
                   <Link
@@ -429,7 +437,7 @@ export function OragzeNavbar() {
             {customPages.map((page: any) => (
               <Link
                 key={page?.id || page?.slug || page?.title}
-                href={`/template/${vendorId}/page/${page?.slug || page?.id}`}
+                href={toStorefrontPath(`page/${page?.slug || page?.id}`)}
                 onClick={() => setMobileMenuOpen(false)}
                 className='rounded-md px-1 py-1 transition hover:text-[#6dbf4b]'
               >

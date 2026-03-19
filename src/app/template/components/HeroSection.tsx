@@ -5,6 +5,7 @@ import { useSelector } from "react-redux";
 import Link from "next/link";
 import { RootState } from "@/store";
 import { useParams } from "next/navigation";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 
 
@@ -20,6 +21,10 @@ export default function LandingPageDev() {
   );
   const params = useParams();
   const vendor_id = params.vendor_id as string;
+  const allProductsPath = buildTemplateScopedPath({
+    vendorId: String(vendor_id || ""),
+    suffix: "all-products",
+  });
 
 //   useEffect(() => {
 //     if (vendorId) {
@@ -69,7 +74,7 @@ export default function LandingPageDev() {
               "Discover the Beauty of Nature at Your Fingertips"}
           </h1>
 
-          <Link href={`/template/${vendor_id}/all-products`}>
+          <Link href={allProductsPath}>
             <button
               className="text-white px-10 cursor-pointer py-4 rounded-full text-lg lg:text-xl font-semibold transition-all transform hover:scale-105 shadow-lg template-accent-bg template-accent-bg-hover"
               data-template-path="components.home_page.button_header"

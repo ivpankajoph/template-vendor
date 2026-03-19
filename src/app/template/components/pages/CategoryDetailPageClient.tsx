@@ -62,7 +62,7 @@ export default function CategoryProductsPage() {
   const toTemplatePath = (suffix = "") =>
     buildTemplateScopedPath({
       vendorId,
-      pathname: pathname || `/template/${vendorId}`,
+      pathname: pathname || undefined,
       suffix,
     });
 
@@ -222,7 +222,7 @@ export default function CategoryProductsPage() {
             {filteredProducts.map((product: any) => (
               <Link
                 key={product._id}
-                href={`/template/${vendor_id}/product/${product._id}`}
+                href={toTemplatePath(`product/${product._id}`)}
                 className={`template-product-card group cursor-pointer ${cardClass}`}
               >
                 <div

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
   getTemplateAuth,
@@ -8,6 +9,7 @@ import {
 } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type OrderItem = {
   _id?: string;
@@ -58,6 +60,14 @@ export default function OrderDetailPageClient() {
   const orderId = params.order_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
+  const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
+  const orderDetailPath = buildTemplateScopedPath({
+    vendorId,
+    suffix: `orders/${orderId}`,
+  });
+  const productPath = (productId?: string) =>
+    productId ? buildTemplateScopedPath({ vendorId, suffix: `product/${productId}` }) : "#";
 
   const [order, setOrder] = useState<OrderDetail | null>(null);
   const [loading, setLoading] = useState(true);
@@ -161,9 +171,7 @@ export default function OrderDetailPageClient() {
             <h1 className="text-2xl font-bold text-slate-900">Login required</h1>
             <p className="mt-2 text-sm text-slate-500">Sign in to view your order.</p>
             <button
-              onClick={() =>
-                router.push(`/template/${vendorId}/login?next=/template/${vendorId}/orders/${orderId}`)
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(orderDetailPath)}`)}
               className="mt-6 rounded-lg bg-slate-900 px-6 py-3 text-sm font-semibold text-white"
             >
               Go to login
@@ -190,7 +198,7 @@ export default function OrderDetailPageClient() {
             </div>
             <div className="flex flex-wrap gap-2">
               <button
-                onClick={() => router.push(`/template/${vendorId}/orders`)}
+                onClick={() => router.push(ordersPath)}
                 className="inline-flex items-center rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
               >
                 Back to orders
@@ -237,8 +245,8 @@ export default function OrderDetailPageClient() {
                         key={item._id || item.product_id}
                         className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-4 sm:flex-row sm:items-center"
                       >
-                        <a
-                          href={item.product_id ? `/template/${vendorId}/product/${item.product_id}` : "#"}
+                        <Link
+                          href={productPath(item.product_id)}
                           className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100"
                         >
                           {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -250,14 +258,14 @@ export default function OrderDetailPageClient() {
                             alt={item.product_name || "Product"}
                             className="h-full w-full object-cover"
                           />
-                        </a>
+                        </Link>
                         <div className="flex-1 space-y-1">
-                          <a
-                            href={item.product_id ? `/template/${vendorId}/product/${item.product_id}` : "#"}
+                          <Link
+                            href={productPath(item.product_id)}
                             className="text-base font-semibold text-slate-900 hover:text-slate-700"
                           >
                             {item.product_name}
-                          </a>
+                          </Link>
                           <p className="text-xs text-slate-500">
                             {Object.values(item.variant_attributes || {}).join(" / ") || "Standard"}
                           </p>

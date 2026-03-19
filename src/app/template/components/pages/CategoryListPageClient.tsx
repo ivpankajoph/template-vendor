@@ -34,7 +34,7 @@ export default function ShopCategoriesPage() {
   const toTemplatePath = (suffix = "") =>
     buildTemplateScopedPath({
       vendorId,
-      pathname: pathname || `/template/${vendorId}`,
+      pathname: pathname || undefined,
       suffix,
     });
 
@@ -275,7 +275,7 @@ export default function ShopCategoriesPage() {
               return (
                 <Link
                   key={category.id}
-                  href={`/template/${vendor_id}/category/${categoryPath}`}
+                  href={toTemplatePath(`category/${categoryPath}`)}
                   className={`template-product-card group overflow-hidden shadow-sm transition hover:-translate-y-1 hover:shadow-lg ${panelClass}`}
                 >
                   <div className="relative h-52 overflow-hidden bg-slate-100">

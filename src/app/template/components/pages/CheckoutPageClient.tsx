@@ -8,6 +8,7 @@ import {
 } from "@/app/template/components/templateAuth";
 import { trackCheckout, trackPurchase } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 declare global {
   interface Window {
@@ -55,6 +56,9 @@ export default function TemplateCheckoutPage() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const checkoutPath = buildTemplateScopedPath({ vendorId, suffix: "checkout" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
+  const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
 
   const [addresses, setAddresses] = useState<Address[]>([]);
   const [cart, setCart] = useState<Cart | null>(null);
@@ -322,7 +326,7 @@ export default function TemplateCheckoutPage() {
           })),
         },
       });
-      router.push(`/template/${vendorId}/orders`);
+      router.push(ordersPath);
     } catch (err: any) {
       setError(err.message || "Failed to place order");
     } finally {
@@ -343,9 +347,7 @@ export default function TemplateCheckoutPage() {
               Sign in to continue checkout.
             </p>
             <button
-              onClick={() =>
-                router.push(`/template/${vendorId}/login?next=/template/${vendorId}/checkout`)
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(checkoutPath)}`)}
               className="template-primary-button mt-6 rounded-lg px-6 py-3 text-sm font-semibold text-white"
             >
               Go to login

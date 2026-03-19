@@ -10,6 +10,7 @@ import {
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { trackPurchase } from "@/lib/analytics-events";
+import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
@@ -63,6 +64,11 @@ export default function TemplateCheckoutPaymentPageClient() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
+  const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
+  const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
+  const paymentPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/payment" });
+  const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
 
   const [loading, setLoading] = useState(true);
   const [cart, setCart] = useState<TemplateCart | null>(null);
@@ -231,7 +237,7 @@ export default function TemplateCheckoutPaymentPageClient() {
   const placeOrder = async () => {
     if (!selectedAddressId) {
       setError("Please choose a delivery address.");
-      router.push(`/template/${vendorId}/checkout/address`);
+      router.push(addressPath);
       return;
     }
     try {
@@ -277,7 +283,7 @@ export default function TemplateCheckoutPaymentPageClient() {
         `Payment successful. Order ${orderResponse?.order?.order_number || ""} created.`,
       );
       setTimeout(() => {
-        router.push(`/template/${vendorId}/orders`);
+        router.push(ordersPath);
       }, 1400);
     } catch (err: any) {
       setError(err?.message || "Failed to place order");
@@ -296,11 +302,7 @@ export default function TemplateCheckoutPaymentPageClient() {
               Sign in to continue checkout.
             </p>
             <button
-              onClick={() =>
-                router.push(
-                  `/template/${vendorId}/login?next=/template/${vendorId}/checkout/payment`,
-                )
-              }
+              onClick={() => router.push(`${loginPath}?next=${encodeURIComponent(paymentPath)}`)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go to login
@@ -334,7 +336,7 @@ export default function TemplateCheckoutPaymentPageClient() {
           <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
             <p className="text-lg font-semibold text-slate-900">Your bag is empty.</p>
             <button
-              onClick={() => router.push(`/template/${vendorId}/checkout/bag`)}
+              onClick={() => router.push(bagPath)}
               className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
             >
               Go To Bag
@@ -402,7 +404,7 @@ export default function TemplateCheckoutPaymentPageClient() {
                 Choose Payment Mode
               </h2>
               <Link
-                href={`/template/${vendorId}/checkout/address`}
+                href={addressPath}
                 className="template-checkout-accent-outline h-9 rounded-md border border-slate-300 px-4 py-2 text-sm font-semibold text-slate-700"
               >
                 Change Address
