@@ -7,7 +7,8 @@
     "dev:clean": "node -e \"require('fs').rmSync('.next',{ recursive: true, force: true })\" && next dev -p 3001",
     "build": "next build",
     "postbuild": "next-sitemap",
-    "start": "next start -p 3001"
+    "start": "next start -p 3001",
+    "start:pm2": "./run-pm2.sh"
   },
   "dependencies": {
     "@google-analytics/data": "^5.2.1",
