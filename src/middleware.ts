@@ -97,7 +97,12 @@ const isCustomDomainHost = (request: NextRequest) => {
 };
 
 const getApiBaseUrl = () =>
-  String(process.env.NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+  String(
+    process.env.INTERNAL_API_URL ||
+      process.env.TEMPLATE_INTERNAL_API_URL ||
+      process.env.NEXT_PUBLIC_API_URL ||
+      ""
+  ).replace(/\/+$/, "");
 
 const resolveCustomDomainHost = async (host: string) => {
   const apiBase = getApiBaseUrl();
