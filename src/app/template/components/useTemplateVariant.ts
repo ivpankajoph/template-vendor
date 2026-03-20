@@ -100,24 +100,35 @@ const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => 
   return undefined
 }
 
-const getTemplateVariantStorageKey = (vendorId?: string) =>
-  `template_variant_${vendorId || 'default'}`
+const buildTemplateVariantStorageKey = (
+  vendorId?: string,
+  websiteId?: string
+) => `template_variant_${vendorId || 'default'}_${websiteId || 'default'}`
 
-const readStoredVariant = (vendorId?: string) => {
+const readStoredVariant = (vendorId?: string, websiteId?: string) => {
   if (typeof window === 'undefined') return undefined
   try {
     return normalizeVariantKey(
-      window.sessionStorage.getItem(getTemplateVariantStorageKey(vendorId))
+      window.sessionStorage.getItem(
+        buildTemplateVariantStorageKey(vendorId, websiteId)
+      )
     )
   } catch {
     return undefined
   }
 }
 
-const persistStoredVariant = (vendorId: string | undefined, key?: string) => {
+const persistStoredVariant = (
+  vendorId: string | undefined,
+  websiteId: string | undefined,
+  key?: string
+) => {
   if (typeof window === 'undefined' || !key) return
   try {
-    window.sessionStorage.setItem(getTemplateVariantStorageKey(vendorId), key)
+    window.sessionStorage.setItem(
+      buildTemplateVariantStorageKey(vendorId, websiteId),
+      key
+    )
   } catch {
     return
   }
@@ -132,10 +143,16 @@ export function useTemplateVariant() {
       ? ((params as any).vendor_id as string)
       : undefined
   const templateQuery = searchParams?.get('template')
-  const rawKey = useSelector(
+  const { rawKey, currentWebsiteId } = useSelector(
     (state: any) =>
-      state?.alltemplatepage?.data?.template_key ||
-      state?.alltemplatepage?.data?.templateKey
+      ({
+        rawKey:
+          state?.alltemplatepage?.data?.template_key ||
+          state?.alltemplatepage?.data?.templateKey,
+        currentWebsiteId: String(
+          state?.alltemplatepage?.currentWebsiteId || ''
+        ).trim(),
+      })
   )
 
   const variant = useMemo(() => {
@@ -146,23 +163,26 @@ export function useTemplateVariant() {
       typeof segments[3] === 'string'
         ? segments[3]
         : undefined
-    const storedKey = readStoredVariant(vendorId)
+    const scopedWebsiteId = currentWebsiteId || undefined
+    const storedKey =
+      readStoredVariant(vendorId, scopedWebsiteId) ||
+      readStoredVariant(vendorId)
     const key =
       normalizeVariantKey(previewKeyFromSlug) ||
       normalizeVariantKey(templateQuery) ||
-      storedKey ||
-      normalizeVariantKey(rawKey)
+      normalizeVariantKey(rawKey) ||
+      storedKey
     const match = TEMPLATE_VARIANTS.find((item) => item.key === key)
     return (
       match ||
       TEMPLATE_VARIANTS.find((item) => item.key === DEFAULT_TEMPLATE_VARIANT) ||
       TEMPLATE_VARIANTS[0]
     )
-  }, [pathname, rawKey, templateQuery, vendorId])
+  }, [currentWebsiteId, pathname, rawKey, templateQuery, vendorId])
 
   useEffect(() => {
-    persistStoredVariant(vendorId, variant.key)
-  }, [vendorId, variant.key])
+    persistStoredVariant(vendorId, currentWebsiteId || undefined, variant.key)
+  }, [currentWebsiteId, vendorId, variant.key])
 
   return variant
 }
