@@ -100,6 +100,13 @@ const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => 
   return undefined
 }
 
+const isPlatformTemplatePath = (pathname?: string | null, vendorId?: string) => {
+  const normalizedPathname = String(pathname || '').trim()
+  const normalizedVendorId = String(vendorId || '').trim()
+  if (!normalizedPathname || !normalizedVendorId) return false
+  return normalizedPathname.startsWith(`/template/${normalizedVendorId}`)
+}
+
 const buildTemplateVariantStorageKey = (
   vendorId?: string,
   websiteId?: string
@@ -157,7 +164,9 @@ export function useTemplateVariant() {
 
   const variant = useMemo(() => {
     const segments = (pathname || '').split('/').filter(Boolean)
+    const platformTemplatePath = isPlatformTemplatePath(pathname, vendorId)
     const previewKeyFromSlug =
+      platformTemplatePath &&
       segments[0] === 'template' &&
       segments[2] === 'preview' &&
       typeof segments[3] === 'string'
@@ -165,12 +174,14 @@ export function useTemplateVariant() {
         : undefined
     const scopedWebsiteId = currentWebsiteId || undefined
     const storedKey =
-      readStoredVariant(vendorId, scopedWebsiteId) ||
-      readStoredVariant(vendorId)
+      platformTemplatePath
+        ? readStoredVariant(vendorId, scopedWebsiteId) ||
+          readStoredVariant(vendorId)
+        : undefined
     const key =
       normalizeVariantKey(previewKeyFromSlug) ||
-      normalizeVariantKey(templateQuery) ||
       normalizeVariantKey(rawKey) ||
+      (platformTemplatePath ? normalizeVariantKey(templateQuery) : undefined) ||
       storedKey
     const match = TEMPLATE_VARIANTS.find((item) => item.key === key)
     return (
@@ -181,8 +192,9 @@ export function useTemplateVariant() {
   }, [currentWebsiteId, pathname, rawKey, templateQuery, vendorId])
 
   useEffect(() => {
+    if (!isPlatformTemplatePath(pathname, vendorId)) return
     persistStoredVariant(vendorId, currentWebsiteId || undefined, variant.key)
-  }, [currentWebsiteId, vendorId, variant.key])
+  }, [currentWebsiteId, pathname, vendorId, variant.key])
 
   return variant
 }
