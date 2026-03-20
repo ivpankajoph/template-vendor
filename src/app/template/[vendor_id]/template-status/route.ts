@@ -33,7 +33,7 @@ export async function GET(
       websiteId,
       host,
       domainHost,
-      path: normalizeValue(headerStore.get("x-current-path")) || "/_template-status",
+      path: normalizeValue(headerStore.get("x-current-path")) || "/template-status",
       checkedAt: new Date().toISOString(),
     },
     {
