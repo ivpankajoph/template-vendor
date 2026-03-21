@@ -2,6 +2,7 @@
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { buildStorefrontScopedPath } from "@/lib/template-route";
+import { getTemplateWebsiteIdFromSearch } from "@/lib/template-website";
 
 export type TemplateAuthPayload = {
   token: string;
@@ -108,6 +109,15 @@ export const templateApiFetch = async (
 
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
+  if (typeof window !== "undefined") {
+    const websiteId = getTemplateWebsiteIdFromSearch(
+      window.location.pathname,
+      new URLSearchParams(window.location.search)
+    );
+    if (websiteId) {
+      headers.set("x-template-website", websiteId);
+    }
+  }
   if (auth?.token) {
     headers.set("Authorization", `Bearer ${auth.token}`);
   }

@@ -5,6 +5,7 @@ import { type FormEvent, type ReactNode, useEffect, useState } from "react";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { toastError, toastSuccess } from "@/lib/toast";
 import { getTemplateAuth } from "@/app/template/components/templateAuth";
+import { getTemplateWebsiteIdFromSearch } from "@/lib/template-website";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -82,11 +83,24 @@ export default function ProductEnquiryDialog({
 
     setSubmitting(true);
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      const websiteId =
+        typeof window !== "undefined"
+          ? getTemplateWebsiteIdFromSearch(
+              window.location.pathname,
+              new URLSearchParams(window.location.search)
+            )
+          : undefined;
+
+      if (websiteId) {
+        headers["x-template-website"] = websiteId;
+      }
+
       const response = await fetch(`${API_BASE}/support/queries/submit`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({
           fullName: form.fullName.trim(),
           email: form.email.trim(),
@@ -94,6 +108,7 @@ export default function ProductEnquiryDialog({
           message: form.message.trim(),
           productId,
           source: "product_enquiry",
+          ...(websiteId ? { website_id: websiteId } : {}),
         }),
       });
 
