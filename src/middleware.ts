@@ -1,6 +1,16 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const applyPageResponseHeaders = (response: NextResponse) => {
+  response.headers.set(
+    "Cache-Control",
+    "no-store, no-cache, max-age=0, must-revalidate"
+  );
+  response.headers.set("Pragma", "no-cache");
+  response.headers.set("Expires", "0");
+  return response;
+};
+
 const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "",
   "about",
@@ -58,7 +68,7 @@ const applyStorefrontContextHeaders = (
     response.headers.set("x-sellerslogin-domain-host", context.hostname);
   }
 
-  return response;
+  return applyPageResponseHeaders(response);
 };
 
 const getPlatformHosts = () =>
@@ -259,11 +269,13 @@ export async function middleware(request: NextRequest) {
       const notConfiguredUrl = request.nextUrl.clone();
       notConfiguredUrl.pathname = "/domain-not-configured";
       notConfiguredUrl.search = "";
-      return NextResponse.rewrite(notConfiguredUrl, {
-        request: {
-          headers: requestHeaders,
-        },
-      });
+      return applyPageResponseHeaders(
+        NextResponse.rewrite(notConfiguredUrl, {
+          request: {
+            headers: requestHeaders,
+          },
+        })
+      );
     }
 
     requestHeaders.set("x-template-domain-host", resolvedDomain.hostname);
@@ -320,7 +332,7 @@ export async function middleware(request: NextRequest) {
     const homeUrl = request.nextUrl.clone();
     homeUrl.pathname = "/";
     homeUrl.search = "";
-    return NextResponse.redirect(homeUrl);
+    return applyPageResponseHeaders(NextResponse.redirect(homeUrl));
   }
 
   if (requestPreviewContext) {
@@ -334,11 +346,13 @@ export async function middleware(request: NextRequest) {
       requestHeaders.set("x-template-website", requestPreviewContext.websiteIdentifier);
     }
 
-    return NextResponse.rewrite(rewriteUrl, {
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    return applyPageResponseHeaders(
+      NextResponse.rewrite(rewriteUrl, {
+        request: {
+          headers: requestHeaders,
+        },
+      })
+    );
   }
 
   if (
@@ -354,11 +368,13 @@ export async function middleware(request: NextRequest) {
       requestHeaders.set("x-template-website", requestStandardContext.websiteIdentifier);
     }
 
-    return NextResponse.rewrite(rewriteUrl, {
-      request: {
-        headers: requestHeaders,
-      },
-    });
+    return applyPageResponseHeaders(
+      NextResponse.rewrite(rewriteUrl, {
+        request: {
+          headers: requestHeaders,
+        },
+      })
+    );
   }
 
   if (segments[0] === "template" && segments[1] && segments[2] !== "preview") {
@@ -392,7 +408,7 @@ export async function middleware(request: NextRequest) {
               : refererPreviewContext.websiteIdentifier,
             rest: currentContext?.restSegments.join("/") || segments.slice(2).join("/"),
           });
-          return NextResponse.redirect(redirectUrl);
+          return applyPageResponseHeaders(NextResponse.redirect(redirectUrl));
         }
 
         if (refererStandardContext && (refererStandardContext.hasCity || refererStandardContext.hasWebsite)) {
@@ -414,7 +430,7 @@ export async function middleware(request: NextRequest) {
           if (nextPath !== pathname) {
             const redirectUrl = request.nextUrl.clone();
             redirectUrl.pathname = nextPath;
-            return NextResponse.redirect(redirectUrl);
+            return applyPageResponseHeaders(NextResponse.redirect(redirectUrl));
           }
         }
       } catch {
@@ -423,11 +439,13 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  return NextResponse.next({
-    request: {
-      headers: requestHeaders,
-    },
-  });
+  return applyPageResponseHeaders(
+    NextResponse.next({
+      request: {
+        headers: requestHeaders,
+      },
+    })
+  );
 }
 
 export const config = {
