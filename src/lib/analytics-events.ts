@@ -72,6 +72,26 @@ type AnalyticsPayload = {
   metadata?: Record<string, unknown>;
 };
 
+declare global {
+  interface Window {
+    fbq?: (...args: unknown[]) => void;
+  }
+}
+
+const trackMetaPixelEvent = (
+  eventName: "AddToCart" | "InitiateCheckout" | "Purchase",
+  params: Record<string, unknown>
+) => {
+  if (typeof window === "undefined") return;
+  if (typeof window.fbq !== "function") return;
+
+  try {
+    window.fbq("track", eventName, params);
+  } catch {
+    // Meta Pixel should not block user flows.
+  }
+};
+
 const sendAnalyticsEvent = async (payload: AnalyticsPayload) => {
   if (!API_BASE || typeof window === "undefined") return;
 
@@ -105,11 +125,37 @@ const sendAnalyticsEvent = async (payload: AnalyticsPayload) => {
   }
 };
 
-export const trackAddToCart = (payload: Omit<AnalyticsPayload, "eventType">) =>
-  sendAnalyticsEvent({ ...payload, eventType: "add_to_cart" });
+export const trackAddToCart = (payload: Omit<AnalyticsPayload, "eventType">) => {
+  trackMetaPixelEvent("AddToCart", {
+    content_ids: payload.productId ? [payload.productId] : [],
+    content_name: payload.productName || "",
+    content_type: "product",
+    currency: "INR",
+    num_items: Number(payload.quantity || 1),
+    value: Number(payload.productPrice || 0) * Number(payload.quantity || 1),
+  });
 
-export const trackCheckout = (payload: Omit<AnalyticsPayload, "eventType">) =>
-  sendAnalyticsEvent({ ...payload, eventType: "checkout" });
+  return sendAnalyticsEvent({ ...payload, eventType: "add_to_cart" });
+};
 
-export const trackPurchase = (payload: Omit<AnalyticsPayload, "eventType">) =>
-  sendAnalyticsEvent({ ...payload, eventType: "purchase" });
+export const trackCheckout = (payload: Omit<AnalyticsPayload, "eventType">) => {
+  trackMetaPixelEvent("InitiateCheckout", {
+    currency: "INR",
+    num_items: Number(payload.quantity || 1),
+    value: Number(payload.cartTotal || 0),
+  });
+
+  return sendAnalyticsEvent({ ...payload, eventType: "checkout" });
+};
+
+export const trackPurchase = (payload: Omit<AnalyticsPayload, "eventType">) => {
+  trackMetaPixelEvent("Purchase", {
+    content_ids: payload.productId ? [payload.productId] : [],
+    currency: "INR",
+    num_items: Number(payload.quantity || 1),
+    value: Number(payload.cartTotal || 0),
+    order_id: payload.orderId || "",
+  });
+
+  return sendAnalyticsEvent({ ...payload, eventType: "purchase" });
+};

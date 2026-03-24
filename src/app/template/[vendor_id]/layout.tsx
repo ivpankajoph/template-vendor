@@ -7,7 +7,9 @@ import { TemplateThemeProvider } from "../components/TemplateThemeProvider";
 import { TemplateDataLoader } from "../components/TemplateDataLoader";
 import { TemplatePreviewRealtimeSync } from "../components/TemplatePreviewRealtimeSync";
 import { TemplateInlineEditorBridge } from "../components/TemplateInlineEditorBridge";
+import { MetaPixelScript } from "@/components/meta-pixel/MetaPixelScript";
 import { buildTemplateMetadata } from "@/lib/template-metadata";
+import { fetchTemplateMetaPixel } from "@/lib/meta-pixel";
 
 type LayoutProps = {
   children: React.ReactNode;
@@ -26,8 +28,13 @@ export default async function VendorLayout({
   const { vendor_id } = await params;
   const headerStore = await headers();
   const websiteId = String(headerStore.get("x-template-website") || "").trim();
+  const metaPixel = await fetchTemplateMetaPixel({
+    vendorId: vendor_id,
+    websiteId,
+  });
   return (
     <TemplateThemeProvider>
+      <MetaPixelScript pixelId={metaPixel?.pixelId} />
       <div className="template-site-shell min-h-screen flex flex-col">
         <TemplatePreviewRealtimeSync vendorId={vendor_id} />
         <TemplateDataLoader vendorId={vendor_id} websiteId={websiteId} />
