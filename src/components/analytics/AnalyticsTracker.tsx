@@ -30,6 +30,20 @@ const getDocumentVendorId = () => {
   );
 };
 
+const getDocumentWebsiteId = () => {
+  if (typeof document === "undefined") return "";
+  return (
+    document.body?.dataset?.templateWebsite ||
+    document.documentElement?.dataset?.templateWebsite ||
+    ""
+  );
+};
+
+const getWebsiteIdFromSearch = (searchParams: URLSearchParams | null) =>
+  String(
+    searchParams?.get("website") || searchParams?.get("website_id") || ""
+  ).trim();
+
 const getVendorIdFromPath = (path: string, fallback = "") => {
   const match = path.match(/\/template\/([^/?#]+)/);
   return match?.[1] || fallback || getDocumentVendorId();
@@ -59,6 +73,9 @@ export default function AnalyticsTracker() {
   const searchParams = useSearchParams();
   const user = useSelector((state: RootState) => state.customerAuth?.user);
   const templateData = useSelector((state: RootState) => state.alltemplatepage?.data);
+  const currentWebsiteId = useSelector(
+    (state: RootState) => state.alltemplatepage?.currentWebsiteId
+  );
   const userIdRef = useRef<string>("");
   const visitorIdRef = useRef<string>("");
   const sessionIdRef = useRef<string>("");
@@ -83,15 +100,29 @@ export default function AnalyticsTracker() {
   }, [metadata]);
 
   useEffect(() => {
+    const resolvedWebsiteId = String(
+      currentWebsiteId ||
+        templateData?._id ||
+        templateData?.id ||
+        getWebsiteIdFromSearch(searchParams) ||
+        getDocumentWebsiteId()
+    ).trim();
     const templateMeta = {
-      template_id: templateData?._id || templateData?.id || "",
+      template_id: resolvedWebsiteId,
+      templateId: resolvedWebsiteId,
+      website_id: resolvedWebsiteId,
+      websiteId: resolvedWebsiteId,
       template_key: templateData?.template_key || templateData?.templateKey || "",
       template_name: templateData?.template_name || templateData?.templateName || "",
+      website_slug: templateData?.website_slug || "",
     };
     templateMetaRef.current = templateMeta;
     if (typeof window !== "undefined") {
       if (templateMeta.template_id) {
         window.localStorage.setItem("oph_template_id", String(templateMeta.template_id));
+      }
+      if (templateMeta.website_id) {
+        window.localStorage.setItem("oph_website_id", String(templateMeta.website_id));
       }
       if (templateMeta.template_key) {
         window.localStorage.setItem("oph_template_key", String(templateMeta.template_key));
@@ -99,8 +130,11 @@ export default function AnalyticsTracker() {
       if (templateMeta.template_name) {
         window.localStorage.setItem("oph_template_name", String(templateMeta.template_name));
       }
+      if (templateMeta.website_slug) {
+        window.localStorage.setItem("oph_website_slug", String(templateMeta.website_slug));
+      }
     }
-  }, [templateData]);
+  }, [currentWebsiteId, searchParams, templateData]);
 
   useEffect(() => {
     userIdRef.current =

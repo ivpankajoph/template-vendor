@@ -69,10 +69,12 @@ export default async function RootLayout({
 }>) {
   const headerStore = await headers();
   const templateVendorId = String(headerStore.get("x-template-vendor") || "").trim();
+  const templateWebsiteId = String(headerStore.get("x-template-website") || "").trim();
   return (
     <html lang="en">
       <body
         data-template-vendor={templateVendorId}
+        data-template-website={templateWebsiteId}
         className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${sora.variable} antialiased`}
       >
         <VendorProvider>

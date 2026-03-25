@@ -30,15 +30,35 @@ const getVisitorId = () =>
     ? ""
     : getStorageId("oph_visitor_id", localStorage);
 
+const getDocumentWebsiteId = () => {
+  if (typeof document === "undefined") return "";
+  return (
+    document.body?.dataset?.templateWebsite ||
+    document.documentElement?.dataset?.templateWebsite ||
+    ""
+  );
+};
+
 const getTemplateMeta = () => {
   if (typeof window === "undefined") return {};
   const templateId = window.localStorage.getItem("oph_template_id") || "";
+  const websiteId =
+    window.localStorage.getItem("oph_website_id") ||
+    getDocumentWebsiteId() ||
+    new URLSearchParams(window.location.search).get("website") ||
+    new URLSearchParams(window.location.search).get("website_id") ||
+    "";
   const templateKey = window.localStorage.getItem("oph_template_key") || "";
   const templateName = window.localStorage.getItem("oph_template_name") || "";
+  const websiteSlug = window.localStorage.getItem("oph_website_slug") || "";
   return {
     template_id: templateId,
+    templateId: templateId,
+    website_id: websiteId || templateId,
+    websiteId: websiteId || templateId,
     template_key: templateKey,
     template_name: templateName,
+    website_slug: websiteSlug,
   };
 };
 
