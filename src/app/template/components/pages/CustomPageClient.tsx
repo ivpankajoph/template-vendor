@@ -27,6 +27,13 @@ export default function CustomTemplatePage() {
       customPages.find((item: any) => item.id === slug)
     );
   }, [customPages, slug]);
+  const pageIndex = useMemo(
+    () =>
+      customPages.findIndex(
+        (item: any) => item?.slug === slug || item?.id === slug
+      ),
+    [customPages, slug]
+  );
 
   const isStudio = variant.key === "studio";
   const isMinimal =
@@ -53,9 +60,14 @@ export default function CustomTemplatePage() {
         <div className="absolute inset-0 flex items-center justify-center">
           <div className="text-center text-white">
             <h1 className="text-4xl lg:text-5xl font-bold">
-              {page?.title || "Custom Page"}
+              <span data-template-path={`components.custom_pages.${pageIndex}.title`}>
+                {page?.title || "Custom Page"}
+              </span>
             </h1>
-            <p className="text-lg mt-3">
+            <p
+              className="text-lg mt-3"
+              data-template-path={`components.custom_pages.${pageIndex}.subtitle`}
+            >
               {page?.subtitle || "Explore this page from the vendor."}
             </p>
           </div>
@@ -63,8 +75,12 @@ export default function CustomTemplatePage() {
       </section>
 
       <div className="max-w-6xl mx-auto px-4 sm:px-6 py-10 space-y-8">
-        {(page?.sections || []).map((section: Section) => (
-          <SectionRenderer key={section.id} section={section} />
+        {(page?.sections || []).map((section: Section, index: number) => (
+          <SectionRenderer
+            key={section.id}
+            section={section}
+            sectionPathPrefix={`components.custom_pages.${pageIndex}.sections.${index}.data`}
+          />
         ))}
 
         {(page?.sections || []).length === 0 && (
@@ -77,7 +93,13 @@ export default function CustomTemplatePage() {
   );
 }
 
-function SectionRenderer({ section }: { section: Section }) {
+function SectionRenderer({
+  section,
+  sectionPathPrefix,
+}: {
+  section: Section;
+  sectionPathPrefix: string;
+}) {
   const type = section.type || "text";
   const data = section.data || {};
   const style = data.style || {};
@@ -93,10 +115,13 @@ function SectionRenderer({ section }: { section: Section }) {
         style={backgroundColor ? { backgroundColor } : undefined}
       >
         <p className="text-xs font-semibold uppercase tracking-[0.3em] text-gray-400">
-          {data.kicker || "Highlight"}
+          <span data-template-path={`${sectionPathPrefix}.kicker`}>
+            {data.kicker || "Highlight"}
+          </span>
         </p>
         <h2
           className="mt-3 text-3xl font-semibold template-accent"
+          data-template-path={`${sectionPathPrefix}.title`}
           style={{
             color: textColor || undefined,
             fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -104,7 +129,10 @@ function SectionRenderer({ section }: { section: Section }) {
         >
           {data.title || "Hero headline"}
         </h2>
-        <p className="mt-3 text-sm text-gray-600">
+        <p
+          className="mt-3 text-sm text-gray-600"
+          data-template-path={`${sectionPathPrefix}.subtitle`}
+        >
           {data.subtitle || "Describe your page in a few lines."}
         </p>
         {(Array.isArray(data.buttons) && data.buttons.length > 0) ||
@@ -154,6 +182,7 @@ function SectionRenderer({ section }: { section: Section }) {
         {data.caption && (
           <div
             className="px-6 py-4 text-sm text-gray-600"
+            data-template-path={`${sectionPathPrefix}.caption`}
             style={{
               color: textColor || undefined,
               fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -175,6 +204,7 @@ function SectionRenderer({ section }: { section: Section }) {
       >
         <h3
           className="text-lg font-semibold text-gray-900"
+          data-template-path={`${sectionPathPrefix}.title`}
           style={{
             color: textColor || undefined,
             fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -188,10 +218,17 @@ function SectionRenderer({ section }: { section: Section }) {
               key={`${item?.title}-${index}`}
               className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-sm"
             >
-              <p className="font-semibold text-gray-900" style={{ color: textColor || undefined }}>
+              <p
+                className="font-semibold text-gray-900"
+                data-template-path={`${sectionPathPrefix}.items.${index}.title`}
+                style={{ color: textColor || undefined }}
+              >
                 {item?.title || "Feature"}
               </p>
-              <p className="mt-2 text-gray-600">
+              <p
+                className="mt-2 text-gray-600"
+                data-template-path={`${sectionPathPrefix}.items.${index}.description`}
+              >
                 {item?.description || "Describe the benefit."}
               </p>
             </div>
@@ -214,6 +251,7 @@ function SectionRenderer({ section }: { section: Section }) {
       >
         <h3
           className="text-2xl font-semibold"
+          data-template-path={`${sectionPathPrefix}.title`}
           style={{
             color: textColor || undefined,
             fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -221,7 +259,11 @@ function SectionRenderer({ section }: { section: Section }) {
         >
           {data.title || "Call to action"}
         </h3>
-        <p className="mt-3 text-sm text-white/80" style={{ color: textColor || undefined }}>
+        <p
+          className="mt-3 text-sm text-white/80"
+          data-template-path={`${sectionPathPrefix}.subtitle`}
+          style={{ color: textColor || undefined }}
+        >
           {data.subtitle || "Encourage visitors to take action."}
         </p>
         {(Array.isArray(data.buttons) && data.buttons.length > 0) ||
@@ -256,7 +298,11 @@ function SectionRenderer({ section }: { section: Section }) {
         className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"
         style={backgroundColor ? { backgroundColor } : undefined}
       >
-        <h3 className="text-lg font-semibold text-gray-900" style={{ color: textColor || undefined }}>
+        <h3
+          className="text-lg font-semibold text-gray-900"
+          data-template-path={`${sectionPathPrefix}.title`}
+          style={{ color: textColor || undefined }}
+        >
           {data.title || "Gallery"}
         </h3>
         <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -296,10 +342,17 @@ function SectionRenderer({ section }: { section: Section }) {
         className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"
         style={backgroundColor ? { backgroundColor } : undefined}
       >
-        <h3 className="text-lg font-semibold text-gray-900" style={{ color: textColor || undefined }}>
+        <h3
+          className="text-lg font-semibold text-gray-900"
+          data-template-path={`${sectionPathPrefix}.title`}
+          style={{ color: textColor || undefined }}
+        >
           {data.title || "Pricing Plans"}
         </h3>
-        <p className="mt-2 text-sm text-gray-600">
+        <p
+          className="mt-2 text-sm text-gray-600"
+          data-template-path={`${sectionPathPrefix}.subtitle`}
+        >
           {data.subtitle || "Choose the plan that fits your goals."}
         </p>
         <div className="mt-6 grid gap-4 md:grid-cols-2">
@@ -308,13 +361,22 @@ function SectionRenderer({ section }: { section: Section }) {
               key={`${plan.name}-${index}`}
               className="rounded-2xl border border-gray-200 bg-gray-50 p-5"
             >
-              <h4 className="text-lg font-semibold text-gray-900">
+              <h4
+                className="text-lg font-semibold text-gray-900"
+                data-template-path={`${sectionPathPrefix}.plans.${index}.name`}
+              >
                 {plan.name || "Plan"}
               </h4>
-              <p className="mt-2 text-2xl font-semibold text-gray-900">
+              <p
+                className="mt-2 text-2xl font-semibold text-gray-900"
+                data-template-path={`${sectionPathPrefix}.plans.${index}.price`}
+              >
                 Rs. {plan.price || "0"}
               </p>
-              <p className="mt-2 text-sm text-gray-600">
+              <p
+                className="mt-2 text-sm text-gray-600"
+                data-template-path={`${sectionPathPrefix}.plans.${index}.description`}
+              >
                 {plan.description || ""}
               </p>
               <ul className="mt-4 space-y-2 text-sm text-gray-600">
@@ -347,20 +409,34 @@ function SectionRenderer({ section }: { section: Section }) {
         className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"
         style={backgroundColor ? { backgroundColor } : undefined}
       >
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3
+          className="text-lg font-semibold text-gray-900"
+          data-template-path={`${sectionPathPrefix}.title`}
+        >
           {data.title || "FAQs"}
         </h3>
-        <p className="mt-2 text-sm text-gray-600">{data.subtitle || ""}</p>
+        <p
+          className="mt-2 text-sm text-gray-600"
+          data-template-path={`${sectionPathPrefix}.subtitle`}
+        >
+          {data.subtitle || ""}
+        </p>
         <div className="mt-4 space-y-3">
           {items.map((item: any, index: number) => (
             <div
               key={`${item.question}-${index}`}
               className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
             >
-              <p className="font-semibold text-gray-900">
+              <p
+                className="font-semibold text-gray-900"
+                data-template-path={`${sectionPathPrefix}.items.${index}.question`}
+              >
                 {item.question || "Question"}
               </p>
-              <p className="mt-2 text-sm text-gray-600">
+              <p
+                className="mt-2 text-sm text-gray-600"
+                data-template-path={`${sectionPathPrefix}.items.${index}.answer`}
+              >
                 {item.answer || "Answer"}
               </p>
             </div>
@@ -382,23 +458,42 @@ function SectionRenderer({ section }: { section: Section }) {
         className="rounded-3xl border border-gray-200 bg-white p-6 shadow-sm"
         style={backgroundColor ? { backgroundColor } : undefined}
       >
-        <h3 className="text-lg font-semibold text-gray-900">
+        <h3
+          className="text-lg font-semibold text-gray-900"
+          data-template-path={`${sectionPathPrefix}.title`}
+        >
           {data.title || "Testimonials"}
         </h3>
-        <p className="mt-2 text-sm text-gray-600">{data.subtitle || ""}</p>
+        <p
+          className="mt-2 text-sm text-gray-600"
+          data-template-path={`${sectionPathPrefix}.subtitle`}
+        >
+          {data.subtitle || ""}
+        </p>
         <div className="mt-4 grid gap-4 md:grid-cols-2">
           {items.map((item: any, index: number) => (
             <div
               key={`${item.name}-${index}`}
               className="rounded-2xl border border-gray-100 bg-gray-50 p-4"
             >
-              <p className="text-sm text-gray-600">
+              <p
+                className="text-sm text-gray-600"
+                data-template-path={`${sectionPathPrefix}.items.${index}.quote`}
+              >
                 "{item.quote || "Great experience!"}"
               </p>
-              <p className="mt-3 text-sm font-semibold text-gray-900">
+              <p
+                className="mt-3 text-sm font-semibold text-gray-900"
+                data-template-path={`${sectionPathPrefix}.items.${index}.name`}
+              >
                 {item.name || "Customer"}
               </p>
-              <p className="text-xs text-gray-500">{item.role || ""}</p>
+              <p
+                className="text-xs text-gray-500"
+                data-template-path={`${sectionPathPrefix}.items.${index}.role`}
+              >
+                {item.role || ""}
+              </p>
             </div>
           ))}
           {items.length === 0 && (
@@ -418,6 +513,7 @@ function SectionRenderer({ section }: { section: Section }) {
     >
       <h3
         className="text-lg font-semibold text-gray-900"
+        data-template-path={`${sectionPathPrefix}.title`}
         style={{
           color: textColor || undefined,
           fontSize: fontSize ? `${fontSize}px` : undefined,
@@ -425,7 +521,11 @@ function SectionRenderer({ section }: { section: Section }) {
       >
         {data.title || "Text block"}
       </h3>
-      <p className="mt-2 text-sm text-gray-600" style={{ color: textColor || undefined }}>
+      <p
+        className="mt-2 whitespace-pre-line text-sm text-gray-600"
+        data-template-path={`${sectionPathPrefix}.body`}
+        style={{ color: textColor || undefined }}
+      >
         {data.body || "Add content for this section."}
       </p>
     </div>

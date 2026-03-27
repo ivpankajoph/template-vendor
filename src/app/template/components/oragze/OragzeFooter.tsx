@@ -6,6 +6,8 @@ import { useParams } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import { Facebook, Instagram, Leaf, Twitter, Youtube, Mail, MapPin, Phone } from 'lucide-react'
 import { buildTemplateScopedPath } from '@/lib/template-route'
+import { resolveTemplateBlogHref } from '@/app/template/components/blog-page'
+import { resolveTemplatePolicyHref } from '@/app/template/components/policy-page'
 
 type TemplateProduct = {
   _id?: string
@@ -33,6 +35,7 @@ export function OragzeFooter() {
   )
 
   const social = template?.components?.social_page || {}
+  const footer = social?.footer || {}
   const businessName = template?.business_name || 'Organic'
 
   const organicLinks = [
@@ -49,14 +52,55 @@ export function OragzeFooter() {
     { label: 'Stores', href: vendorId ? toTemplatePath('contact') : '#' },
     { label: 'Track Order', href: vendorId ? toTemplatePath('orders') : '#' },
     { label: 'Shop', href: vendorId ? toTemplatePath('all-products') : '#' },
+    {
+      label: 'Shipping & Return Policy',
+      href: resolveTemplatePolicyHref({
+        vendorId,
+        fallback: '/shipping-return-policy',
+      }),
+    },
   ]
 
   const customerService = [
     { label: 'Contact', href: vendorId ? toTemplatePath('contact') : '#' },
-    { label: 'Privacy Policy', href: vendorId ? toTemplatePath('privacy-policy') : '#' },
-    { label: 'Returns & Refunds', href: vendorId ? toTemplatePath('returns-refunds') : '#' },
+    {
+      label: String(footer?.blog_label || '').trim() || 'Blog',
+      href: resolveTemplateBlogHref({
+        value: footer?.blog_href,
+        vendorId,
+        fallback: '/blog',
+      }),
+    },
+    {
+      label: String(footer?.policy_primary_label || '').trim() || 'Privacy Policy',
+      href: resolveTemplatePolicyHref({
+        value: footer?.policy_primary_href,
+        vendorId,
+        fallback: '/privacy',
+      }),
+    },
+    {
+      label: 'Shipping & Return Policy',
+      href: resolveTemplatePolicyHref({
+        vendorId,
+        fallback: '/shipping-return-policy',
+      }),
+    },
     { label: 'Delivery Information', href: vendorId ? toTemplatePath('delivery-information') : '#' },
   ]
+  const policyPrimaryLabel = String(footer?.policy_primary_label || '').trim() || 'Privacy Policy'
+  const policyPrimaryHref = resolveTemplatePolicyHref({
+    value: footer?.policy_primary_href,
+    vendorId,
+    fallback: '/privacy',
+  })
+  const policySecondaryLabel =
+    String(footer?.policy_secondary_label || '').trim() || 'Terms & Condition'
+  const policySecondaryHref = resolveTemplatePolicyHref({
+    value: footer?.policy_secondary_href,
+    vendorId,
+    fallback: '/terms',
+  })
 
   return (
     <footer id='contact-us' className='mt-12 border-t border-slate-200 bg-white text-slate-800'>
@@ -151,8 +195,12 @@ export function OragzeFooter() {
         <div className='mx-auto flex max-w-[1320px] flex-col items-center justify-between gap-4 px-4 py-6 text-[14px] font-medium text-slate-500 md:flex-row md:px-8'>
           <p>&copy; {new Date().getFullYear()} {businessName}. All rights reserved.</p>
           <div className='flex items-center gap-6'>
-            <Link href='#' className='hover:text-pink-600 transition-colors'>Terms of Service</Link>
-            <Link href='#' className='hover:text-pink-600 transition-colors'>Privacy Policy</Link>
+            <Link href={policySecondaryHref} className='hover:text-pink-600 transition-colors'>
+              {policySecondaryLabel}
+            </Link>
+            <Link href={policyPrimaryHref} className='hover:text-pink-600 transition-colors'>
+              {policyPrimaryLabel}
+            </Link>
           </div>
         </div>
       </div>

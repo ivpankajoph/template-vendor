@@ -16,6 +16,8 @@ import {
   ChevronRight,
 } from 'lucide-react'
 import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { resolveTemplateBlogHref } from '@/app/template/components/blog-page'
+import { resolveTemplatePolicyHref } from '@/app/template/components/policy-page'
 
 type Product = {
   _id?: string
@@ -57,6 +59,7 @@ export function PoupqzFooter() {
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   )
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+  const footerContent = template?.components?.social_page?.footer || {}
 
   const social = template?.components?.social_page || {}
   const logo =
@@ -85,6 +88,23 @@ export function PoupqzFooter() {
     { label: 'About Us', href: `${toStorefrontPath('')}#about-us` },
     { label: 'Products', href: `${toStorefrontPath('')}#products` },
     { label: 'Contact Us', href: `${toStorefrontPath('')}#contact-us` },
+    {
+      label: String(footerContent?.blog_label || '').trim() || 'Blog',
+      href: resolveTemplateBlogHref({
+        value: footerContent?.blog_href,
+        vendorId,
+        pathname: pathname || undefined,
+        fallback: '/blog',
+      }),
+    },
+    {
+      label: 'Shipping & Return Policy',
+      href: resolveTemplatePolicyHref({
+        vendorId,
+        pathname: pathname || undefined,
+        fallback: '/shipping-return-policy',
+      }),
+    },
   ]
 
   const productLinks = useMemo(() => {
@@ -254,11 +274,27 @@ export function PoupqzFooter() {
               &copy; {new Date().getFullYear()} By {businessName}. All Rights Reserved.
             </p>
             <div className='flex items-center gap-6'>
-              <Link href='/privacy' className='text-[13px] text-slate-400 hover:text-white transition-colors'>
-                Privacy Policy & Terms of Service
+              <Link
+                href={resolveTemplatePolicyHref({
+                  value: footerContent?.policy_primary_href,
+                  vendorId,
+                  pathname: pathname || undefined,
+                  fallback: '/privacy',
+                })}
+                className='text-[13px] text-slate-400 transition-colors hover:text-white'
+              >
+                {footerContent?.policy_primary_label || 'Privacy Policy'}
               </Link>
-              <Link href='/terms' className='text-[13px] text-slate-400 hover:text-white transition-colors'>
-                Shipping & Return Policy
+              <Link
+                href={resolveTemplatePolicyHref({
+                  value: footerContent?.policy_secondary_href,
+                  vendorId,
+                  pathname: pathname || undefined,
+                  fallback: '/terms',
+                })}
+                className='text-[13px] text-slate-400 transition-colors hover:text-white'
+              >
+                {footerContent?.policy_secondary_label || 'Terms & Condition'}
               </Link>
             </div>
           </div>

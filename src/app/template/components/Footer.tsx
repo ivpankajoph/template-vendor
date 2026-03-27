@@ -15,13 +15,14 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { useSelector } from "react-redux";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import { useTemplateVariant } from "./useTemplateVariant";
 import { MquiqFooter } from "./mquiq/MquiqFooter";
 import { PoupqzFooter } from "./poupqz/PoupqzFooter";
 import { OragzeFooter } from "./oragze/OragzeFooter";
 import { WhiteRoseFooter } from "./whiterose/WhiteRoseFooter";
 import { buildTemplateScopedPath } from "@/lib/template-route";
+import { resolveTemplateBlogHref } from "@/app/template/components/blog-page";
 
 export default function Footer() {
   const variant = useTemplateVariant();
@@ -32,6 +33,7 @@ export default function Footer() {
   const isOragze = variant.key === "oragze";
   const isWhiteRose = variant.key === "whiterose";
   const params = useParams();
+  const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
   const vendorId = String(vendor_id || "");
   const toTemplatePath = (suffix = "") =>
@@ -58,6 +60,14 @@ export default function Footer() {
   ]
     .filter((item) => typeof item === "string" && item.trim())
     .join(", ");
+  const footer = (homepage as any)?.components?.social_page?.footer || {};
+  const blogLabel = String(footer?.blog_label || "").trim() || "Blog";
+  const blogHref = resolveTemplateBlogHref({
+    value: footer?.blog_href,
+    vendorId,
+    pathname: pathname || undefined,
+    fallback: "/blog",
+  });
 
   const categoryLinks = useMemo(() => {
     const map = new Map<string, { path: string; label: string }>();
@@ -165,6 +175,7 @@ export default function Footer() {
                 { name: "Shop", path: toTemplatePath("all-products") },
                 { name: "About Us", path: toTemplatePath("about") },
                 { name: "Contact", path: toTemplatePath("contact") },
+                { name: blogLabel, path: blogHref },
                 ...customPages.map((page: any) => ({
                   name: page.title || "Page",
                   path: toTemplatePath(`page/${page.slug || page.id}`),

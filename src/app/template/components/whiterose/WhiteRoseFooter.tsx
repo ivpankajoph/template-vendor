@@ -8,6 +8,8 @@ import { useSelector } from 'react-redux'
 import { ArrowUp, Mail, MapPin, Phone } from 'lucide-react'
 
 import { buildTemplateScopedPath } from '@/lib/template-route'
+import { resolveTemplateBlogHref } from '@/app/template/components/blog-page'
+import { resolveTemplatePolicyHref } from '@/app/template/components/policy-page'
 
 import {
   type WhiteRoseProduct,
@@ -68,9 +70,33 @@ export function WhiteRoseFooter() {
           { label: 'Home', href: toTemplatePath('') },
           { label: 'All Products', href: toTemplatePath('all-products') },
           { label: 'Categories', href: toTemplatePath('category') },
-          { label: 'Orders', href: toTemplatePath('orders') },
           { label: 'Contact', href: toTemplatePath('contact') },
+          {
+            label: String(footerContent?.blog_label || '').trim() || 'Blog',
+            href: resolveTemplateBlogHref({
+              value: footerContent?.blog_href,
+              vendorId,
+              pathname: pathname || '/',
+              fallback: '/blog',
+            }),
+          },
         ]
+  const shippingPolicyHref = resolveTemplatePolicyHref({
+    vendorId,
+    pathname: pathname || '/',
+    fallback: '/shipping-return-policy',
+  })
+  const quickLinksWithShipping = quickLinks.some((item: any) => {
+    const label = String(item?.label || '').toLowerCase()
+    const href = String(item?.href || '').trim()
+    return (
+      href === shippingPolicyHref ||
+      label.includes('shipping') ||
+      label.includes('return')
+    )
+  })
+    ? quickLinks
+    : [...quickLinks, { label: 'Shipping & Return Policy', href: shippingPolicyHref }]
 
   const productLinks =
     Array.isArray(footerContent?.product_links) && footerContent.product_links.length > 0
@@ -81,6 +107,21 @@ export function WhiteRoseFooter() {
     Array.isArray(footerContent?.company_points) && footerContent.company_points.length > 0
       ? footerContent.company_points.slice(0, 3)
       : DEFAULT_FOOTER_POINTS
+  const policyPrimaryLabel = String(footerContent?.policy_primary_label || '').trim() || 'Privacy Policy'
+  const policyPrimaryHref = resolveTemplatePolicyHref({
+    value: footerContent?.policy_primary_href,
+    vendorId,
+    pathname: pathname || '/',
+    fallback: '/privacy',
+  })
+  const policySecondaryLabel =
+    String(footerContent?.policy_secondary_label || '').trim() || 'Terms & Condition'
+  const policySecondaryHref = resolveTemplatePolicyHref({
+    value: footerContent?.policy_secondary_href,
+    vendorId,
+    pathname: pathname || '/',
+    fallback: '/terms',
+  })
 
   const fullAddress = [
     vendor?.street || vendor?.address,
@@ -137,7 +178,7 @@ export function WhiteRoseFooter() {
             Shop
           </h3>
           <div className='mt-4 grid gap-3 text-sm text-[#dbeafe]'>
-            {quickLinks.map((item: any, index: number) => (
+            {quickLinksWithShipping.map((item: any, index: number) => (
               <Link
                 key={`${item?.label || 'link'}-${index}`}
                 href={resolveFooterHref(item?.href)}
@@ -205,11 +246,11 @@ export function WhiteRoseFooter() {
               : `(c) ${new Date().getFullYear()} ${businessName}. All rights reserved.`}
           </p>
           <div className='flex items-center gap-5'>
-            <Link href={toTemplatePath('contact')} className='transition hover:text-white'>
-              Privacy policy
+            <Link href={policyPrimaryHref} className='transition hover:text-white'>
+              {policyPrimaryLabel}
             </Link>
-            <Link href={toTemplatePath('checkout')} className='transition hover:text-white'>
-              Terms
+            <Link href={policySecondaryHref} className='transition hover:text-white'>
+              {policySecondaryLabel}
             </Link>
             <Link href={toTemplatePath('orders')} className='transition hover:text-white'>
               Order help

@@ -22,11 +22,13 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "login",
   "orders",
   "page",
+  "privacy",
   "preview",
   "product",
   "profile",
   "register",
   "subcategory",
+  "terms",
   "website",
 ]);
 

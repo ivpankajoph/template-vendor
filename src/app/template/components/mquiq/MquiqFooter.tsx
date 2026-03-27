@@ -16,6 +16,8 @@ import {
   ArrowUp,
 } from 'lucide-react'
 import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { resolveTemplateBlogHref } from '@/app/template/components/blog-page'
+import { resolveTemplatePolicyHref } from '@/app/template/components/policy-page'
 
 type Product = {
   _id?: string
@@ -153,6 +155,15 @@ export function MquiqFooter() {
       { label: 'Home', href: toStorefrontPath('') },
       { label: 'About Us', href: toStorefrontPath('about') },
       { label: 'Contact Us', href: toStorefrontPath('contact') },
+      {
+        label: String(footer?.blog_label || '').trim() || 'Blog',
+        href: resolveTemplateBlogHref({
+          value: footer?.blog_href,
+          vendorId,
+          pathname: pathname || undefined,
+          fallback: '/blog',
+        }),
+      },
     ]
 
     const configured: unknown[] = Array.isArray(footer?.quick_links)
@@ -173,7 +184,25 @@ export function MquiqFooter() {
       })
       .filter((item: { label: string }) => Boolean(item.label))
 
-    return normalized.length ? normalized : defaults
+    const baseList = normalized.length ? normalized : defaults
+    const shippingHref = resolveTemplatePolicyHref({
+      vendorId,
+      pathname: pathname || undefined,
+      fallback: '/shipping-return-policy',
+    })
+
+    if (
+      baseList.some(
+        (item) =>
+          item.href === shippingHref ||
+          item.label.toLowerCase().includes('shipping') ||
+          item.label.toLowerCase().includes('return')
+      )
+    ) {
+      return baseList
+    }
+
+    return [...baseList, { label: 'Shipping & Return Policy', href: shippingHref }]
   }, [footer?.quick_links, pathname, toStorefrontPath, vendorId])
 
   const productLinks = useMemo<FooterQuickLink[]>(() => {
@@ -256,10 +285,20 @@ export function MquiqFooter() {
   const policyPrimaryLabel =
     String(footer?.policy_primary_label || '').trim() ||
     'Privacy Policy & Terms of Service'
-  const policyPrimaryHref = resolveHref(footer?.policy_primary_href || '/privacy')
+  const policyPrimaryHref = resolveTemplatePolicyHref({
+    value: footer?.policy_primary_href,
+    vendorId,
+    pathname: pathname || undefined,
+    fallback: '/privacy',
+  })
   const policySecondaryLabel =
-    String(footer?.policy_secondary_label || '').trim() || 'Shipping & Return Policy'
-  const policySecondaryHref = resolveHref(footer?.policy_secondary_href || '/terms')
+    String(footer?.policy_secondary_label || '').trim() || 'Terms & Condition'
+  const policySecondaryHref = resolveTemplatePolicyHref({
+    value: footer?.policy_secondary_href,
+    vendorId,
+    pathname: pathname || undefined,
+    fallback: '/terms',
+  })
 
   return (
     <footer

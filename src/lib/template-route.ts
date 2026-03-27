@@ -2,6 +2,7 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "",
   "about",
   "all-products",
+  "blog",
   "cart",
   "category",
   "checkout",
@@ -9,11 +10,14 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "login",
   "orders",
   "page",
+  "privacy",
   "preview",
   "product",
   "profile",
   "register",
+  "shipping-return-policy",
   "subcategory",
+  "terms",
   "website",
 ]);
 

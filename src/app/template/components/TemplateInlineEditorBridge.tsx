@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef } from "react";
 import { useParams, usePathname } from "next/navigation";
 import { useSelector } from "react-redux";
 
-type PageKey = "home" | "about" | "contact";
+type PageKey = "home" | "about" | "contact" | "full";
 
 type CandidateKind = "text" | "image";
 
@@ -52,7 +52,7 @@ const inferPage = (pathname: string | null): PageKey | null => {
   if (pageSegment === "about") return "about";
   if (pageSegment === "contact") return "contact";
   if (pageSegment === "home") return "home";
-  return null;
+  return "full";
 };
 
 const inferSectionFromPath = (page: PageKey, path: string[]) => {
@@ -82,6 +82,9 @@ const inferSectionFromPath = (page: PageKey, path: string[]) => {
     if (joined.includes("contact_page.section_2.long")) return "map";
     if (joined.includes("contact_page.section_2")) return "details";
   }
+  if (joined.includes("social_page.blogs")) return "blog";
+  if (joined.includes("social_page.footer.blog_")) return "blog";
+  if (joined.includes("custom_pages")) return "pages";
   return "";
 };
 
