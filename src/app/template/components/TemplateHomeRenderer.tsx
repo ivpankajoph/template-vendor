@@ -13,6 +13,7 @@ import { OragzeHome } from './oragze/OragzeHome'
 import { WhiteRoseHome } from './whiterose/WhiteRoseHome'
 import { getRichTextPreview } from '@/lib/rich-text'
 import { buildTemplateScopedPath } from '@/lib/template-route'
+import { configuredArray, configuredText } from './template-content'
 
 type Product = {
   _id?: string
@@ -99,11 +100,63 @@ export function TemplateHomeRenderer() {
   }, [products])
 
   const home = template?.components?.home_page || {}
-  const heroImage = home?.backgroundImage || template?.previewImage || ''
+  const heroImage = configuredText(
+    home?.backgroundImage,
+    configuredText(template?.previewImage)
+  )
   const description = home?.description || {}
-  const features = Array.isArray(description?.features) ? description.features : []
+  const features = configuredArray<any>(description?.features, [])
   const faqSection = template?.components?.social_page?.faqs || {}
-  const faqItems = Array.isArray(faqSection?.faqs) ? faqSection.faqs : []
+  const faqHeading = configuredText(
+    faqSection?.heading,
+    'Frequently Asked Questions'
+  )
+  const faqSubheading = configuredText(
+    faqSection?.subheading,
+    'Quick answers to common questions'
+  )
+  const faqItems = configuredArray<any>(faqSection?.faqs, [])
+  const studioHeroKicker = configuredText(home?.hero_kicker, 'Studio collection')
+  const studioHeroTitle = configuredText(home?.header_text, 'Design-forward storefronts')
+  const studioHeroSubtitle = configuredText(
+    home?.header_text_small,
+    'High contrast, editorial layouts, bold product grids.'
+  )
+  const studioHeroPrimary = configuredText(home?.button_header, 'Explore')
+  const studioHeroSecondary = configuredText(home?.button_secondary, 'Limited drops')
+  const minimalHeroKicker = configuredText(home?.hero_kicker, 'Simple storefront')
+  const minimalHeroTitle = configuredText(home?.header_text, 'Minimal, clean, product-first')
+  const minimalHeroSubtitle = configuredText(
+    home?.header_text_small,
+    'No clutter. Just your products.'
+  )
+  const minimalHeroPrimary = configuredText(home?.button_header, 'Shop now')
+  const minimalHeroSecondary = configuredText(home?.button_secondary, 'Fresh arrivals')
+  const trendHeroKicker = configuredText(home?.hero_kicker, 'Trending now')
+  const trendHeroTitle = configuredText(
+    home?.header_text,
+    'Shop smart. Save more. Stay in trend.'
+  )
+  const trendHeroSubtitle = configuredText(
+    home?.header_text_small,
+    'Daily drops, best prices, and fast checkout for every shopper.'
+  )
+  const trendHeroPrimary = configuredText(home?.button_header, 'Shop Deals')
+  const trendHeroSecondary = configuredText(home?.button_secondary, 'Browse categories')
+  const productsHeading = configuredText(home?.products_heading, 'Products in this store')
+  const productsKicker = configuredText(home?.products_kicker, 'Catalog')
+  const productsSubtitle = configuredText(
+    home?.products_subtitle,
+    `${products.length} products available`
+  )
+  const descriptionHeading = configuredText(
+    description?.large_text,
+    'A storefront built for modern shoppers.'
+  )
+  const descriptionSummary = configuredText(
+    description?.summary,
+    'Curate products, tell your story, and convert shoppers faster.'
+  )
 
   const handleAddToCart = async (product: Product) => {
     setActionMessage('')
@@ -163,22 +216,21 @@ export function TemplateHomeRenderer() {
                 data-template-path='components.home_page.hero_kicker'
                 data-template-section='hero'
               >
-                {home.hero_kicker || 'Studio collection'}
+                {studioHeroKicker}
               </p>
               <h1
                 className='mt-4 text-5xl font-semibold text-white'
                 data-template-path='components.home_page.header_text'
                 data-template-section='hero'
               >
-                {home.header_text || 'Design-forward storefronts'}
+                {studioHeroTitle}
               </h1>
               <p
                 className='mt-4 text-lg text-slate-300'
                 data-template-path='components.home_page.header_text_small'
                 data-template-section='hero'
               >
-                {home.header_text_small ||
-                  'High contrast, editorial layouts, bold product grids.'}
+                {studioHeroSubtitle}
               </p>
               <div className='mt-8 flex flex-wrap items-center gap-4'>
                 <Link
@@ -187,14 +239,14 @@ export function TemplateHomeRenderer() {
                   data-template-path='components.home_page.button_header'
                   data-template-section='hero'
                 >
-                  {home.button_header || 'Explore'}
+                  {studioHeroPrimary}
                 </Link>
                 <span
                   className='text-xs uppercase tracking-[0.3em] text-slate-400'
                   data-template-path='components.home_page.button_secondary'
                   data-template-section='hero'
                 >
-                  {home.button_secondary || 'Limited drops'}
+                  {studioHeroSecondary}
                 </span>
               </div>
             </div>
@@ -246,7 +298,7 @@ export function TemplateHomeRenderer() {
               data-template-path='components.home_page.products_heading'
               data-template-section='products'
             >
-              {home?.products_heading || 'Latest products'}
+              {configuredText(home?.products_heading, 'Latest products')}
             </h2>
             <Link
               href={vendorId ? allProductsPath : '#'}
@@ -303,21 +355,21 @@ export function TemplateHomeRenderer() {
                 data-template-path='components.home_page.hero_kicker'
                 data-template-section='hero'
               >
-                {home.hero_kicker || 'Simple storefront'}
+                {minimalHeroKicker}
               </p>
               <h1
                 className='mt-4 text-5xl font-semibold text-slate-900'
                 data-template-path='components.home_page.header_text'
                 data-template-section='hero'
               >
-                {home.header_text || 'Minimal, clean, product-first'}
+                {minimalHeroTitle}
               </h1>
               <p
                 className='mt-4 text-lg text-slate-600'
                 data-template-path='components.home_page.header_text_small'
                 data-template-section='hero'
               >
-                {home.header_text_small || 'No clutter. Just your products.'}
+                {minimalHeroSubtitle}
               </p>
               <div className='mt-8 flex flex-wrap items-center gap-4'>
                 <Link
@@ -326,14 +378,14 @@ export function TemplateHomeRenderer() {
                   data-template-path='components.home_page.button_header'
                   data-template-section='hero'
                 >
-                  {home.button_header || 'Shop now'}
+                  {minimalHeroPrimary}
                 </Link>
                 <span
                   className='text-sm text-slate-500'
                   data-template-path='components.home_page.button_secondary'
                   data-template-section='hero'
                 >
-                  {home.button_secondary || 'Fresh arrivals'}
+                  {minimalHeroSecondary}
                 </span>
               </div>
             </div>
@@ -411,22 +463,21 @@ export function TemplateHomeRenderer() {
               data-template-path='components.home_page.hero_kicker'
               data-template-section='hero'
             >
-              {home.hero_kicker || 'Trending now'}
+              {trendHeroKicker}
             </span>
             <h1
               className='mt-4 text-4xl font-bold text-slate-900 sm:text-5xl'
               data-template-path='components.home_page.header_text'
               data-template-section='hero'
             >
-              {home.header_text || 'Shop smart. Save more. Stay in trend.'}
+              {trendHeroTitle}
             </h1>
             <p
               className='mt-3 max-w-xl text-base text-slate-600 sm:text-lg'
               data-template-path='components.home_page.header_text_small'
               data-template-section='hero'
             >
-              {home.header_text_small ||
-                'Daily drops, best prices, and fast checkout for every shopper.'}
+              {trendHeroSubtitle}
             </p>
             <div className='mt-7 flex flex-wrap gap-3'>
               <Link
@@ -435,7 +486,7 @@ export function TemplateHomeRenderer() {
                 data-template-path='components.home_page.button_header'
                 data-template-section='hero'
               >
-                {home.button_header || 'Shop Deals'}
+                {trendHeroPrimary}
               </Link>
               <Link
                 href={vendorId ? categoryPath : '#'}
@@ -443,20 +494,20 @@ export function TemplateHomeRenderer() {
                 data-template-path='components.home_page.button_secondary'
                 data-template-section='hero'
               >
-                {home.button_secondary || 'Browse categories'}
+                {trendHeroSecondary}
               </Link>
             </div>
             <div className='mt-6 grid max-w-xl grid-cols-3 gap-3'>
               <div className='rounded-2xl border border-rose-100 bg-white p-3'>
                 <p className='text-xs text-slate-500'>Happy buyers</p>
                 <p className='text-lg font-semibold text-slate-900'>
-                  {description?.percent?.percent_in_number || '92'}%
+                  {configuredText(description?.percent?.percent_in_number, '92')}%
                 </p>
               </div>
               <div className='rounded-2xl border border-rose-100 bg-white p-3'>
                 <p className='text-xs text-slate-500'>Products sold</p>
                 <p className='text-lg font-semibold text-slate-900'>
-                  {description?.sold?.sold_number || '0'}
+                  {configuredText(description?.sold?.sold_number, '0')}
                 </p>
               </div>
               <div className='rounded-2xl border border-rose-100 bg-white p-3'>
@@ -528,7 +579,7 @@ export function TemplateHomeRenderer() {
                 Hot Picks
               </p>
               <h2 className='text-2xl font-bold text-slate-900'>
-                {home?.products_heading || 'Trending products'}
+                {configuredText(home?.products_heading, 'Trending products')}
               </h2>
             </div>
             <Link
@@ -610,10 +661,13 @@ export function TemplateHomeRenderer() {
         <section className='mx-auto max-w-7xl px-6 pb-16'>
           <div className='rounded-3xl border border-rose-100 bg-white p-6'>
             <h2 className='text-2xl font-bold text-slate-900'>
-              {faqSection?.heading || 'Frequently Asked Questions'}
+              {faqHeading}
             </h2>
             <p className='mt-2 text-sm text-slate-600'>
-              {faqSection?.subheading || 'Quick answers to common shopper questions'}
+              {configuredText(
+                faqSection?.subheading,
+                'Quick answers to common shopper questions'
+              )}
             </p>
             <div className='mt-5 grid gap-4 md:grid-cols-2'>
               {faqItems.slice(0, 6).map((faq: any, index: number) => (
@@ -622,10 +676,10 @@ export function TemplateHomeRenderer() {
                   className='rounded-2xl border border-rose-100 bg-rose-50/40 p-4'
                 >
                   <h3 className='text-sm font-semibold text-slate-900'>
-                    {faq?.question || 'Question'}
+                    {configuredText(faq?.question, 'Question')}
                   </h3>
                   <p className='mt-2 text-sm text-slate-600'>
-                    {faq?.answer || 'Answer not available.'}
+                    {configuredText(faq?.answer, 'Answer not available.')}
                   </p>
                 </div>
               ))}
@@ -656,35 +710,34 @@ export function TemplateHomeRenderer() {
               data-template-path='components.home_page.description.large_text'
               data-template-section='description'
             >
-              {description?.large_text || 'A storefront built for modern shoppers.'}
+              {descriptionHeading}
             </h2>
             <p
               className='text-sm text-slate-600 sm:text-base'
               data-template-path='components.home_page.description.summary'
               data-template-section='description'
             >
-              {description?.summary ||
-                'Curate products, tell your story, and convert shoppers faster.'}
+              {descriptionSummary}
             </p>
           </div>
           <div className='grid gap-4 sm:grid-cols-2'>
             <div className='rounded-2xl border border-slate-200 bg-slate-50 p-4'>
               <p className='text-xs uppercase tracking-[0.3em] text-slate-400'>Success</p>
               <p className='mt-2 text-3xl font-semibold text-slate-900'>
-                {description?.percent?.percent_in_number || '92'}
+                {configuredText(description?.percent?.percent_in_number, '92')}
                 <span className='text-lg text-slate-500'>%</span>
               </p>
               <p className='text-sm text-slate-500'>
-                {description?.percent?.percent_text || 'Satisfied buyers'}
+                {configuredText(description?.percent?.percent_text, 'Satisfied buyers')}
               </p>
             </div>
             <div className='rounded-2xl border border-slate-200 bg-slate-50 p-4'>
               <p className='text-xs uppercase tracking-[0.3em] text-slate-400'>Sold</p>
               <p className='mt-2 text-3xl font-semibold text-slate-900'>
-                {description?.sold?.sold_number || '0'}
+                {configuredText(description?.sold?.sold_number, '0')}
               </p>
               <p className='text-sm text-slate-500'>
-                {description?.sold?.sold_text || 'Products shipped'}
+                {configuredText(description?.sold?.sold_text, 'Products shipped')}
               </p>
             </div>
           </div>
@@ -700,10 +753,13 @@ export function TemplateHomeRenderer() {
                 className='rounded-2xl border border-slate-200 bg-white p-5 shadow-sm'
               >
                 <p className='text-lg font-semibold text-slate-900'>
-                  {feature?.title || 'Feature'}
+                  {configuredText(feature?.title, 'Feature')}
                 </p>
                 <p className='mt-2 text-sm text-slate-600'>
-                  {feature?.description || 'Add feature details from template editor.'}
+                  {configuredText(
+                    feature?.description,
+                    'Add feature details from template editor.'
+                  )}
                 </p>
               </div>
             ))}
@@ -719,14 +775,14 @@ export function TemplateHomeRenderer() {
               data-template-path='components.home_page.products_kicker'
               data-template-section='products'
             >
-              {home?.products_kicker || 'Catalog'}
+              {productsKicker}
             </p>
             <h3
               className='text-2xl font-semibold text-slate-900'
               data-template-path='components.home_page.products_heading'
               data-template-section='products'
             >
-              {home?.products_heading || 'Products in this store'}
+              {productsHeading}
             </h3>
           </div>
           <p
@@ -734,7 +790,7 @@ export function TemplateHomeRenderer() {
             data-template-path='components.home_page.products_subtitle'
             data-template-section='products'
           >
-            {home?.products_subtitle || `${products.length} products available`}
+            {productsSubtitle}
           </p>
         </div>
 
@@ -835,14 +891,14 @@ export function TemplateHomeRenderer() {
           data-template-path='components.social_page.faqs.heading'
           data-template-section='description'
         >
-          {faqSection?.heading || 'Frequently Asked Questions'}
+          {faqHeading}
         </h2>
         <p
           className='mt-2 text-sm text-slate-600'
           data-template-path='components.social_page.faqs.subheading'
           data-template-section='description'
         >
-          {faqSection?.subheading || 'Quick answers to common questions'}
+          {faqSubheading}
         </p>
 
         <div className='mt-6 grid gap-4 md:grid-cols-2'>
@@ -852,9 +908,11 @@ export function TemplateHomeRenderer() {
               className='rounded-2xl border border-slate-200 bg-white p-5 shadow-sm'
             >
               <h3 className='text-base font-semibold text-slate-900'>
-                {faq?.question || 'Question'}
+                {configuredText(faq?.question, 'Question')}
               </h3>
-              <p className='mt-2 text-sm text-slate-600'>{faq?.answer || 'Answer not available.'}</p>
+              <p className='mt-2 text-sm text-slate-600'>
+                {configuredText(faq?.answer, 'Answer not available.')}
+              </p>
             </div>
           ))}
           {faqItems.length === 0 && (

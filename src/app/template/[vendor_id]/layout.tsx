@@ -1,12 +1,11 @@
 import React from "react";
 import type { Metadata } from "next";
 import { headers } from "next/headers";
-import Navbar from "../components/Navbar";
-import Footer from "../components/Footer";
 import { TemplateThemeProvider } from "../components/TemplateThemeProvider";
 import { TemplateDataLoader } from "../components/TemplateDataLoader";
 import { TemplatePreviewRealtimeSync } from "../components/TemplatePreviewRealtimeSync";
 import { TemplateInlineEditorBridge } from "../components/TemplateInlineEditorBridge";
+import { TemplatePreviewShell } from "../components/TemplatePreviewShell";
 import { MetaPixelScript } from "@/components/meta-pixel/MetaPixelScript";
 import { buildTemplateMetadata } from "@/lib/template-metadata";
 import { fetchTemplateMetaPixel } from "@/lib/meta-pixel";
@@ -35,14 +34,12 @@ export default async function VendorLayout({
   return (
     <TemplateThemeProvider>
       <MetaPixelScript pixelId={metaPixel?.pixelId} />
-      <div className="template-site-shell min-h-screen flex flex-col">
+      <TemplatePreviewShell>
         <TemplatePreviewRealtimeSync vendorId={vendor_id} />
         <TemplateDataLoader vendorId={vendor_id} websiteId={websiteId} />
         <TemplateInlineEditorBridge />
-        <Navbar />
-        <main className="template-site-main flex-grow">{children}</main>
-        <Footer />
-      </div>
+        {children}
+      </TemplatePreviewShell>
     </TemplateThemeProvider>
   );
 }

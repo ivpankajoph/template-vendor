@@ -7,6 +7,7 @@ import { useSelector } from "react-redux";
 import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import { configuredText } from "@/app/template/components/template-content";
 import { buildTemplateScopedPath } from "@/lib/template-route";
 
 const DynamicMap = dynamic(() => import("@/app/template/components/MapComponent"), {
@@ -76,7 +77,9 @@ export default function ContactPage() {
     encodeURIComponent(value.toLowerCase().replace(/\s+/g, "-"));
 
   const vendorFallbackName =
-    templateData?.hero?.title?.replace(/^contact\s*/i, "").trim() || "our team";
+    configuredText(templateData?.hero?.title)
+      .replace(/^contact\s*/i, "")
+      .trim() || "our team";
   const mergedVendor = useMemo(
     () => ({
       ...(contactData && typeof contactData === "object" ? contactData : {}),
@@ -85,30 +88,43 @@ export default function ContactPage() {
     [contactData, vendorOverrides]
   );
   const contact = {
-    street: (mergedVendor as any)?.street || (mergedVendor as any)?.address || "Store Address",
-    city: (mergedVendor as any)?.city || "",
-    state: (mergedVendor as any)?.state || "",
-    pincode: (mergedVendor as any)?.pincode || "",
-    phone:
-      (mergedVendor as any)?.phone ||
-      (mergedVendor as any)?.alternate_contact_phone ||
-      "+91 9876543210",
-    email: (mergedVendor as any)?.email || "support@storefront.com",
+    street: configuredText(
+      (mergedVendor as any)?.street,
+      configuredText((mergedVendor as any)?.address, "Store Address")
+    ),
+    city: configuredText((mergedVendor as any)?.city),
+    state: configuredText((mergedVendor as any)?.state),
+    pincode: configuredText((mergedVendor as any)?.pincode),
+    phone: configuredText(
+      (mergedVendor as any)?.phone,
+      configuredText((mergedVendor as any)?.alternate_contact_phone, "+91 9876543210")
+    ),
+    email: configuredText((mergedVendor as any)?.email, "support@storefront.com"),
   };
-  const workingHours = (mergedVendor as any)?.operating_hours || "Mon - Fri: 9AM - 6PM";
+  const workingHours = configuredText(
+    (mergedVendor as any)?.operating_hours,
+    "Mon - Fri: 9AM - 6PM"
+  );
   const contactAddress = [contact.street, contact.city, contact.state]
     .filter((item) => typeof item === "string" && item.trim())
     .join(", ");
-  const heroTitle = templateData?.hero?.title || "Contact Us";
-  const heroSubtitle =
-    templateData?.hero?.subtitle || `Have a question? Reach out to ${vendorFallbackName}.`;
-  const detailsTitle = templateData?.section_2?.hero_title || "Visit or message our team";
-  const detailsSubtitle =
-    templateData?.section_2?.hero_subtitle ||
-    "Share your requirements and we will respond with the best options.";
-  const heroBackground =
-    templateData?.hero?.backgroundImage ||
-    "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1600&q=80";
+  const heroTitle = configuredText(templateData?.hero?.title, "Contact Us");
+  const heroSubtitle = configuredText(
+    templateData?.hero?.subtitle,
+    `Have a question? Reach out to ${vendorFallbackName}.`
+  );
+  const detailsTitle = configuredText(
+    templateData?.section_2?.hero_title,
+    "Visit or message our team"
+  );
+  const detailsSubtitle = configuredText(
+    templateData?.section_2?.hero_subtitle,
+    "Share your requirements and we will respond with the best options."
+  );
+  const heroBackground = configuredText(
+    templateData?.hero?.backgroundImage,
+    "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1600&q=80"
+  );
   const mapLat = Number(templateData?.section_2?.lat);
   const mapLong = Number(templateData?.section_2?.long);
   const hasMapCoordinates = Number.isFinite(mapLat) && Number.isFinite(mapLong);

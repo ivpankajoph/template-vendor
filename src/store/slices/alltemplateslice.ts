@@ -110,6 +110,8 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
     normalizedCity
   )}${websiteQuery}`;
   const fallbackUrl = `${BASE_URL}/templates/template-all?vendor_id=${vendorId}${websiteQuery}`;
+  const socialFaqUrl = `${BASE_URL}/v1/templates/social-faqs?vendor_id=${vendorId}${websiteQuery}`;
+  const socialFaqFallbackUrl = `${BASE_URL}/v1/templates/social-faqs/${vendorId}`;
 
   const fetchPreview = async () => {
     const response = await axios.get(previewUrl, { timeout: REQUEST_TIMEOUT_MS });
@@ -123,18 +125,86 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
     return response.data;
   };
 
+  const mergeSocialFaqPayload = async (templateResponse: any) => {
+    try {
+      const socialResponse = await axios.get(socialFaqUrl, {
+        timeout: REQUEST_TIMEOUT_MS,
+      });
+      const socialPayload =
+        socialResponse?.data?.data ||
+        socialResponse?.data?.template ||
+        socialResponse?.data;
+      const socialPage =
+        socialPayload?.social_page || socialPayload?.components?.social_page;
+
+      if (!socialPage) return templateResponse;
+
+      const targetTemplate =
+        templateResponse?.data?.template ||
+        templateResponse?.template ||
+        templateResponse?.data ||
+        templateResponse;
+
+      if (targetTemplate && typeof targetTemplate === "object") {
+        const components = asRecord((targetTemplate as Record<string, any>).components);
+        (targetTemplate as Record<string, any>).components = {
+          ...components,
+          social_page: {
+            ...asRecord(components.social_page),
+            ...asRecord(socialPage),
+          },
+        };
+      }
+      return templateResponse;
+    } catch {
+      try {
+        const socialResponse = await axios.get(socialFaqFallbackUrl, {
+          timeout: REQUEST_TIMEOUT_MS,
+        });
+        const socialPayload =
+          socialResponse?.data?.data ||
+          socialResponse?.data?.template ||
+          socialResponse?.data;
+        const socialPage =
+          socialPayload?.social_page || socialPayload?.components?.social_page;
+
+        if (!socialPage) return templateResponse;
+
+        const targetTemplate =
+          templateResponse?.data?.template ||
+          templateResponse?.template ||
+          templateResponse?.data ||
+          templateResponse;
+
+        if (targetTemplate && typeof targetTemplate === "object") {
+          const components = asRecord((targetTemplate as Record<string, any>).components);
+          (targetTemplate as Record<string, any>).components = {
+            ...components,
+            social_page: {
+              ...asRecord(components.social_page),
+              ...asRecord(socialPage),
+            },
+          };
+        }
+      } catch {
+        return templateResponse;
+      }
+      return templateResponse;
+    }
+  };
+
   if (preferredEndpoint === "fallback") {
     try {
-      return await fetchFallback();
+      return await mergeSocialFaqPayload(await fetchFallback());
     } catch {
-      return fetchPreview();
+      return mergeSocialFaqPayload(await fetchPreview());
     }
   }
 
   try {
-    return await fetchPreview();
+    return await mergeSocialFaqPayload(await fetchPreview());
   } catch {
-    return fetchFallback();
+    return mergeSocialFaqPayload(await fetchFallback());
   }
 };
 

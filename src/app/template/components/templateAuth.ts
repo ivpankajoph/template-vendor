@@ -12,7 +12,20 @@ export type TemplateAuthPayload = {
     email: string;
     phone: string;
     vendor_id: string;
+    website_id?: string | null;
+    website_slug?: string;
+    website_name?: string;
   };
+};
+
+const getCurrentTemplateWebsiteId = () => {
+  if (typeof window === "undefined") return "";
+  return (
+    getTemplateWebsiteIdFromSearch(
+      window.location.pathname,
+      new URLSearchParams(window.location.search)
+    ) || ""
+  );
 };
 
 const API_BASE =
@@ -20,7 +33,13 @@ const API_BASE =
     ? NEXT_PUBLIC_API_URL
     : `${NEXT_PUBLIC_API_URL}/v1`;
 
-const storageKey = (vendorId: string) => `template_auth_${vendorId}`;
+const legacyStorageKey = (vendorId: string) => `template_auth_${vendorId}`;
+
+const storageKey = (vendorId: string, websiteId?: string) => {
+  const normalizedWebsiteId =
+    String(websiteId || getCurrentTemplateWebsiteId() || "").trim() || "default";
+  return `template_auth_${vendorId}_${normalizedWebsiteId}`;
+};
 
 const decodeJwtPayload = (token: string): { exp?: number } | null => {
   try {
@@ -81,15 +100,18 @@ export const getTemplateAuth = (vendorId: string): TemplateAuthPayload | null =>
 
 export const setTemplateAuth = (vendorId: string, payload: TemplateAuthPayload) => {
   if (typeof window === "undefined") return;
-  localStorage.setItem(storageKey(vendorId), JSON.stringify(payload));
+  const websiteId = String(getCurrentTemplateWebsiteId() || "").trim();
+  localStorage.removeItem(legacyStorageKey(vendorId));
+  localStorage.setItem(storageKey(vendorId, websiteId), JSON.stringify(payload));
   window.dispatchEvent(
-    new CustomEvent("template-auth-updated", { detail: { vendorId } })
+    new CustomEvent("template-auth-updated", { detail: { vendorId, websiteId } })
   );
 };
 
 export const clearTemplateAuth = (vendorId: string) => {
   if (typeof window === "undefined") return;
   localStorage.removeItem(storageKey(vendorId));
+  localStorage.removeItem(legacyStorageKey(vendorId));
   window.dispatchEvent(
     new CustomEvent("template-auth-updated", { detail: { vendorId } })
   );

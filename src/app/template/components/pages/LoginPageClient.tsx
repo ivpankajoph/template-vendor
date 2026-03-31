@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter, useSearchParams } from "next/navigat
 import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildStorefrontScopedPath } from "@/lib/template-route";
+import { toastError } from "@/lib/toast";
 
 export default function TemplateLoginPage() {
   const variant = useTemplateVariant();
@@ -67,7 +68,15 @@ export default function TemplateLoginPage() {
       setTemplateAuth(vendorId, { token: data.token, user: data.user });
       router.push(nextPath);
     } catch (err: any) {
-      setError(err.message || "Login failed");
+      const message = String(err?.message || "Login failed");
+      const toastMessage =
+        message.includes("only allowed on the website") ||
+        message.includes("belongs to a different website") ||
+        message.includes("not allowed on the current website")
+          ? "You can't login here! Create new account."
+          : message;
+      setError("");
+      toastError(toastMessage);
     } finally {
       setLoading(false);
     }
@@ -81,12 +90,6 @@ export default function TemplateLoginPage() {
           <p className={`mt-2 text-sm ${isStudio ? "text-slate-300" : "text-slate-500"}`}>
             Login to continue checkout in this store.
           </p>
-
-          {error && (
-            <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>

@@ -5,6 +5,7 @@ import { useParams, usePathname, useRouter } from "next/navigation";
 import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildStorefrontScopedPath } from "@/lib/template-route";
+import { toastError } from "@/lib/toast";
 
 export default function TemplateRegisterPage() {
   const variant = useTemplateVariant();
@@ -69,7 +70,8 @@ export default function TemplateRegisterPage() {
         })
       );
     } catch (err: any) {
-      setError(err.message || "Registration failed");
+      setError("");
+      toastError(String(err?.message || "Registration failed"));
     } finally {
       setLoading(false);
     }
@@ -83,12 +85,6 @@ export default function TemplateRegisterPage() {
           <p className={`mt-2 text-sm ${isStudio ? "text-slate-300" : "text-slate-500"}`}>
             Create a shopper account for this vendor store.
           </p>
-
-          {error && (
-            <div className="mt-4 rounded-lg bg-red-50 px-4 py-3 text-sm text-red-600">
-              {error}
-            </div>
-          )}
 
           <form onSubmit={handleSubmit} className="mt-6 space-y-4">
             <div>

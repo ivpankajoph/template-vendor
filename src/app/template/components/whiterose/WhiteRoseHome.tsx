@@ -13,6 +13,7 @@ import { trackAddToCart } from '@/lib/analytics-events'
 import { toastError, toastSuccess } from '@/lib/toast'
 
 import { WhiteRoseProductCard } from './WhiteRoseProductCard'
+import { configuredText } from '../template-content'
 import {
   type WhiteRoseProduct,
   toWhiteRoseSlug,
@@ -93,7 +94,10 @@ export function WhiteRoseHome() {
   const benefits = home?.benefits || {}
   const advantage = home?.advantage || {}
 
-  const heroImage = home?.backgroundImage || whiteRoseGetLeadImage(products?.[0]) || HERO_FALLBACK
+  const heroImage = configuredText(
+    home?.backgroundImage,
+    whiteRoseGetLeadImage(products?.[0]) || HERO_FALLBACK
+  )
   const toTemplatePath = (suffix = '') =>
     buildTemplateScopedPath({
       vendorId,
@@ -184,18 +188,18 @@ export function WhiteRoseHome() {
 
   const heroStats = [
     {
-      value: description?.percent?.percent_in_number || '98%',
-      label: description?.percent?.percent_text || 'Buyer trust',
+      value: configuredText(description?.percent?.percent_in_number, '98%'),
+      label: configuredText(description?.percent?.percent_text, 'Buyer trust'),
       path: 'components.home_page.description.percent.percent_in_number',
     },
     {
-      value: description?.sold?.sold_number || `${products.length}+`,
-      label: description?.sold?.sold_text || 'Products live',
+      value: configuredText(description?.sold?.sold_number, `${products.length}+`),
+      label: configuredText(description?.sold?.sold_text, 'Products live'),
       path: 'components.home_page.description.sold.sold_number',
     },
     {
       value: `${topRatingValue.toFixed(1)}/5`,
-      label: home?.badge_text || 'Top rated picks',
+      label: configuredText(home?.badge_text, 'Top rated picks'),
       path: 'components.home_page.badge_text',
     },
   ]
@@ -205,11 +209,15 @@ export function WhiteRoseHome() {
       kickerPath: 'components.home_page.products_kicker',
       headingPath: 'components.home_page.products_heading',
       subtitlePath: 'components.home_page.products_subtitle',
-      kicker: home?.products_kicker || 'Trending products',
-      heading: home?.products_heading || 'Trending products shoppers are opening first',
-      subtitle:
-        home?.products_subtitle ||
+      kicker: configuredText(home?.products_kicker, 'Trending products'),
+      heading: configuredText(
+        home?.products_heading,
+        'Trending products shoppers are opening first'
+      ),
+      subtitle: configuredText(
+        home?.products_subtitle,
         'Show discount-led products up front so the storefront feels active from the first screen.',
+      ),
       products: trendingProducts,
       badgePrefix: 'Trending',
     },
@@ -217,11 +225,15 @@ export function WhiteRoseHome() {
       kickerPath: 'components.home_page.benefits.kicker',
       headingPath: 'components.home_page.benefits.heading',
       subtitlePath: 'components.home_page.benefits.subtitle',
-      kicker: benefits?.kicker || 'Weekly top',
-      heading: benefits?.heading || 'Weekly top picks for fast-moving demand',
-      subtitle:
-        benefits?.subtitle ||
+      kicker: configuredText(benefits?.kicker, 'Weekly top'),
+      heading: configuredText(
+        benefits?.heading,
+        'Weekly top picks for fast-moving demand'
+      ),
+      subtitle: configuredText(
+        benefits?.subtitle,
         'Use this rail for products that need the highest visibility this week.',
+      ),
       products: weeklyTopProducts,
       badgePrefix: 'Weekly top',
     },
@@ -229,11 +241,15 @@ export function WhiteRoseHome() {
       kickerPath: 'components.home_page.advantage.kicker',
       headingPath: 'components.home_page.advantage.heading',
       subtitlePath: 'components.home_page.advantage.subtitle',
-      kicker: advantage?.kicker || 'Top rated',
-      heading: advantage?.heading || 'Top rated products with strong shopper trust',
-      subtitle:
-        advantage?.subtitle ||
+      kicker: configuredText(advantage?.kicker, 'Top rated'),
+      heading: configuredText(
+        advantage?.heading,
+        'Top rated products with strong shopper trust'
+      ),
+      subtitle: configuredText(
+        advantage?.subtitle,
         'Keep the highest-rated items visible to reduce hesitation and improve conversion.',
+      ),
       products: topRatedProducts,
       badgePrefix: 'Top rated',
     },
@@ -304,14 +320,14 @@ export function WhiteRoseHome() {
                   data-template-path='components.home_page.hero_kicker'
                   data-template-section='hero'
                 >
-                  {home?.hero_kicker || 'Daily ecommerce deals'}
+                  {configuredText(home?.hero_kicker, 'Daily ecommerce deals')}
                 </span>
                 <span
                   className='rounded-full bg-[#172337] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.16em] text-white'
                   data-template-path='components.home_page.badge_text'
                   data-template-section='hero'
                 >
-                  {home?.badge_text || 'New offers every day'}
+                  {configuredText(home?.badge_text, 'New offers every day')}
                 </span>
               </div>
 
@@ -321,15 +337,20 @@ export function WhiteRoseHome() {
                   data-template-path='components.home_page.header_text'
                   data-template-section='hero'
                 >
-                  {home?.header_text || 'A marketplace home built around real product discovery'}
+                  {configuredText(
+                    home?.header_text,
+                    'A marketplace home built around real product discovery'
+                  )}
                 </h1>
                 <p
                   className='max-w-[620px] text-[15px] leading-7 text-[#42526b] sm:text-[17px]'
                   data-template-path='components.home_page.header_text_small'
                   data-template-section='hero'
                 >
-                  {home?.header_text_small ||
-                    'Lead with categories, trending products, weekly top picks, and top rated items so the storefront feels like a live B2C catalog.'}
+                  {configuredText(
+                    home?.header_text_small,
+                    'Lead with categories, trending products, weekly top picks, and top rated items so the storefront feels like a live B2C catalog.'
+                  )}
                 </p>
               </div>
 
@@ -340,7 +361,7 @@ export function WhiteRoseHome() {
                   data-template-path='components.home_page.button_header'
                   data-template-section='hero'
                 >
-                  {home?.button_header || 'Shop now'}
+                  {configuredText(home?.button_header, 'Shop now')}
                   <ArrowRight className='h-4 w-4' />
                 </Link>
                 <Link
@@ -349,7 +370,7 @@ export function WhiteRoseHome() {
                   data-template-path='components.home_page.button_secondary'
                   data-template-section='hero'
                 >
-                  {home?.button_secondary || 'Browse departments'}
+                  {configuredText(home?.button_secondary, 'Browse departments')}
                 </Link>
               </div>
 
@@ -386,14 +407,14 @@ export function WhiteRoseHome() {
                         data-template-path={`components.home_page.benefits.cards.${index}.title`}
                         data-template-section='description'
                       >
-                        {item?.title || 'Highlight'}
+                        {configuredText(item?.title, 'Highlight')}
                       </h2>
                       <p
                         className='mt-1 text-xs leading-5 text-[#5f6c7b]'
                         data-template-path={`components.home_page.benefits.cards.${index}.description`}
                         data-template-section='description'
                       >
-                        {item?.description || 'Highlight description'}
+                        {configuredText(item?.description, 'Highlight description')}
                       </p>
                     </div>
                   )
@@ -420,15 +441,20 @@ export function WhiteRoseHome() {
                     data-template-path='components.home_page.description.large_text'
                     data-template-section='description'
                   >
-                    {description?.large_text || 'Trending deals, weekly tops, and trusted bestsellers'}
+                    {configuredText(
+                      description?.large_text,
+                      'Trending deals, weekly tops, and trusted bestsellers'
+                    )}
                   </h2>
                   <p
                     className='mt-2 text-sm leading-6 text-[#5f6c7b]'
                     data-template-path='components.home_page.description.summary'
                     data-template-section='description'
                   >
-                    {description?.summary ||
-                      'Keep the first screen focused on buying signals instead of brochure content.'}
+                    {configuredText(
+                      description?.summary,
+                      'Keep the first screen focused on buying signals instead of brochure content.'
+                    )}
                   </p>
                 </div>
               </div>
@@ -579,7 +605,7 @@ export function WhiteRoseHome() {
                     data-template-path='components.home_page.advantage.ctaLabel'
                     data-template-section='products'
                   >
-                    {advantage?.ctaLabel || 'View full catalog'}
+                    {configuredText(advantage?.ctaLabel, 'View full catalog')}
                     <ArrowRight className='h-4 w-4' />
                   </Link>
                 ) : null}

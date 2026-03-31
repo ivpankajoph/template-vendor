@@ -5,6 +5,11 @@ import { useSelector } from "react-redux";
 
 import { Leaf, Users, Award, Heart } from "lucide-react";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
+import {
+  configuredArray,
+  configuredText,
+  hasMeaningfulText,
+} from "@/app/template/components/template-content";
 
 // map icon names from API to actual icons
 const iconMap: Record<string, JSX.Element> = {
@@ -263,76 +268,84 @@ export default function AboutPage() {
       narrative: `${vendorOfficeEmployees ? `${vendorOfficeEmployees} team members` : "A dedicated team"} run daily operations${vendorTurnover ? `, with annual turnover in the range of ${vendorTurnover}` : ""}.`,
     },
   ];
-  const vendorStoriesHeading = pickText(
+  const hasVendorStoriesConfig = Array.isArray(aboutpage?.vendorStories?.items);
+  const vendorStoriesHeading = configuredText(
     aboutpage?.vendorStories?.heading,
     "Vendor Stories"
   );
-  const vendorStoriesSubtitle = pickText(
+  const vendorStoriesSubtitle = configuredText(
     aboutpage?.vendorStories?.subtitle,
     "Short highlights that tell this vendor's journey."
   );
-  const vendorStoriesFromTemplate = Array.isArray(aboutpage?.vendorStories?.items)
-    ? aboutpage.vendorStories.items
-    : [];
-  const vendorStories: VendorStory[] = Array.from({ length: 4 }, (_, index) => {
-    const fallback = vendorStoriesFallback[index];
-    const source = vendorStoriesFromTemplate[index] || {};
-    return {
-      key: fallback?.key || `story-${index + 1}`,
-      tag: pickText((source as any)?.tag, fallback?.tag),
-      title: pickText((source as any)?.title, fallback?.title, `Story ${index + 1}`),
-      narrative: pickText(
-        (source as any)?.narrative,
-        fallback?.narrative,
-        "Add your vendor story from About form."
-      ),
-    };
-  });
+  const vendorStoriesFromTemplate = configuredArray<any>(
+    aboutpage?.vendorStories?.items,
+    []
+  );
+  const vendorStories: VendorStory[] = hasVendorStoriesConfig
+    ? vendorStoriesFromTemplate
+        .map((source: any, index: number) => ({
+          key: `story-${index + 1}`,
+          tag: configuredText(source?.tag),
+          title: configuredText(source?.title),
+          narrative: configuredText(source?.narrative),
+        }))
+        .filter(
+          (story) =>
+            hasMeaningfulText(story.tag) ||
+            hasMeaningfulText(story.title) ||
+            hasMeaningfulText(story.narrative)
+        )
+    : vendorStoriesFallback;
 
   const hero = {
-    kicker: pickText(aboutpage?.hero?.kicker, "Built for Industry"),
-    title: pickText(aboutpage?.hero?.title, `About ${vendorName}`),
-    subtitle: pickText(
+    kicker: configuredText(aboutpage?.hero?.kicker, "Built for Industry"),
+    title: configuredText(aboutpage?.hero?.title, `About ${vendorName}`),
+    subtitle: configuredText(
       aboutpage?.hero?.subtitle,
       `${vendorBusinessType} business${vendorLocation ? ` in ${vendorLocation}` : ""}.`
     ),
-    backgroundImage: pickText(
+    backgroundImage: configuredText(
       aboutpage?.hero?.backgroundImage,
       "https://images.unsplash.com/photo-1556740738-b6a63e27c4df?w=1600&q=80"
     ),
   };
 
-  const storyParagraphsFromTemplate = Array.isArray(aboutpage?.story?.paragraphs)
-    ? aboutpage.story.paragraphs.filter((line: unknown) => typeof line === "string" && line.trim())
-    : [];
+  const hasStoryParagraphConfig = Array.isArray(aboutpage?.story?.paragraphs);
+  const storyParagraphsFromTemplate = configuredArray<unknown>(
+    aboutpage?.story?.paragraphs,
+    []
+  )
+    .map((line) => configuredText(line))
+    .filter((line) => line !== "");
 
   const story = {
-    heading: pickText(aboutpage?.story?.heading, "Our Story"),
-    paragraphs:
-      storyParagraphsFromTemplate.length > 0
-        ? storyParagraphsFromTemplate
-        : [
+    heading: configuredText(aboutpage?.story?.heading, "Our Story"),
+    paragraphs: hasStoryParagraphConfig
+      ? storyParagraphsFromTemplate
+      : [
             `${vendorName} was founded in ${vendorSince} with a focus on dependable products and transparent service.`,
             `${vendorBusinessType} expertise and customer-first support help us deliver a better shopping experience every day.`,
             vendorLocation
               ? `We currently serve customers from ${vendorLocation} and beyond.`
               : "We continue to improve our catalog and support quality for every customer.",
           ],
-    image: pickText(
+    image: configuredText(
       aboutpage?.story?.image,
       "https://images.unsplash.com/photo-1521791136064-7986c2920216?w=1200&q=80"
     ),
   };
 
-  const valuesFromTemplate = Array.isArray(aboutpage?.values)
-    ? aboutpage.values.filter((item: any) =>
-        Boolean(pickText(item?.title, item?.description, item?.icon))
+  const hasValuesConfig = Array.isArray(aboutpage?.values);
+  const valuesFromTemplate = configuredArray<any>(aboutpage?.values, []);
+  const values = hasValuesConfig
+    ? valuesFromTemplate.filter((item: any) =>
+        Boolean(
+          hasMeaningfulText(item?.title) ||
+            hasMeaningfulText(item?.description) ||
+            hasMeaningfulText(item?.icon)
+        )
       )
-    : [];
-  const values =
-    valuesFromTemplate.length > 0
-      ? valuesFromTemplate
-      : [
+    : [
           {
             icon: "award",
             title: "Quality First",
@@ -380,20 +393,22 @@ export default function AboutPage() {
     const sourceValue = valuesFromTemplate[index] || values[index] || fallback;
     return {
       icon: toMappedIconKey((sourceValue as any)?.icon, fallback.icon),
-      title: pickText((sourceValue as any)?.title, fallback.title),
-      description: pickText((sourceValue as any)?.description, fallback.description),
+      title: configuredText((sourceValue as any)?.title, fallback.title),
+      description: configuredText((sourceValue as any)?.description, fallback.description),
     };
   });
 
-  const teamFromTemplate = Array.isArray(aboutpage?.team)
-    ? aboutpage.team.filter((item: any) =>
-        Boolean(pickText(item?.name, item?.role, item?.image))
+  const hasTeamConfig = Array.isArray(aboutpage?.team);
+  const teamFromTemplate = configuredArray<any>(aboutpage?.team, []);
+  const team = hasTeamConfig
+    ? teamFromTemplate.filter((item: any) =>
+        Boolean(
+          hasMeaningfulText(item?.name) ||
+            hasMeaningfulText(item?.role) ||
+            hasMeaningfulText(item?.image)
+        )
       )
-    : [];
-  const team =
-    teamFromTemplate.length > 0
-      ? teamFromTemplate
-      : [
+    : [
           {
             name: vendorName,
             role: pickText(vendorBusinessType, "Store Owner"),
@@ -402,15 +417,16 @@ export default function AboutPage() {
           },
         ];
 
-  const statsFromTemplate = Array.isArray(aboutpage?.stats)
-    ? aboutpage.stats.filter((item: any) =>
-        Boolean(pickText(item?.label, String(item?.value || "")))
+  const hasStatsConfig = Array.isArray(aboutpage?.stats);
+  const statsFromTemplate = configuredArray<any>(aboutpage?.stats, []);
+  const stats = hasStatsConfig
+    ? statsFromTemplate.filter((item: any) =>
+        Boolean(
+          hasMeaningfulText(item?.label) ||
+            hasMeaningfulText(configuredText(item?.value))
+        )
       )
-    : [];
-  const stats =
-    statsFromTemplate.length > 0
-      ? statsFromTemplate
-      : [
+    : [
           { value: `${vendorSince}`, label: "Serving Since" },
           {
             value: pickText(getVendorText("operating_hours"), "Mon - Sat"),

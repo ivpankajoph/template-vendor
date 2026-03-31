@@ -26,6 +26,7 @@ import { getRichTextPreview } from '@/lib/rich-text'
 import { buildStorefrontScopedPath } from '@/lib/template-route'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import type { ComponentType } from 'react'
+import { configuredArray, configuredText } from '../template-content'
 
 type TemplateProduct = {
   _id?: string
@@ -65,6 +66,11 @@ type BenefitItem = {
 type FaqItem = {
   question: string
   answer: string
+}
+
+type HeroStatItem = {
+  value: string
+  label: string
 }
 
 const FEATURED_FALLBACK_IMAGES = [
@@ -277,37 +283,49 @@ export function PoupqzHome() {
   const home = template?.components?.home_page || {}
   const descriptionData = home?.description || {}
   const about = template?.components?.about_page || {}
-  const aboutStoryParagraphs = Array.isArray(about?.story?.paragraphs)
-    ? about.story.paragraphs
-    : []
+  const hasAboutStoryParagraphs = Array.isArray(about?.story?.paragraphs)
+  const aboutStoryParagraphs = configuredArray<unknown>(about?.story?.paragraphs, [])
+    .map((paragraph) => configuredText(paragraph))
+    .filter((paragraph) => paragraph !== '')
   const socialFaqSection = template?.components?.social_page?.faqs || {}
   const [openFaqIndex, setOpenFaqIndex] = useState<number>(-1)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
 
-  const featuredTitle = home?.products_heading || 'Our Featured Products'
-  const featuredDescription =
-    home?.products_subtitle ||
+  const featuredTitle = configuredText(home?.products_heading, 'Our Featured Products')
+  const featuredDescription = configuredText(
+    home?.products_subtitle,
     'Explore our wide range of high-quality industrial storage solutions designed to maximise space, improve efficiency, and support heavy-duty performance.'
-  const whyChooseTitle = descriptionData?.large_text || 'Why Choose Us'
+  )
+  const whyChooseTitle = configuredText(descriptionData?.large_text, 'Why Choose Us')
 
-  const whyChooseDescription =
-    descriptionData?.summary ||
+  const whyChooseDescription = configuredText(
+    descriptionData?.summary,
     'Experience the benefits of partnering with one of the most trusted industrial rack manufacturers.'
-  const industriesTitle = about?.hero?.title || 'Industries We Deal With'
+  )
+  const industriesTitle = configuredText(about?.hero?.title, 'Industries We Deal With')
 
-  const industriesDescription =
-    about?.hero?.subtitle ||
+  const industriesDescription = configuredText(
+    about?.hero?.subtitle,
     'Our advanced and reliable storage solutions are designed to meet the needs of industries across India.'
-  const benefitsTitle = about?.story?.heading || 'Benefits of Our Products'
+  )
+  const benefitsTitle = configuredText(about?.story?.heading, 'Benefits of Our Products')
 
-  const benefitsDescription =
-    aboutStoryParagraphs[0] ||
+  const benefitsDescription = hasAboutStoryParagraphs
+    ? configuredText(aboutStoryParagraphs[0])
+    : configuredText(
+        undefined,
     'Our storage solutions are designed to deliver long-term value to your business.'
-  const faqHeading = socialFaqSection?.heading || 'Frequently Asked Questions'
-  const faqSubheading =
-    socialFaqSection?.subheading ||
+      )
+  const faqHeading = configuredText(
+    socialFaqSection?.heading,
+    'Frequently Asked Questions'
+  )
+  const faqSubheading = configuredText(
+    socialFaqSection?.subheading,
     'Find quick answers to common queries about our products, services, and support.'
+  )
+  const industrySection = home?.industries || {}
 
   const featuredProducts = useMemo(() => {
     return products.slice(0, 3).map((product, index) => {
@@ -316,8 +334,11 @@ export function PoupqzHome() {
       return {
         _id: product?._id || '',
         variantId: primary?._id || '',
-        title: product?.productName || `Product ${index + 1}`,
-        subtitle: product?.brand || getRichTextPreview(product?.shortDescription || '', 100) || '',
+        title: configuredText(product?.productName, `Product ${index + 1}`),
+        subtitle: configuredText(
+          product?.brand,
+          getRichTextPreview(configuredText(product?.shortDescription), 100)
+        ),
         image: getProductImage(
           product,
           FEATURED_FALLBACK_IMAGES[index % FEATURED_FALLBACK_IMAGES.length]
@@ -335,11 +356,14 @@ export function PoupqzHome() {
     if (!values.length) return WHY_CHOOSE_FALLBACK
 
     return values.slice(0, 6).map((value: any, index: number) => ({
-      title: value?.title || WHY_CHOOSE_FALLBACK[index]?.title || 'Why choose us',
-      description:
-        value?.description ||
-        WHY_CHOOSE_FALLBACK[index]?.description ||
-        'Add description in template editor.',
+      title: configuredText(
+        value?.title,
+        WHY_CHOOSE_FALLBACK[index]?.title || 'Why choose us'
+      ),
+      description: configuredText(
+        value?.description,
+        WHY_CHOOSE_FALLBACK[index]?.description || 'Add description in template editor.'
+      ),
       icon: WHY_CHOOSE_FALLBACK[index]?.icon || SquareCheckBig,
     }))
   }, [template?.components?.about_page?.values])
@@ -351,11 +375,11 @@ export function PoupqzHome() {
     if (!values.length) return BENEFITS_FALLBACK
 
     return values.slice(0, 4).map((value: any, index: number) => ({
-      title: value?.title || BENEFITS_FALLBACK[index]?.title || 'Benefit',
-      description:
-        value?.description ||
-        BENEFITS_FALLBACK[index]?.description ||
-        'Add description in template editor.',
+      title: configuredText(value?.title, BENEFITS_FALLBACK[index]?.title || 'Benefit'),
+      description: configuredText(
+        value?.description,
+        BENEFITS_FALLBACK[index]?.description || 'Add description in template editor.'
+      ),
       icon: BENEFITS_FALLBACK[index]?.icon || HandCoins,
     }))
   }, [template?.components?.about_page?.values])
@@ -367,10 +391,45 @@ export function PoupqzHome() {
     if (!apiFaqs.length) return FAQ_FALLBACK
 
     return apiFaqs.slice(0, 8).map((faq: any) => ({
-      question: faq?.question || 'Question',
-      answer: faq?.answer || 'Answer not available.',
+      question: configuredText(faq?.question, 'Question'),
+      answer: configuredText(faq?.answer, 'Answer not available.'),
     }))
   }, [socialFaqSection?.faqs])
+
+  const heroStats = useMemo<HeroStatItem[]>(() => {
+    const stats = configuredArray<any>(home?.heroStats, [])
+    if (!stats.length) {
+      return [
+        { label: 'Project Delivered', value: '500+' },
+        { label: 'States Reached', value: '25+' },
+        { label: 'Manufacturing Unit', value: '2' },
+        { label: 'Year Experience', value: '15+' },
+      ]
+    }
+
+    return stats.slice(0, 4).map((stat: any, index: number) => ({
+      value: configuredText(stat?.value, ['500+', '25+', '2', '15+'][index] || ''),
+      label: configuredText(
+        stat?.label,
+        ['Project Delivered', 'States Reached', 'Manufacturing Unit', 'Year Experience'][index] ||
+          ''
+      ),
+    }))
+  }, [home?.heroStats])
+
+  const industryItems = useMemo(() => {
+    const items = configuredArray<any>(industrySection?.items, [])
+    if (!items.length) return INDUSTRY_FALLBACK
+
+    return items.slice(0, 4).map((item: any, index: number) => ({
+      title: configuredText(item?.title, INDUSTRY_FALLBACK[index]?.title || 'Industry'),
+      description: configuredText(
+        item?.description,
+        INDUSTRY_FALLBACK[index]?.description || 'Add industry description.'
+      ),
+      icon: INDUSTRY_FALLBACK[index]?.icon || Warehouse,
+    }))
+  }, [industrySection?.items])
 
   const handleAddToCart = async (product: any) => {
     setActionMessage('')
@@ -438,7 +497,7 @@ export function PoupqzHome() {
                 data-template-section='hero'
               >
                 <div className='h-2 w-2 rounded-full bg-[#38bdf8] animate-pulse' />
-                {home?.hero_kicker || 'Industrial Excellence'}
+                {configuredText(home?.hero_kicker, 'Industrial Excellence')}
               </span>
             </div>
 
@@ -447,7 +506,10 @@ export function PoupqzHome() {
               data-template-path='components.home_page.header_text'
               data-template-section='hero'
             >
-              {home?.header_text || 'Premium RackFlow Systems for High-Efficiency Logistics'}
+              {configuredText(
+                home?.header_text,
+                'Premium RackFlow Systems for High-Efficiency Logistics'
+              )}
             </h1>
 
             <p
@@ -455,8 +517,10 @@ export function PoupqzHome() {
               data-template-path='components.home_page.header_text_small'
               data-template-section='hero'
             >
-              {home?.header_text_small ||
-                'Engineered for maximum density and effortless flow. Our blue-white modular systems redefine warehouse storage standards.'}
+              {configuredText(
+                home?.header_text_small,
+                'Engineered for maximum density and effortless flow. Our blue-white modular systems redefine warehouse storage standards.'
+              )}
             </p>
 
             <div className='mt-12 flex flex-wrap items-center justify-center gap-6 animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-300'>
@@ -466,7 +530,7 @@ export function PoupqzHome() {
                 data-template-path='components.home_page.button_header'
                 data-template-section='hero'
               >
-                {home?.button_header || 'View Catalog'}
+                {configuredText(home?.button_header, 'View Catalog')}
                 <ShoppingCart className='h-5 w-5 transition-transform group-hover:translate-x-1' />
               </Link>
               <button
@@ -475,21 +539,28 @@ export function PoupqzHome() {
                 data-template-path='components.home_page.button_secondary'
                 data-template-section='hero'
               >
-                {home?.button_secondary || 'Custom Solutions'}
+                {configuredText(home?.button_secondary, 'Custom Solutions')}
               </button>
             </div>
 
             {/* Value Badges */}
             <div className='mt-20 grid grid-cols-2 gap-8 md:grid-cols-4 w-full max-w-5xl animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-500'>
-              {[
-                { label: 'Project Delivered', value: '500+' },
-                { label: 'States Reached', value: '25+' },
-                { label: 'Manufacturing Unit', value: '2' },
-                { label: 'Year Experience', value: '15+' }
-              ].map((stat, i) => (
+              {heroStats.map((stat, i) => (
                 <div key={i} className='rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-sm'>
-                  <div className='text-3xl font-black text-white'>{stat.value}</div>
-                  <div className='text-[10px] font-bold uppercase tracking-widest text-[#38bdf8]'>{stat.label}</div>
+                  <div
+                    className='text-3xl font-black text-white'
+                    data-template-path={`components.home_page.heroStats.${i}.value`}
+                    data-template-section='description'
+                  >
+                    {stat.value}
+                  </div>
+                  <div
+                    className='text-[10px] font-bold uppercase tracking-widest text-[#38bdf8]'
+                    data-template-path={`components.home_page.heroStats.${i}.label`}
+                    data-template-section='description'
+                  >
+                    {stat.label}
+                  </div>
                 </div>
               ))}
             </div>
@@ -740,27 +811,31 @@ export function PoupqzHome() {
       >
         <div className='mx-auto max-w-[1400px] px-6 md:px-12'>
           <div className='mb-20 space-y-4 text-center'>
-            <div className='text-[10px] font-black uppercase tracking-[0.5em] text-[#0ea5e9]'>
-              Strategic Sectors
+            <div
+              className='text-[10px] font-black uppercase tracking-[0.5em] text-[#0ea5e9]'
+              data-template-path='components.home_page.industries.kicker'
+              data-template-section='description'
+            >
+              {configuredText(industrySection?.kicker, 'Strategic Sectors')}
             </div>
             <h2
               className='text-4xl font-extrabold tracking-tight text-slate-950 sm:text-5xl'
-              data-template-path='components.about_page.hero.title'
+              data-template-path='components.home_page.industries.heading'
               data-template-section='description'
             >
-              {industriesTitle}
+              {configuredText(industrySection?.heading, industriesTitle)}
             </h2>
             <p
               className='mx-auto max-w-2xl text-lg font-medium text-slate-500'
-              data-template-path='components.about_page.hero.subtitle'
+              data-template-path='components.home_page.industries.subtitle'
               data-template-section='description'
             >
-              {industriesDescription}
+              {configuredText(industrySection?.subtitle, industriesDescription)}
             </p>
           </div>
 
           <div className='grid gap-8 sm:grid-cols-2 lg:grid-cols-4'>
-            {INDUSTRY_FALLBACK.map((item: IndustryItem, index: number) => {
+            {industryItems.map((item: IndustryItem, index: number) => {
               const Icon = item.icon
               return (
                 <article
@@ -770,8 +845,20 @@ export function PoupqzHome() {
                   <div className='relative mb-8 flex h-24 w-24 items-center justify-center rounded-full bg-slate-50 shadow-inner group-hover:bg-slate-950 transition-colors duration-500'>
                     <Icon className='relative z-10 h-10 w-10 text-[#0c4a6e] group-hover:text-white transition-colors duration-500' />
                   </div>
-                  <h3 className='text-xl font-bold text-slate-950'>{item.title}</h3>
-                  <p className='mt-4 text-sm font-medium leading-relaxed text-slate-400'>{item.description}</p>
+                  <h3
+                    className='text-xl font-bold text-slate-950'
+                    data-template-path={`components.home_page.industries.items.${index}.title`}
+                    data-template-section='description'
+                  >
+                    {item.title}
+                  </h3>
+                  <p
+                    className='mt-4 text-sm font-medium leading-relaxed text-slate-400'
+                    data-template-path={`components.home_page.industries.items.${index}.description`}
+                    data-template-section='description'
+                  >
+                    {item.description}
+                  </p>
                 </article>
               )
             })}
