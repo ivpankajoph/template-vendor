@@ -20,6 +20,7 @@ import {
 import { getRichTextPreview } from '@/lib/rich-text'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { configuredArray, configuredText } from '../template-content'
 
 type TemplateProduct = {
   _id?: string
@@ -289,13 +290,19 @@ export function MquiqHome() {
   const aboutPage = template?.components?.about_page || {}
   const socialFaqSection = template?.components?.social_page?.faqs || {}
 
-  const heroTitle =
-    home?.header_text || 'Enhancing Storage Efficiency with Durable Racking Systems'
-  const heroSubtitle =
-    home?.header_text_small ||
+  const heroTitle = configuredText(
+    home?.header_text,
+    'Enhancing Storage Efficiency with Durable Racking Systems'
+  )
+  const heroSubtitle = configuredText(
+    home?.header_text_small,
     'We design and manufacture robust storage solutions that optimize your space and improve operational productivity.'
-  const heroKicker = home?.hero_kicker || 'Reliable Industrial Storage Solutions'
-  const heroImage = home?.backgroundImage || DEFAULT_MQUIQ_HERO_BANNER
+  )
+  const heroKicker = configuredText(
+    home?.hero_kicker,
+    'Reliable Industrial Storage Solutions'
+  )
+  const heroImage = configuredText(home?.backgroundImage, DEFAULT_MQUIQ_HERO_BANNER)
   const heroStyle = home?.hero_style || {}
   const titleColor = heroStyle?.titleColor || '#ffffff'
   const subtitleColor = heroStyle?.subtitleColor || '#e2e8f0'
@@ -333,39 +340,57 @@ export function MquiqHome() {
     )} 100%), url('${heroImage}')`,
   }
 
-  const featuredHeading = home?.products_heading || 'Featured Products'
-  const featuredSubtitle =
-    home?.products_subtitle ||
+  const featuredHeading = configuredText(home?.products_heading, 'Featured Products')
+  const featuredSubtitle = configuredText(
+    home?.products_subtitle,
     'Explore our innovative conveyor systems designed for reliability and efficiency'
+  )
   const benefitsSection = home?.benefits || {}
-  const benefitsKicker = benefitsSection?.kicker || 'Benefits'
-  const benefitsHeading =
-    benefitsSection?.heading || 'Why Our Storage Solutions Stand Apart'
-  const benefitsSubtitle =
-    benefitsSection?.subtitle ||
+  const benefitsKicker = configuredText(benefitsSection?.kicker, 'Benefits')
+  const benefitsHeading = configuredText(
+    benefitsSection?.heading,
+    'Why Our Storage Solutions Stand Apart'
+  )
+  const benefitsSubtitle = configuredText(
+    benefitsSection?.subtitle,
     'Trusted advantages that enhance your storage management and operational efficiency'
+  )
   const advantageSection = home?.advantage || {}
   const businessName = template?.business_name || vendor?.name || 'Storage Solution'
-  const advantageKicker = advantageSection?.kicker || 'Why Choose Us'
-  const advantageHeading = advantageSection?.heading || `The ${businessName} Advantage`
-  const advantageSubtitle =
-    advantageSection?.subtitle ||
+  const advantageKicker = configuredText(advantageSection?.kicker, 'Why Choose Us')
+  const advantageHeading = configuredText(
+    advantageSection?.heading,
+    `The ${businessName} Advantage`
+  )
+  const advantageSubtitle = configuredText(
+    advantageSection?.subtitle,
     'Partner with a team focused on fast execution, dependable quality, and long-term support.'
-  const advantageCtaLabel = advantageSection?.ctaLabel || 'Schedule Consultation'
-  const advantageTopTag = advantageSection?.topTag || 'Premium Service'
-  const advantageImage = advantageSection?.image || DEFAULT_MQUIQ_ADVANTAGE_IMAGE
-  const advantageBadgeValue = advantageSection?.badgeValue || '1+'
-  const advantageBadgeLabel = advantageSection?.badgeLabel || 'Years of Excellence'
+  )
+  const advantageCtaLabel = configuredText(
+    advantageSection?.ctaLabel,
+    'Schedule Consultation'
+  )
+  const advantageTopTag = configuredText(advantageSection?.topTag, 'Premium Service')
+  const advantageImage = configuredText(
+    advantageSection?.image,
+    DEFAULT_MQUIQ_ADVANTAGE_IMAGE
+  )
+  const advantageBadgeValue = configuredText(advantageSection?.badgeValue, '1+')
+  const advantageBadgeLabel = configuredText(
+    advantageSection?.badgeLabel,
+    'Years of Excellence'
+  )
 
   const featuredProducts = useMemo(() => {
     return products.slice(0, 3).map((product, index) => ({
       _id: product?._id,
       variantId: getPrimaryVariant(product)?._id || '',
-      title: product?.productName || `Product ${index + 1}`,
-      subtitle:
-        product?.brand ||
-        getRichTextPreview(product?.shortDescription || '', 100) ||
-        'Industrial-grade storage solution',
+        title: configuredText(product?.productName, `Product ${index + 1}`),
+        subtitle: configuredText(
+          product?.brand,
+          getRichTextPreview(configuredText(product?.shortDescription), 100) ||
+            'Industrial-grade storage solution'
+        ),
       image: getProductImage(
         product,
         FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length]
@@ -376,8 +401,8 @@ export function MquiqHome() {
   }, [products])
 
   const benefits = useMemo(() => {
-    const cards = Array.isArray(home?.benefits?.cards) ? home.benefits.cards : []
-    const legacyValues = Array.isArray(aboutPage?.values) ? aboutPage.values : []
+    const cards = configuredArray<any>(home?.benefits?.cards, [])
+    const legacyValues = configuredArray<any>(aboutPage?.values, [])
     const source = cards.length ? cards : legacyValues
 
     return Array.from({ length: 3 }, (_, index) => {
@@ -385,27 +410,30 @@ export function MquiqHome() {
       const item = source[index] || {}
 
       return {
-        title: item?.title || fallback?.title || 'Benefit',
-        description:
-          item?.description ||
-          fallback?.description ||
-          'Add benefit details from template editor.',
+        title: configuredText(item?.title, fallback?.title || 'Benefit'),
+        description: configuredText(
+          item?.description,
+          fallback?.description || 'Add benefit details from template editor.'
+        ),
         icon: (['space', 'custom', 'durable'][index] as BenefitIconKey) || 'space',
       }
     })
   }, [home?.benefits?.cards, aboutPage?.values])
 
   const advantages = useMemo(() => {
-    const cards = Array.isArray(home?.advantage?.cards) ? home.advantage.cards : []
-    const legacyValues = Array.isArray(aboutPage?.values) ? aboutPage.values : []
+    const cards = configuredArray<any>(home?.advantage?.cards, [])
+    const legacyValues = configuredArray<any>(aboutPage?.values, [])
     const source = cards.length ? cards : legacyValues
 
     return Array.from({ length: 3 }, (_, index) => ({
-      title: source[index]?.title || FALLBACK_ADVANTAGES[index]?.title || 'Why choose us',
-      description:
-        source[index]?.description ||
-        FALLBACK_ADVANTAGES[index]?.description ||
-        'Add details in template editor.',
+      title: configuredText(
+        source[index]?.title,
+        FALLBACK_ADVANTAGES[index]?.title || 'Why choose us'
+      ),
+      description: configuredText(
+        source[index]?.description,
+        FALLBACK_ADVANTAGES[index]?.description || 'Add details in template editor.'
+      ),
       icon:
         (['expertise', 'tailored', 'support'][index] as AdvantageIconKey) ||
         'expertise',
@@ -413,9 +441,7 @@ export function MquiqHome() {
   }, [home?.advantage?.cards, aboutPage?.values])
 
   const advantageHighlights = useMemo(() => {
-    const values = Array.isArray(home?.advantage?.highlights)
-      ? home.advantage.highlights
-      : []
+    const values = configuredArray<any>(home?.advantage?.highlights, [])
 
     return Array.from({ length: 2 }, (_, index) => {
       const item = values[index] || {}
@@ -425,8 +451,8 @@ export function MquiqHome() {
           : { value: '99%', label: 'On-Time Handover' }
 
       return {
-        value: item?.value || fallback.value,
-        label: item?.label || fallback.label,
+        value: configuredText(item?.value, fallback.value),
+        label: configuredText(item?.label, fallback.label),
       }
     })
   }, [home?.advantage?.highlights])
@@ -438,12 +464,15 @@ export function MquiqHome() {
     if (!rawFaqs.length) return FALLBACK_FAQS
 
     return rawFaqs.slice(0, 6).map((faq: any) => ({
-      question: faq?.question || 'Question',
-      answer: faq?.answer || 'Answer not available.',
+      question: configuredText(faq?.question, 'Question'),
+      answer: configuredText(faq?.answer, 'Answer not available.'),
     }))
   }, [socialFaqSection?.faqs])
 
-  const secondaryButtonLabel = home?.button_secondary || 'New arrivals weekly'
+  const secondaryButtonLabel = configuredText(
+    home?.button_secondary,
+    'New arrivals weekly'
+  )
   const featuredGridClass =
     featuredProducts.length <= 1
       ? 'mt-8 grid place-items-center'
@@ -556,7 +585,7 @@ export function MquiqHome() {
                       color: primaryButtonTextColor,
                     }}
                   >
-                    {home?.button_header || 'Explore Products'}
+                    {configuredText(home?.button_header, 'Explore Products')}
                   </Link>
                   <span
                     className='inline-flex items-center gap-2 rounded-full border border-white/30 px-4 py-2 text-sm font-semibold backdrop-blur-sm'
@@ -909,11 +938,22 @@ export function MquiqHome() {
             <span className='text-sm font-semibold uppercase tracking-[0.2em] text-[#f4b400]'>
               FAQ
             </span>
-            <h2 className='mt-3 text-3xl font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-4xl'>
-              Frequently Asked Questions
+            <h2
+              className='mt-3 text-3xl font-extrabold tracking-[-0.02em] text-[#2f3136] md:text-4xl'
+              data-template-path='components.social_page.faqs.heading'
+              data-template-section='description'
+            >
+              {configuredText(socialFaqSection?.heading, 'Frequently Asked Questions')}
             </h2>
-            <p className='mx-auto mt-3 max-w-4xl text-base text-slate-600 md:text-lg'>
-              Answers to common questions about our industrial storage solutions
+            <p
+              className='mx-auto mt-3 max-w-4xl text-base text-slate-600 md:text-lg'
+              data-template-path='components.social_page.faqs.subheading'
+              data-template-section='description'
+            >
+              {configuredText(
+                socialFaqSection?.subheading,
+                'Answers to common questions about our industrial storage solutions'
+              )}
             </p>
           </div>
 

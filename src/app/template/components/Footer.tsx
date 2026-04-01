@@ -120,6 +120,7 @@ export default function Footer() {
 
   return (
     <footer
+      data-template-section="footer"
       className={`mt-10 w-full border-t ${
         isStudio
           ? "border-slate-800 bg-slate-950 text-slate-100"

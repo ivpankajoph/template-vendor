@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import { buildTemplateScopedPath } from '@/lib/template-route'
+import { configuredText } from '../template-content'
 
 type TemplateProduct = {
   _id?: string
@@ -189,15 +190,19 @@ export function OragzeHome() {
   const allProductsPath = toTemplatePath('all-products')
   const loginPath = toTemplatePath('login')
 
-  const heroTitle = home?.header_text || 'Organic Foods at your Doorsteps'
-  const heroSubtitle =
-    home?.header_text_small || 'Dignissim massa diam elementum. Trusted freshness, delivered daily.'
-  const heroButtonPrimary = home?.button_header || 'START SHOPPING'
-  const heroButtonSecondary = home?.button_secondary || 'JOIN NOW'
-  const productsHeading = home?.products_heading || 'Featured products'
-  const productsSubtitle =
-    home?.products_subtitle || 'Shop curated organic picks and seasonal essentials.'
-  const heroImage = home?.backgroundImage || FALLBACK_HERO_IMAGE
+  const heroTitle = configuredText(home?.header_text, 'Organic Foods at your Doorsteps')
+  const heroSubtitle = configuredText(
+    home?.header_text_small,
+    'Dignissim massa diam elementum. Trusted freshness, delivered daily.'
+  )
+  const heroButtonPrimary = configuredText(home?.button_header, 'START SHOPPING')
+  const heroButtonSecondary = configuredText(home?.button_secondary, 'JOIN NOW')
+  const productsHeading = configuredText(home?.products_heading, 'Featured products')
+  const productsSubtitle = configuredText(
+    home?.products_subtitle,
+    'Shop curated organic picks and seasonal essentials.'
+  )
+  const heroImage = typeof home?.backgroundImage === 'string' ? home.backgroundImage.trim() : ''
 
   const featuredProducts = useMemo(() => {
     return products.slice(0, 8).map((product: TemplateProduct, index: number) => {
@@ -333,13 +338,23 @@ export function OragzeHome() {
                  </Link>
               </div>
               <div className='h-[250px] w-full md:h-[420px] md:w-2/5'>
-                 <img
-                   src={heroImage}
-                   alt={heroTitle}
-                   className='h-full w-full object-cover object-center'
-                   data-template-path='components.home_page.backgroundImage'
-                   data-template-section='branding'
-                 />
+                {heroImage ? (
+                  <img
+                    src={heroImage}
+                    alt={heroTitle}
+                    className='h-full w-full object-cover object-center'
+                    data-template-path='components.home_page.backgroundImage'
+                    data-template-section='branding'
+                  />
+                ) : (
+                  <div
+                    className='flex h-full w-full items-center justify-center rounded-3xl border border-dashed border-emerald-200 bg-emerald-50/70 text-sm font-medium text-emerald-700'
+                    data-template-path='components.home_page.backgroundImage'
+                    data-template-section='branding'
+                  >
+                    Add hero image
+                  </div>
+                )}
               </div>
             </div>
           </div>
