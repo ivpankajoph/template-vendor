@@ -5,6 +5,7 @@ export type VariantImage = {
 
 export type Variant = {
   _id: string;
+  variantDisplayName?: string;
   variantSku: string;
   variantAttributes: Record<string, string>;
   actualPrice: number;

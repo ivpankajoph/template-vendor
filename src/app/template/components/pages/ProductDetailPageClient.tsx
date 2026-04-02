@@ -33,6 +33,7 @@ type VariantImage = {
 
 type ProductVariant = {
   _id: string;
+  variantDisplayName?: string;
   variantSku?: string;
   variantAttributes?: Record<string, string>;
   actualPrice?: number;
@@ -98,17 +99,60 @@ const getImageUrl = (image: VariantImage | null | undefined) => {
   return isNonEmptyString(url) ? url.trim() : "";
 };
 
-const getVariantLabel = (variant: ProductVariant) => {
+const getVariantAttributeValue = (
+  variant: ProductVariant | null | undefined,
+  preferredKeys: string[],
+) => {
   const attrs =
     variant?.variantAttributes && typeof variant.variantAttributes === "object"
       ? variant.variantAttributes
       : {};
 
-  if (isNonEmptyString(attrs.color)) {
-    return attrs.color;
+  const entries = Object.entries(attrs);
+
+  for (const key of preferredKeys) {
+    const directValue = attrs[key];
+    if (isNonEmptyString(directValue)) {
+      return directValue.trim();
+    }
+
+    const matchedEntry = entries.find(
+      ([entryKey, entryValue]) =>
+        entryKey.trim().toLowerCase() === key.trim().toLowerCase() &&
+        isNonEmptyString(entryValue),
+    );
+
+    if (matchedEntry) return matchedEntry[1].trim();
   }
 
-  const firstValue = Object.values(attrs).find((value) => isNonEmptyString(value));
+  return "";
+};
+
+const getVariantLabel = (
+  productName: string | undefined,
+  variant: ProductVariant,
+  index: number,
+) => {
+  if (index === 0 && isNonEmptyString(productName)) {
+    return productName.trim();
+  }
+
+  const customName = String(variant?.variantDisplayName || "").trim();
+  if (customName) return customName;
+
+  const colorValue = getVariantAttributeValue(variant, [
+    "color",
+    "colour",
+    "shade",
+    "finish",
+  ]);
+  if (isNonEmptyString(colorValue)) {
+    return colorValue;
+  }
+
+  const firstValue = Object.values(variant?.variantAttributes || {}).find((value) =>
+    isNonEmptyString(value),
+  );
   if (isNonEmptyString(firstValue)) {
     return firstValue;
   }
@@ -438,11 +482,17 @@ export default function ProductDetailPage() {
 
   const stockQuantity = toNumber(selectedVariant?.stockQuantity);
   const subtotal = basePrice * quantity;
+  const selectedVariantIndex = variants.findIndex(
+    (variant) => variant?._id === selectedVariant?._id,
+  );
+  const selectedVariantLabel = selectedVariant
+    ? getVariantLabel(product?.productName, selectedVariant, selectedVariantIndex >= 0 ? selectedVariantIndex : 0)
+    : product?.productName || "Untitled Product";
 
   const productDescription =
+    selectedVariant?.variantMetaDescription ||
     product?.description ||
     product?.shortDescription ||
-    selectedVariant?.variantMetaDescription ||
     "No description available.";
   const productShortDescription = String(product?.shortDescription || "").trim();
 
@@ -714,7 +764,7 @@ export default function ProductDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-4xl font-extrabold lg:text-5xl">
-                {product.productName || "Untitled Product"}
+                {selectedVariantLabel}
               </h1>
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div
@@ -797,7 +847,7 @@ export default function ProductDetailPage() {
               <div>
                 <p className="mb-3 text-sm font-semibold">Select Variant</p>
                 <div className="flex flex-wrap gap-3">
-                  {variants.map((item) => {
+                  {variants.map((item, index) => {
                     const variantImage = (item?.variantsImageUrls || [])
                       .map((image) => getImageUrl(image))
                       .find((url) => Boolean(url));
@@ -824,7 +874,7 @@ export default function ProductDetailPage() {
                         {variantImage ? (
                           <img
                             src={variantImage}
-                            alt={getVariantLabel(item)}
+                            alt={getVariantLabel(product?.productName, item, index)}
                             className="h-10 w-10 rounded-lg bg-white object-contain"
                           />
                         ) : (
@@ -832,7 +882,9 @@ export default function ProductDetailPage() {
                         )}
 
                         <div>
-                          <p className="text-sm font-semibold">{getVariantLabel(item)}</p>
+                          <p className="text-sm font-semibold">
+                            {getVariantLabel(product?.productName, item, index)}
+                          </p>
                           {!inStock && <p className="text-xs text-red-500">Out of stock</p>}
                         </div>
 
