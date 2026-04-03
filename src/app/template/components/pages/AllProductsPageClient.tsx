@@ -12,7 +12,7 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
-import { buildTemplateScopedPath } from "@/lib/template-route";
+import { buildTemplateProductPath, buildTemplateScopedPath } from "@/lib/template-route";
 import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
 import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
 
@@ -133,6 +133,10 @@ const getProductImageUrl = (product: any) => {
 export default function AllProducts() {
   const variant = useTemplateVariant();
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
+  const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
+  const templateCitySlug = String(
+    templateData?.components?.vendor_profile?.default_city_slug || ""
+  ).trim();
   const params = useParams();
   const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
@@ -478,7 +482,13 @@ export default function AllProducts() {
                 <WhiteRoseProductCard
                   key={product._id || `product-${index}`}
                   product={product}
-                  href={toTemplatePath(`product/${product._id}`)}
+                  href={buildTemplateProductPath({
+                    vendorId,
+                    pathname: pathname || undefined,
+                    productId: product._id,
+                    productSlug: product.slug,
+                    citySlug: templateCitySlug,
+                  })}
                   categoryLabel={category.label || whiteRoseGetCategoryDetails(product, categoryMap).label || "Top category"}
                   badgeLabel={index < 2 ? "Featured deal" : undefined}
                   onAddToCart={() => handleAddToCart(product)}
@@ -722,10 +732,12 @@ export default function AllProducts() {
                       className={`template-product-card group w-full ${cardWidthClass} shadow-sm transition-all duration-200 hover:-translate-y-1 hover:shadow-xl ${cardClass}`}
                     >
                       <Link
-                        href={buildTemplateScopedPath({
+                        href={buildTemplateProductPath({
                           vendorId,
                           pathname: pathname || "/",
-                          suffix: `product/${product._id}`,
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
                         })}
                         className="block"
                       >
@@ -765,10 +777,12 @@ export default function AllProducts() {
                         </div>
 
                         <Link
-                          href={buildTemplateScopedPath({
+                          href={buildTemplateProductPath({
                             vendorId,
                             pathname: pathname || "/",
-                            suffix: `product/${product._id}`,
+                            productId: product._id,
+                            productSlug: product.slug,
+                            citySlug: templateCitySlug,
                           })}
                           className="block"
                         >
@@ -806,10 +820,12 @@ export default function AllProducts() {
                           </button>
 
                           <Link
-                            href={buildTemplateScopedPath({
+                            href={buildTemplateProductPath({
                               vendorId,
                               pathname: pathname || "/",
-                              suffix: `product/${product._id}`,
+                              productId: product._id,
+                              productSlug: product.slug,
+                              citySlug: templateCitySlug,
                             })}
                             className={`inline-flex items-center justify-center rounded-lg border px-3 py-2 text-sm font-medium transition ${
                               isStudio

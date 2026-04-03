@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
 import { useMemo, useState } from 'react'
-import { useParams } from 'next/navigation'
+import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ChevronDown,
@@ -21,11 +21,13 @@ import {
   Tags,
 } from 'lucide-react'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildTemplateScopedPath } from '@/lib/template-route'
+
 import { configuredText } from '../template-content'
+import { buildTemplateProductPath, buildTemplateScopedPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
+  slug?: string
   productName?: string
   shortDescription?: string
   brand?: string
@@ -138,6 +140,7 @@ type FaqItem = {
 
 type ProductCard = {
   _id: string
+  slug?: string
   variantId: string
   title: string
   image: string
@@ -173,8 +176,12 @@ const FALLBACK_PRODUCT_IMAGES = [
 
 export function OragzeHome() {
   const params = useParams()
+  const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
   const products = useSelector(
@@ -212,6 +219,7 @@ export function OragzeHome() {
 
       return {
         _id: String(product?._id || ''),
+        slug: product?.slug || '',
         variantId: primaryVariant?._id || '',
         title: product?.productName || `Product ${index + 1}`,
         image: getProductImage(
@@ -516,7 +524,13 @@ export function OragzeHome() {
                   <Link
                     href={
                       product._id
-                        ? toTemplatePath(`product/${product._id}`)
+                        ? buildTemplateProductPath({
+                            vendorId,
+                            pathname: pathname || '/',
+                            productId: product._id,
+                            productSlug: product.slug,
+                            citySlug: templateCitySlug,
+                          })
                         : vendorId
                           ? allProductsPath
                           : '#'
@@ -543,7 +557,13 @@ export function OragzeHome() {
                     <Link
                       href={
                         product._id
-                          ? toTemplatePath(`product/${product._id}`)
+                          ? buildTemplateProductPath({
+                              vendorId,
+                              pathname: pathname || '/',
+                              productId: product._id,
+                              productSlug: product.slug,
+                              citySlug: templateCitySlug,
+                            })
                           : vendorId
                             ? allProductsPath
                             : '#'

@@ -23,13 +23,14 @@ import {
   Medal,
 } from 'lucide-react'
 import { getRichTextPreview } from '@/lib/rich-text'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import type { ComponentType } from 'react'
 import { configuredArray, configuredText } from '../template-content'
 
 type TemplateProduct = {
   _id?: string
+  slug?: string
   productName?: string
   shortDescription?: string
   brand?: string
@@ -276,6 +277,9 @@ export function PoupqzHome() {
         })
       : '#'
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
 
   // Use products already loaded into Redux store by TemplateDataLoader
   const products = useSelector((state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[])
@@ -333,6 +337,7 @@ export function PoupqzHome() {
       const pricing = getProductPriceDetails(product)
       return {
         _id: product?._id || '',
+        slug: product?.slug || '',
         variantId: primary?._id || '',
         title: configuredText(product?.productName, `Product ${index + 1}`),
         subtitle: configuredText(
@@ -609,7 +614,13 @@ export function PoupqzHome() {
                   <Link
                     href={
                       vendorId && product?._id
-                        ? toStorefrontPath(`product/${product._id}`)
+                        ? buildTemplateProductPath({
+                            vendorId,
+                            pathname: pathname || undefined,
+                            productId: product._id,
+                            productSlug: product.slug,
+                            citySlug: templateCitySlug,
+                          })
                         : vendorId
                           ? toStorefrontPath('all-products')
                           : '#'

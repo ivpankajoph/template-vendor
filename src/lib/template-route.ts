@@ -28,6 +28,17 @@ const normalizeSegment = (value?: string) =>
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const normalizeOptionalCitySlug = (value?: string) => {
+  const slug = normalizeSegment(value)
+  return slug && slug !== 'all' ? slug : ''
+}
+
+const getCustomDomainCityFromPath = (pathname?: string) => {
+  const segments = String(pathname || '/').split('/').filter(Boolean)
+  const candidateCity = normalizeSegment(segments[0])
+  return candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity) ? candidateCity : ''
+}
+
 export type TemplateRouteContext = {
   isPreview: boolean;
   templateKey?: string;
@@ -133,6 +144,41 @@ export const buildStorefrontScopedPath = ({
     pathname,
     suffix,
   })
+
+export const buildTemplateProductPath = ({
+  vendorId,
+  pathname,
+  productId,
+  productSlug,
+  citySlug,
+}: {
+  vendorId: string
+  pathname?: string
+  productId?: string
+  productSlug?: string
+  citySlug?: string
+}) => {
+  const resolvedSlug = String(productSlug || productId || '').trim()
+  if (!resolvedSlug) return '#'
+
+  const activePathname =
+    String(pathname || '').trim() ||
+    (typeof window !== 'undefined' ? window.location.pathname || '/' : '/')
+
+  if (isPlatformTemplatePath(activePathname, vendorId)) {
+    return buildTemplateScopedPath({
+      vendorId,
+      pathname: activePathname,
+      suffix: resolvedSlug,
+    })
+  }
+
+  const resolvedCity =
+    normalizeOptionalCitySlug(citySlug) || getCustomDomainCityFromPath(activePathname)
+
+  const suffix = resolvedCity ? `/${resolvedCity}/${resolvedSlug}` : `/${resolvedSlug}`
+  return suffix
+}
 
 export const getTemplateCityFromPath = (pathname: string, vendorId?: string) =>
   getTemplateRouteContext(pathname, vendorId).citySlug || "all";

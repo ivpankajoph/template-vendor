@@ -2,13 +2,13 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, usePathname } from "next/navigation";
 import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useSelector } from "react-redux";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { getRichTextPreview } from "@/lib/rich-text";
-import { buildTemplateScopedPath } from "@/lib/template-route";
+import { buildTemplateProductPath, buildTemplateScopedPath } from "@/lib/template-route";
 
 type Subcategory = {
   _id?: string;
@@ -18,6 +18,7 @@ type Subcategory = {
 
 type Product = {
   _id?: string;
+  slug?: string;
   productName?: string;
   shortDescription?: string;
   productSubCategories?: string[] | string;
@@ -64,6 +65,7 @@ const getProductSubcategoryIds = (product: Product) => {
 export default function SubcategoryDetailPageClient() {
   const variant = useTemplateVariant();
   const params = useParams();
+  const pathname = usePathname();
   const vendorId = params.vendor_id as string;
   const subcategoryId = params.subcategory_id as string;
   const toTemplatePath = (suffix = "") =>
@@ -176,7 +178,16 @@ export default function SubcategoryDetailPageClient() {
             {filteredProducts.map((product, index) => (
               <Link
                 key={product._id || `${product.productName}-${index}`}
-                href={product._id ? toTemplatePath(`product/${product._id}`) : "#"}
+                href={
+                  product._id
+                    ? buildTemplateProductPath({
+                        vendorId,
+                        pathname: pathname || undefined,
+                        productId: product._id,
+                        productSlug: product.slug,
+                      })
+                    : "#"
+                }
                 className="group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg"
               >
                 <div className="aspect-[4/3] overflow-hidden bg-slate-100">

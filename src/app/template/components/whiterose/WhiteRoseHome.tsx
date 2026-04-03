@@ -8,7 +8,7 @@ import { useSelector } from 'react-redux'
 import { ArrowRight, Flame, ShieldCheck, Sparkles, Star, TrendingUp } from 'lucide-react'
 
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildTemplateScopedPath } from '@/lib/template-route'
+import { buildTemplateProductPath, buildTemplateScopedPath } from '@/lib/template-route'
 import { trackAddToCart } from '@/lib/analytics-events'
 import { toastError, toastSuccess } from '@/lib/toast'
 
@@ -83,6 +83,9 @@ export function WhiteRoseHome() {
   const pathname = usePathname()
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as WhiteRoseProduct[]
   )
@@ -479,7 +482,13 @@ export function WhiteRoseHome() {
                           key={product?._id || `${product?.productName || 'hero-product'}-${index}`}
                           href={
                             vendorId && product?._id
-                              ? toTemplatePath(`product/${product._id}`)
+                              ? buildTemplateProductPath({
+                                  vendorId,
+                                  pathname: pathname || '/',
+                                  productId: product._id,
+                                  productSlug: product.slug,
+                                  citySlug: templateCitySlug,
+                                })
                               : allProductsPath
                           }
                           className='flex items-center justify-between gap-3 rounded-[18px] bg-white/10 px-4 py-3 transition hover:bg-white/15'
@@ -622,7 +631,13 @@ export function WhiteRoseHome() {
                       product={product}
                       href={
                         vendorId && product?._id
-                          ? toTemplatePath(`product/${product._id}`)
+                          ? buildTemplateProductPath({
+                              vendorId,
+                              pathname: pathname || '/',
+                              productId: product._id,
+                              productSlug: product.slug,
+                              citySlug: templateCitySlug,
+                            })
                           : allProductsPath
                       }
                       categoryLabel={category.label || 'Top category'}

@@ -15,12 +15,13 @@ import {
   MessageCircle,
   ChevronRight,
 } from 'lucide-react'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
 import { resolveTemplateBlogHref } from '@/app/template/components/blog-page'
 import { resolveTemplatePolicyHref } from '@/app/template/components/policy-page'
 
 type Product = {
   _id?: string
+  slug?: string
   productName?: string
 }
 
@@ -55,6 +56,9 @@ export function PoupqzFooter() {
       : '#'
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   )
@@ -113,7 +117,13 @@ export function PoupqzFooter() {
       .filter((item) => item?._id && item?.productName)
       .map((item) => ({
         label: String(item.productName),
-        href: toStorefrontPath(`product/${item._id}`),
+        href: buildTemplateProductPath({
+          vendorId,
+          pathname: pathname || undefined,
+          productId: item._id,
+          productSlug: item.slug,
+          citySlug: templateCitySlug,
+        }),
       }))
       .filter((item) => {
         const key = item.label.toLowerCase().trim()

@@ -12,11 +12,13 @@ import { PoupqzHome } from './poupqz/PoupqzHome'
 import { OragzeHome } from './oragze/OragzeHome'
 import { WhiteRoseHome } from './whiterose/WhiteRoseHome'
 import { getRichTextPreview } from '@/lib/rich-text'
-import { buildTemplateScopedPath } from '@/lib/template-route'
+
 import { configuredArray, configuredText } from './template-content'
+import { buildTemplateProductPath, buildTemplateScopedPath } from '@/lib/template-route'
 
 type Product = {
   _id?: string
+  slug?: string
   productName?: string
   shortDescription?: string
   productCategory?: { _id?: string; name?: string; title?: string; categoryName?: string } | string
@@ -72,6 +74,9 @@ export function TemplateHomeRenderer() {
   const params = useParams()
   const vendorId = String((params as any)?.vendor_id || '')
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   )
@@ -312,7 +317,12 @@ export function TemplateHomeRenderer() {
               {products.slice(0, 6).map((product: any) => (
                 <Link
                   key={product?._id}
-                  href={toTemplatePath(`product/${product?._id}`)}
+                  href={buildTemplateProductPath({
+                    vendorId,
+                    productId: product?._id,
+                    productSlug: product?.slug,
+                    citySlug: templateCitySlug,
+                  })}
                   className='group rounded-xl border border-slate-800 bg-slate-900/70 p-4'
                 >
                   <div className='aspect-[4/3] overflow-hidden rounded-lg bg-slate-800'>
@@ -418,7 +428,12 @@ export function TemplateHomeRenderer() {
               {products.slice(0, 4).map((product: any) => (
                 <Link
                   key={product?._id}
-                  href={toTemplatePath(`product/${product?._id}`)}
+                  href={buildTemplateProductPath({
+                    vendorId,
+                    productId: product?._id,
+                    productSlug: product?.slug,
+                    citySlug: templateCitySlug,
+                  })}
                   className='rounded-3xl border border-slate-200 bg-white p-5'
                 >
                   <div className='aspect-[4/3] overflow-hidden rounded-2xl bg-slate-100'>
@@ -595,7 +610,18 @@ export function TemplateHomeRenderer() {
                 key={product._id || `${product.productName}-${index}`}
                 className='group overflow-hidden rounded-3xl border border-rose-100 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-xl hover:shadow-rose-200/35'
               >
-                <Link href={product?._id ? toTemplatePath(`product/${product._id}`) : '#'}>
+                <Link
+                  href={
+                    product?._id
+                      ? buildTemplateProductPath({
+                          vendorId,
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })
+                      : '#'
+                  }
+                >
                   <div className='aspect-[4/5] overflow-hidden bg-rose-50'>
                     {product.defaultImages?.[0]?.url ? (
                       // eslint-disable-next-line @next/next/no-img-element
@@ -617,7 +643,18 @@ export function TemplateHomeRenderer() {
                       {getCategoryLabel(product)}
                     </span>
                   ) : null}
-                  <Link href={product?._id ? toTemplatePath(`product/${product._id}`) : '#'}>
+                  <Link
+                    href={
+                      product?._id
+                        ? buildTemplateProductPath({
+                            vendorId,
+                            productId: product._id,
+                            productSlug: product.slug,
+                            citySlug: templateCitySlug,
+                          })
+                        : '#'
+                    }
+                  >
                     <p className='mt-1 line-clamp-2 text-base font-semibold text-slate-900'>
                       {product.productName || 'Untitled Product'}
                     </p>
@@ -821,7 +858,18 @@ export function TemplateHomeRenderer() {
               key={product._id || `${product.productName}-${index}`}
               className='group overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-1 hover:shadow-lg'
             >
-              <Link href={product?._id ? toTemplatePath(`product/${product._id}`) : '#'}>
+              <Link
+                href={
+                  product?._id
+                    ? buildTemplateProductPath({
+                        vendorId,
+                        productId: product._id,
+                        productSlug: product.slug,
+                        citySlug: templateCitySlug,
+                      })
+                    : '#'
+                }
+              >
                 <div className='aspect-[4/3] overflow-hidden bg-slate-100'>
                   {product.defaultImages?.[0]?.url ? (
                     // eslint-disable-next-line @next/next/no-img-element
@@ -844,7 +892,18 @@ export function TemplateHomeRenderer() {
                     {getCategoryLabel(product)}
                   </span>
                 ) : null}
-                <Link href={product?._id ? toTemplatePath(`product/${product._id}`) : '#'}>
+                <Link
+                  href={
+                    product?._id
+                      ? buildTemplateProductPath({
+                          vendorId,
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })
+                      : '#'
+                  }
+                >
                   <p className='text-sm font-semibold text-slate-900'>
                     {product.productName || 'Untitled Product'}
                   </p>

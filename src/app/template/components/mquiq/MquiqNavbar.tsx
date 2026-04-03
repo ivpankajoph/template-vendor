@@ -18,10 +18,11 @@ import {
   X,
 } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
 
 type Product = {
   _id?: string
+  slug?: string
   productName?: string
 }
 
@@ -55,6 +56,11 @@ export function MquiqNavbar() {
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   )
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+  const templateCitySlug = String(
+    homepage?.components?.vendor_profile?.default_city_slug ||
+      vendor?.default_city_slug ||
+      ''
+  ).trim()
 
   const customPages =
     homepage?.components?.custom_pages?.filter(
@@ -109,6 +115,7 @@ export function MquiqNavbar() {
       .filter((product) => product?._id && product?.productName)
       .map((product) => ({
         id: product._id as string,
+        slug: product.slug as string | undefined,
         label: String(product.productName || 'Product'),
       }))
       .filter((product) => {
@@ -278,7 +285,13 @@ export function MquiqNavbar() {
                         {productLinks.map((product) => (
                           <Link
                             key={product.id}
-                            href={toStorefrontPath(`product/${product.id}`)}
+                            href={buildTemplateProductPath({
+                              vendorId,
+                              pathname: pathname || undefined,
+                              productId: product.id,
+                              productSlug: product.slug,
+                              citySlug: templateCitySlug,
+                            })}
                             className='block text-base font-medium text-[#2f3136] transition hover:text-[#f4b400]'
                           >
                             {product.label}
@@ -517,7 +530,13 @@ export function MquiqNavbar() {
                     productLinks.map((product) => (
                       <Link
                         key={product.id}
-                        href={toStorefrontPath(`product/${product.id}`)}
+                        href={buildTemplateProductPath({
+                          vendorId,
+                          pathname: pathname || undefined,
+                          productId: product.id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })}
                         className='block text-sm font-medium text-slate-700'
                         onClick={() => setMobileMenuOpen(false)}
                       >

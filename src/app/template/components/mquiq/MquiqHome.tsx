@@ -19,11 +19,13 @@ import {
 } from 'lucide-react'
 import { getRichTextPreview } from '@/lib/rich-text'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+
 import { configuredArray, configuredText } from '../template-content'
+import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
+  slug?: string
   productName?: string
   shortDescription?: string
   brand?: string
@@ -279,6 +281,11 @@ export function MquiqHome() {
       : '#'
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug ||
+      vendor?.default_city_slug ||
+      ''
+  ).trim()
 
   // Use products already loaded into Redux store by TemplateDataLoader
   const products = useSelector((state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[])
@@ -384,6 +391,7 @@ export function MquiqHome() {
   const featuredProducts = useMemo(() => {
     return products.slice(0, 3).map((product, index) => ({
       _id: product?._id,
+      slug: product?.slug,
       variantId: getPrimaryVariant(product)?._id || '',
         title: configuredText(product?.productName, `Product ${index + 1}`),
         subtitle: configuredText(
@@ -653,7 +661,13 @@ export function MquiqHome() {
                   <Link
                     href={
                       vendorId && product?._id
-                        ? toStorefrontPath(`product/${product._id}`)
+                        ? buildTemplateProductPath({
+                            vendorId,
+                            pathname: pathname || undefined,
+                            productId: product._id,
+                            productSlug: product.slug,
+                            citySlug: templateCitySlug,
+                          })
                         : vendorId
                           ? toStorefrontPath('all-products')
                           : '#'
