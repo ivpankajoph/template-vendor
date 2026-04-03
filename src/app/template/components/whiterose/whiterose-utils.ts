@@ -18,6 +18,7 @@ export type WhiteRoseProductVariant = {
 
 export type WhiteRoseProduct = {
   _id?: string;
+  slug?: string;
   productName?: string;
   shortDescription?: string;
   averageRating?: number;

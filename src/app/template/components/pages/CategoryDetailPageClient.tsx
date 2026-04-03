@@ -8,7 +8,7 @@ import { useSelector } from "react-redux";
 import axios from "axios";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
-import { buildTemplateScopedPath } from "@/lib/template-route";
+import { buildTemplateProductPath, buildTemplateScopedPath } from "@/lib/template-route";
 import { getRichTextPreview, stripRichTextToPlainText } from "@/lib/rich-text";
 import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
 import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
@@ -168,7 +168,12 @@ export default function CategoryProductsPage() {
                 <WhiteRoseProductCard
                   key={product._id || `product-${index}`}
                   product={product}
-                  href={toTemplatePath(`product/${product._id}`)}
+                  href={buildTemplateProductPath({
+                    vendorId,
+                    pathname: pathname || undefined,
+                    productId: product._id,
+                    productSlug: product.slug,
+                  })}
                   categoryLabel={whiteRoseGetCategoryDetails(product, categoryMap).label || label}
                   showAddToCart={false}
                 />
@@ -222,7 +227,12 @@ export default function CategoryProductsPage() {
             {filteredProducts.map((product: any) => (
               <Link
                 key={product._id}
-                href={toTemplatePath(`product/${product._id}`)}
+                href={buildTemplateProductPath({
+                  vendorId,
+                  pathname: pathname || undefined,
+                  productId: product._id,
+                  productSlug: product.slug,
+                })}
                 className={`template-product-card group cursor-pointer ${cardClass}`}
               >
                 <div

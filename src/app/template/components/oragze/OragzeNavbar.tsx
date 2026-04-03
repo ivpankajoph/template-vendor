@@ -17,10 +17,11 @@ import {
   X,
 } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
 
 type TemplateProduct = {
   _id?: string
+  slug?: string
   productName?: string
   productCategory?: { _id?: string; name?: string; title?: string; categoryName?: string } | string
   productCategoryName?: string
@@ -74,6 +75,9 @@ export function OragzeNavbar() {
   const [maxPrice, setMaxPrice] = useState('')
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug || ''
+  ).trim()
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
   )
@@ -120,7 +124,15 @@ export function OragzeNavbar() {
   const loginHref = vendorId ? toStorefrontPath('login') : '#'
   const registerHref = vendorId ? toStorefrontPath('register') : '#'
   const firstProductHref =
-    vendorId && products?.[0]?._id ? toStorefrontPath(`product/${products[0]._id}`) : shopHref
+    vendorId && products?.[0]?._id
+      ? buildTemplateProductPath({
+          vendorId,
+          pathname: pathname || '/',
+          productId: products[0]._id,
+          productSlug: products[0].slug,
+          citySlug: templateCitySlug,
+        })
+      : shopHref
 
   useEffect(() => {
     if (!vendorId) return
@@ -297,7 +309,17 @@ export function OragzeNavbar() {
               {productSuggestions.map((product) => (
                 <Link
                   key={product?._id || product?.productName}
-                  href={product?._id ? toStorefrontPath(`product/${product._id}`) : shopHref}
+                  href={
+                    product?._id
+                      ? buildTemplateProductPath({
+                          vendorId,
+                          pathname: pathname || '/',
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })
+                      : shopHref
+                  }
                   className='block rounded-md px-3 py-2 text-[15px] text-slate-700 transition hover:bg-slate-50'
                   onClick={() => setSearchText('')}
                 >

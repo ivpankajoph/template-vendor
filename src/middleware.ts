@@ -249,6 +249,35 @@ const getWebsiteIdentifierFromUrl = (url: URL) => {
   );
 };
 
+const normalizeStorefrontRestSegments = (restSegments: string[]) => {
+  const segments = Array.isArray(restSegments)
+    ? restSegments.filter((segment) => String(segment || "").trim())
+    : [];
+
+  if (segments.length !== 1) return segments;
+
+  const candidate = normalizeSlug(segments[0]);
+  if (!candidate || KNOWN_TEMPLATE_SEGMENTS.has(candidate)) {
+    return segments;
+  }
+
+  return ["product", segments[0]];
+};
+
+const getCustomStorefrontContext = (segments: string[]) => {
+  const normalizedSegments = Array.isArray(segments)
+    ? segments.filter((segment) => String(segment || "").trim())
+    : [];
+
+  const candidateCity = normalizeSlug(normalizedSegments[0]);
+  const hasCity = Boolean(candidateCity && !KNOWN_TEMPLATE_SEGMENTS.has(candidateCity));
+
+  return {
+    citySlug: hasCity ? candidateCity : "all",
+    restSegments: hasCity ? normalizedSegments.slice(1) : normalizedSegments,
+  };
+};
+
 export async function middleware(request: NextRequest) {
   const requestHeaders = new Headers(request.headers);
   requestHeaders.set("x-current-path", request.nextUrl.pathname || "/");
@@ -286,6 +315,11 @@ export async function middleware(request: NextRequest) {
       requestHeaders.set("x-template-website", resolvedDomain.websiteId);
     }
 
+    const customContext = getCustomStorefrontContext(segments);
+    if (customContext.citySlug) {
+      requestHeaders.set("x-template-city", customContext.citySlug);
+    }
+
     if (segments[0] === "template") {
       const cleanSegments =
         segments[1] === resolvedDomain.vendorId ? segments.slice(2) : [];
@@ -299,10 +333,12 @@ export async function middleware(request: NextRequest) {
     }
 
     const rewriteUrl = request.nextUrl.clone();
-    rewriteUrl.pathname =
-      pathname === "/"
-        ? `/template/${resolvedDomain.vendorId}`
-        : `/template/${resolvedDomain.vendorId}${pathname}`;
+    const normalizedRest = normalizeStorefrontRestSegments(
+      customContext.restSegments
+    ).join("/");
+    rewriteUrl.pathname = `/template/${resolvedDomain.vendorId}${
+      normalizedRest ? `/${normalizedRest}` : ""
+    }`;
 
     return applyStorefrontContextHeaders(
       NextResponse.rewrite(rewriteUrl, {
@@ -339,7 +375,9 @@ export async function middleware(request: NextRequest) {
 
   if (requestPreviewContext) {
     const vendorId = segments[1];
-    const rest = requestPreviewContext.restSegments.join("/");
+    const rest = normalizeStorefrontRestSegments(
+      requestPreviewContext.restSegments
+    ).join("/");
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = `/template/${vendorId}${rest ? `/${rest}` : ""}`;
     requestHeaders.set("x-template-city", requestPreviewContext.citySlug || "all");
@@ -362,7 +400,9 @@ export async function middleware(request: NextRequest) {
     (requestStandardContext.hasCity || requestStandardContext.hasWebsite)
   ) {
     const vendorId = segments[1];
-    const rest = requestStandardContext.restSegments.join("/");
+    const rest = normalizeStorefrontRestSegments(
+      requestStandardContext.restSegments
+    ).join("/");
     const rewriteUrl = request.nextUrl.clone();
     rewriteUrl.pathname = `/template/${vendorId}${rest ? `/${rest}` : ""}`;
     requestHeaders.set("x-template-city", requestStandardContext.citySlug || "all");
@@ -381,6 +421,21 @@ export async function middleware(request: NextRequest) {
 
   if (segments[0] === "template" && segments[1] && segments[2] !== "preview") {
     const vendorId = segments[1];
+    if (segments.length === 3) {
+      const directSegment = normalizeSlug(segments[2]);
+      if (directSegment && !KNOWN_TEMPLATE_SEGMENTS.has(directSegment)) {
+        const rewriteUrl = request.nextUrl.clone();
+        rewriteUrl.pathname = `/template/${vendorId}/product/${segments[2]}`;
+        return applyPageResponseHeaders(
+          NextResponse.rewrite(rewriteUrl, {
+            request: {
+              headers: requestHeaders,
+            },
+          })
+        );
+      }
+    }
+
     const referer = request.headers.get("referer");
     if (referer) {
       try {

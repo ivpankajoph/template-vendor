@@ -155,6 +155,8 @@ const toSlug = (value?: string) =>
     .replace(/[^a-z0-9-]+/g, "-")
     .replace(/^-+|-+$/g, "");
 
+const OBJECT_ID_REGEX = /^[a-f\d]{24}$/i;
+
 const buildUrl = (origin: string, basePath: string, suffix = "") => {
   const normalizedBase = normalizeSegment(basePath);
   const normalizedSuffix = normalizeSegment(suffix);
@@ -213,9 +215,9 @@ export async function buildTemplateSitemap(
 
   const categorySlugs = new Set<string>();
   products.forEach((product: UnknownRecord) => {
-    const productId = normalizeSegment(product?._id);
-    if (productId) {
-      addEntry(`product/${productId}`, 0.8);
+    const productSlug = normalizeSegment(product?.slug || product?._id);
+    if (productSlug) {
+      addEntry(productSlug, 0.8);
     }
 
     const rawCategory =
@@ -237,7 +239,7 @@ export async function buildTemplateSitemap(
               rawCategory
           );
 
-    if (categorySlug) {
+    if (categorySlug && !OBJECT_ID_REGEX.test(categorySlug)) {
       categorySlugs.add(categorySlug);
     }
   });

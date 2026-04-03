@@ -20,7 +20,11 @@ import { NEXT_PUBLIC_API_URL } from "@/config/variables";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { trackAddToCart } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
-import { buildTemplateScopedPath, getTemplateCityFromPath } from "@/lib/template-route";
+import {
+  buildTemplateProductPath,
+  buildTemplateScopedPath,
+  getTemplateCityFromPath,
+} from "@/lib/template-route";
 import ProductEnquiryDialog from "@/app/template/components/pages/ProductEnquiryDialog";
 import ProductReviewsSection, {
   ProductReviewSummary,
@@ -220,10 +224,16 @@ export default function ProductDetailPage() {
   const templateProducts = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   );
+  const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
 
-  const productId = params.product_id as string;
+  const productId = ((params as any).product_id || (params as any).product_slug) as string;
   const vendorId = params.vendor_id as string;
   const citySlug = getTemplateCityFromPath(pathname || "/", vendorId);
+  const fallbackCitySlug = String(
+    templateData?.components?.vendor_profile?.default_city_slug || ""
+  ).trim();
+  const effectiveCitySlug =
+    citySlug && citySlug !== "all" ? citySlug : fallbackCitySlug || "all";
   const loginPath = buildTemplateScopedPath({
     vendorId,
     pathname: pathname || "/",
@@ -314,7 +324,7 @@ export default function ProductDetailPage() {
     if (!productId) return;
     let active = true;
     const notFoundMessage =
-      citySlug && citySlug !== "all"
+      effectiveCitySlug && effectiveCitySlug !== "all"
         ? "Product not found in this city."
         : "Product not found.";
 
@@ -326,8 +336,8 @@ export default function ProductDetailPage() {
 
       try {
         const cityQuery =
-          citySlug && citySlug !== "all"
-            ? `?city=${encodeURIComponent(citySlug)}`
+          effectiveCitySlug && effectiveCitySlug !== "all"
+            ? `?city=${encodeURIComponent(effectiveCitySlug)}`
             : "";
         const response = await fetch(`${NEXT_PUBLIC_API_URL}/products/${productId}${cityQuery}`);
         const data = await response.json().catch(() => null);
@@ -361,7 +371,7 @@ export default function ProductDetailPage() {
     return () => {
       active = false;
     };
-  }, [productId, citySlug]);
+  }, [productId, effectiveCitySlug]);
 
   useEffect(() => {
     setActiveTab("specifications");
@@ -495,10 +505,12 @@ export default function ProductDetailPage() {
 
   const productRecordId = String(product?._id || "").trim();
   const productSlug = String(product?.slug || productId || "").trim();
-  const productPath = buildTemplateScopedPath({
+  const productPath = buildTemplateProductPath({
     vendorId,
     pathname: pathname || "/",
-    suffix: `product/${productSlug || productId}`,
+    productId,
+    productSlug,
+    citySlug: effectiveCitySlug,
   });
 
   const summarySpecs = useMemo(() => {
@@ -1110,10 +1122,12 @@ export default function ProductDetailPage() {
                 const displayPrice = finalPrice > 0 ? finalPrice : actualPrice;
                 const imageUrl = getProductLeadImage(item);
                 const productCategoryLabel = collectProductCategoryLabels(item)[0] || "Category";
-                const relatedPath = buildTemplateScopedPath({
+                const relatedPath = buildTemplateProductPath({
                   vendorId,
                   pathname: pathname || "/",
-                  suffix: `product/${item.slug || item._id}`,
+                  productId: item._id,
+                  productSlug: item.slug,
+                  citySlug: effectiveCitySlug,
                 });
 
                 return (

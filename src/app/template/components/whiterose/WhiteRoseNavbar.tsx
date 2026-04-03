@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildTemplateScopedPath } from '@/lib/template-route'
+import { buildTemplateProductPath, buildTemplateScopedPath } from '@/lib/template-route'
 
 import {
   type WhiteRoseProduct,
@@ -39,6 +39,11 @@ export function WhiteRoseNavbar() {
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
+  const templateCitySlug = String(
+    template?.components?.vendor_profile?.default_city_slug ||
+      vendor?.default_city_slug ||
+      ''
+  ).trim()
   const products = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as WhiteRoseProduct[]
   )
@@ -155,14 +160,30 @@ export function WhiteRoseNavbar() {
       (product) => String(product?.productName || '').toLowerCase() === normalized
     )
     if (exact?._id) {
-      router.push(toTemplatePath(`product/${exact._id}`))
+      router.push(
+        buildTemplateProductPath({
+          vendorId,
+          pathname: pathname || '/',
+          productId: exact._id,
+          productSlug: exact.slug,
+          citySlug: templateCitySlug,
+        })
+      )
       return
     }
     const partial = products.find((product) =>
       String(product?.productName || '').toLowerCase().includes(normalized)
     )
     if (partial?._id) {
-      router.push(toTemplatePath(`product/${partial._id}`))
+      router.push(
+        buildTemplateProductPath({
+          vendorId,
+          pathname: pathname || '/',
+          productId: partial._id,
+          productSlug: partial.slug,
+          citySlug: templateCitySlug,
+        })
+      )
       return
     }
     router.push(toTemplatePath('all-products'))
@@ -223,7 +244,17 @@ export function WhiteRoseNavbar() {
               {productSuggestions.map((product) => (
                 <Link
                   key={product?._id || product?.productName}
-                  href={product?._id ? toTemplatePath(`product/${product._id}`) : toTemplatePath('all-products')}
+                  href={
+                    product?._id
+                      ? buildTemplateProductPath({
+                          vendorId,
+                          pathname: pathname || '/',
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })
+                      : toTemplatePath('all-products')
+                  }
                   className='block rounded-xl px-3 py-2 text-[15px] text-[#172337] transition hover:bg-[#f5f7fb]'
                   onClick={() => setSearchText('')}
                 >
