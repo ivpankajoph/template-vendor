@@ -46,8 +46,59 @@ import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
 
+const getVariantAttributeValue = (
+  variant: Variant | null | undefined,
+  preferredKeys: string[],
+) => {
+  const attributes =
+    variant?.variantAttributes && typeof variant.variantAttributes === "object"
+      ? variant.variantAttributes
+      : {};
+
+  const entries = Object.entries(attributes);
+  for (const key of preferredKeys) {
+    const directValue = attributes[key];
+    if (typeof directValue === "string" && directValue.trim()) {
+      return directValue.trim();
+    }
+
+    const matchedEntry = entries.find(
+      ([entryKey, entryValue]) =>
+        entryKey.trim().toLowerCase() === key.trim().toLowerCase() &&
+        typeof entryValue === "string" &&
+        entryValue.trim(),
+    );
+
+    if (matchedEntry) return matchedEntry[1].trim();
+  }
+
+  return "";
+};
+
 const getColorFromVariant = (variant: Variant): string => {
-  return variant?.variantAttributes?.color || "Unknown";
+  return (
+    getVariantAttributeValue(variant, ["color", "colour", "shade", "finish"]) ||
+    "Unknown"
+  );
+};
+
+const getVariantDisplayName = (
+  productName: string,
+  variant: Variant | null | undefined,
+  index: number,
+) => {
+  if (index === 0 && productName.trim()) return productName.trim();
+
+  const customName = String(variant?.variantDisplayName || "").trim();
+  if (customName) return customName;
+
+  const summary = Object.values(variant?.variantAttributes || {})
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(" / ");
+
+  if (summary) return summary;
+  return `Variant ${index + 1}`;
 };
 
 
@@ -278,6 +329,14 @@ export default function ProductDetailPage() {
 
   const basePrice = selectedVariant?.finalPrice || 0;
   const actualPrice = selectedVariant?.actualPrice || 0;
+  const selectedVariantIndex = product.variants.findIndex(
+    (variant: Variant) => variant?._id === selectedVariant?._id,
+  );
+  const selectedVariantDisplayName = getVariantDisplayName(
+    product.productName || "",
+    selectedVariant,
+    selectedVariantIndex >= 0 ? selectedVariantIndex : 0,
+  );
   const productAverageRating = Number(product?.averageRating || 0);
   const productRatingsCount = Number(product?.ratingsCount || 0);
   const displayRating =
@@ -407,7 +466,7 @@ export default function ProductDetailPage() {
           <div className="w-full lg:w-1/2 flex flex-col gap-6">
             <div>
               <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                {product.productName}
+                {selectedVariantDisplayName}
               </h1>
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full">
@@ -470,7 +529,7 @@ export default function ProductDetailPage() {
                   Select Color
                 </div>
                 <div className="flex gap-3 flex-wrap">
-                  {product.variants.map((v: Variant) => (
+                  {product.variants.map((v: Variant, index: number) => (
                     <button
                       key={v._id}
                       aria-pressed={selectedVariant?._id === v._id}
@@ -495,8 +554,7 @@ export default function ProductDetailPage() {
                       )}
                       <div className="flex flex-col items-start">
                         <span className="font-medium">
-                          {getColorFromVariant(v).charAt(0).toUpperCase() +
-                            getColorFromVariant(v).slice(1)}
+                          {getVariantDisplayName(product.productName || "", v, index)}
                         </span>
                         {v.stockQuantity <= 0 && (
                           <span className="text-xs text-red-500 font-semibold">
