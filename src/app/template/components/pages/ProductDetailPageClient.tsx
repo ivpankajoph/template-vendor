@@ -33,6 +33,7 @@ type VariantImage = {
 
 type ProductVariant = {
   _id: string;
+  variantDisplayName?: string;
   variantSku?: string;
   variantAttributes?: Record<string, string>;
   actualPrice?: number;
@@ -99,18 +100,22 @@ const getImageUrl = (image: VariantImage | null | undefined) => {
 };
 
 const getVariantLabel = (variant: ProductVariant) => {
+  if (isNonEmptyString(variant?.variantDisplayName)) {
+    return variant.variantDisplayName.trim();
+  }
+
   const attrs =
     variant?.variantAttributes && typeof variant.variantAttributes === "object"
       ? variant.variantAttributes
       : {};
 
-  if (isNonEmptyString(attrs.color)) {
-    return attrs.color;
-  }
+  const joinedAttributes = Object.values(attrs)
+    .filter((value): value is string => isNonEmptyString(value))
+    .map((value) => value.trim())
+    .join(" / ");
 
-  const firstValue = Object.values(attrs).find((value) => isNonEmptyString(value));
-  if (isNonEmptyString(firstValue)) {
-    return firstValue;
+  if (isNonEmptyString(joinedAttributes)) {
+    return joinedAttributes;
   }
 
   return variant.variantSku || "Variant";
@@ -438,6 +443,10 @@ export default function ProductDetailPage() {
 
   const stockQuantity = toNumber(selectedVariant?.stockQuantity);
   const subtotal = basePrice * quantity;
+  const selectedVariantLabel = selectedVariant
+    ? getVariantLabel(selectedVariant)
+    : "";
+  const productTitle = selectedVariantLabel || product?.productName || "Untitled Product";
 
   const productDescription =
     product?.description ||
@@ -714,8 +723,13 @@ export default function ProductDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-4xl font-extrabold lg:text-5xl">
-                {product.productName || "Untitled Product"}
+                {productTitle}
               </h1>
+              {product?.productName && selectedVariantLabel && selectedVariantLabel !== product.productName ? (
+                <p className={`mt-2 text-base font-medium ${subtleTextClass}`}>
+                  {product.productName}
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div
                   className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm ${

@@ -8,7 +8,7 @@ Disallow: /admin
 Disallow: /vendor
 
 # Host
-Host: https://template.sellerslogin.com
+Host: http://localhost:3001
 
 # Sitemaps
-Sitemap: https://template.sellerslogin.com/sitemap.xml
+Sitemap: http://localhost:3001/sitemap.xml

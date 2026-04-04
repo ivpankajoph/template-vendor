@@ -279,7 +279,9 @@ const templateSlice = createSlice({
             payload?.data?.template || payload?.data || payload?.template || null;
           const products = Array.isArray(payload?.data?.products)
             ? payload.data.products
-            : [];
+            : Array.isArray(payload?.products)
+              ? payload.products
+              : [];
           if (template) {
             state.data = template;
             state.products = products;
