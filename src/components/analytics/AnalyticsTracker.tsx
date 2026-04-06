@@ -88,6 +88,8 @@ export default function AnalyticsTracker() {
     fullUrl: string;
     startedAt: number;
   } | null>(null);
+  const lastSearchKeyRef = useRef<string>("");
+  const lastProductViewKeyRef = useRef<string>("");
 
   const apiBase = NEXT_PUBLIC_API_URL || "";
   const isDev =
@@ -288,6 +290,56 @@ export default function AnalyticsTracker() {
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone,
       metadata: { ...metadata, ...templateMetaRef.current },
     });
+
+    const searchTerm =
+      searchParams?.get("search") ||
+      searchParams?.get("query") ||
+      searchParams?.get("q") ||
+      "";
+    const normalizedSearchTerm = String(searchTerm || "").trim();
+    const searchKey = `${path}:${normalizedSearchTerm.toLowerCase()}`;
+    if (normalizedSearchTerm && lastSearchKeyRef.current !== searchKey) {
+      lastSearchKeyRef.current = searchKey;
+      void sendEvent({
+        eventType: "search",
+        path,
+        fullUrl,
+        title: document.title,
+        referrer: document.referrer || "",
+        sessionId: sessionIdRef.current,
+        visitorId: visitorIdRef.current,
+        userId: userIdRef.current,
+        vendorId,
+        source,
+        metadata: {
+          ...metadata,
+          ...templateMetaRef.current,
+          search_term: normalizedSearchTerm,
+        },
+      });
+    }
+
+    const productMatch = window.location.pathname.match(/\/product\/([^/?#]+)/i);
+    const productId = productMatch?.[1] || "";
+    const productViewKey = `${path}:${productId}`;
+    if (productId && lastProductViewKeyRef.current !== productViewKey) {
+      lastProductViewKeyRef.current = productViewKey;
+      void sendEvent({
+        eventType: "product_view",
+        path,
+        fullUrl,
+        title: document.title,
+        referrer: document.referrer || "",
+        sessionId: sessionIdRef.current,
+        visitorId: visitorIdRef.current,
+        userId: userIdRef.current,
+        vendorId,
+        source,
+        productId,
+        productName: document.title || "",
+        metadata: { ...metadata, ...templateMetaRef.current },
+      });
+    }
 
     lastPageRef.current = { path, fullUrl, startedAt: now };
   }, [apiBase, pathname, searchParams, metadata]);

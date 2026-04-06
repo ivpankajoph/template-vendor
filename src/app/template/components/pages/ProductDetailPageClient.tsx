@@ -2,7 +2,7 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, usePathname } from "next/navigation";
+import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
 import { useSelector } from "react-redux";
 import {
   Minus,
@@ -52,6 +52,40 @@ type ProductVariant = {
 type ProductFaq = {
   question?: string;
   answer?: string;
+};
+
+type DraftPreviewImage = {
+  url?: string;
+};
+
+type DraftPreviewVariant = {
+  _id?: string;
+  variantDisplayName?: string;
+  variantAttributes?: Record<string, string>;
+  actualPrice?: number;
+  finalPrice?: number;
+  stockQuantity?: number;
+  variantsImageUrls?: DraftPreviewImage[];
+  isActive?: boolean;
+  variantMetaDescription?: string;
+};
+
+type DraftPreviewFormData = {
+  productName?: string;
+  shortDescription?: string;
+  description?: string;
+  brand?: string;
+  defaultImages?: DraftPreviewImage[];
+  variants?: DraftPreviewVariant[];
+  faqs?: ProductFaq[];
+};
+
+type TemplateProductPreviewMessage = {
+  type?: string;
+  sessionId?: string;
+  payload?: {
+    formData?: DraftPreviewFormData;
+  };
 };
 
 type Product = {
@@ -146,6 +180,49 @@ const getPrimaryVariant = (product: Product | null | undefined) => {
   return variants.find((variant) => variant?.isActive !== false) || variants[0] || null;
 };
 
+const mapDraftPreviewToProduct = (
+  formData: DraftPreviewFormData | null | undefined,
+  fallbackProductId: string
+) => {
+  const variants = Array.isArray(formData?.variants) ? formData?.variants : [];
+  const defaultImages = Array.isArray(formData?.defaultImages) ? formData.defaultImages : [];
+  const faqs = Array.isArray(formData?.faqs) ? formData.faqs : [];
+
+  return {
+    _id: fallbackProductId || "preview-product",
+    productName: String(formData?.productName || "Untitled Product").trim() || "Untitled Product",
+    shortDescription: String(formData?.shortDescription || "").trim(),
+    description: String(formData?.description || "").trim(),
+    brand: String(formData?.brand || "").trim(),
+    defaultImages: defaultImages.map((image) => ({
+      url: String(image?.url || "").trim(),
+    })),
+    variants: variants.map((variant, index) => ({
+      _id: String(variant?._id || `preview-variant-${index + 1}`),
+      variantDisplayName: String(variant?.variantDisplayName || "").trim(),
+      variantAttributes:
+        variant?.variantAttributes && typeof variant.variantAttributes === "object"
+          ? variant.variantAttributes
+          : {},
+      actualPrice: toNumber(variant?.actualPrice),
+      finalPrice: toNumber(variant?.finalPrice),
+      stockQuantity: toNumber(variant?.stockQuantity),
+      isActive: variant?.isActive !== false,
+      variantsImageUrls: Array.isArray(variant?.variantsImageUrls)
+        ? variant.variantsImageUrls.map((image) => ({
+            url: String(image?.url || "").trim(),
+          }))
+        : [],
+      variantMetaDescription: String(variant?.variantMetaDescription || "").trim(),
+    })),
+    faqs: faqs.map((faq) => ({
+      question: String(faq?.question || "").trim(),
+      answer: String(faq?.answer || "").trim(),
+    })),
+    specifications: [],
+  } as Product;
+};
+
 const getProductLeadImage = (product: Product | null | undefined) => {
   if (!product) return "";
 
@@ -226,6 +303,8 @@ export default function ProductDetailPage() {
   const variantTheme = useTemplateVariant();
   const params = useParams();
   const pathname = usePathname();
+  const router = useRouter();
+  const searchParams = useSearchParams();
   const templateProducts = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   );
@@ -233,6 +312,8 @@ export default function ProductDetailPage() {
 
   const productId = ((params as any).product_id || (params as any).product_slug) as string;
   const vendorId = params.vendor_id as string;
+  const isDraftPreview = searchParams.get("previewDraft") === "1";
+  const previewSessionId = String(searchParams.get("previewSessionId") || "").trim();
   const citySlug = getTemplateCityFromPath(pathname || "/", vendorId);
   const fallbackCitySlug = String(
     templateData?.components?.vendor_profile?.default_city_slug || ""
@@ -326,6 +407,7 @@ export default function ProductDetailPage() {
             : "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-[0_18px_45px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:bg-slate-50 md:right-8";
 
   useEffect(() => {
+    if (isDraftPreview) return;
     if (!productId) return;
     let active = true;
     const notFoundMessage =
@@ -376,7 +458,46 @@ export default function ProductDetailPage() {
     return () => {
       active = false;
     };
-  }, [productId, effectiveCitySlug]);
+  }, [productId, effectiveCitySlug, isDraftPreview]);
+
+  useEffect(() => {
+    if (!isDraftPreview) return;
+    if (!previewSessionId) {
+      setLoading(false);
+      setProduct(null);
+      setLoadError("Preview data was not found. Please reopen the product preview.");
+      return;
+    }
+
+    setLoading(true);
+    setLoadError("");
+
+    const timeoutId = window.setTimeout(() => {
+      setLoading(false);
+      setProduct(null);
+      setLoadError("Preview data expired. Please reopen the product preview.");
+    }, 12000);
+
+    const handleMessage = (event: MessageEvent) => {
+      const data = event.data as TemplateProductPreviewMessage | null;
+      if (!data || data.type !== "template-product-preview-draft") return;
+      if (String(data.sessionId || "").trim() !== previewSessionId) return;
+
+      const nextFormData = data.payload?.formData;
+      if (!nextFormData || typeof nextFormData !== "object") return;
+
+      window.clearTimeout(timeoutId);
+      setProduct(mapDraftPreviewToProduct(nextFormData, productId));
+      setLoadError("");
+      setLoading(false);
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => {
+      window.clearTimeout(timeoutId);
+      window.removeEventListener("message", handleMessage);
+    };
+  }, [isDraftPreview, previewSessionId, productId]);
 
   useEffect(() => {
     setActiveTab("specifications");
@@ -452,7 +573,6 @@ export default function ProductDetailPage() {
         : 0;
 
   const stockQuantity = toNumber(selectedVariant?.stockQuantity);
-  const subtotal = basePrice * quantity;
   const selectedVariantLabel = selectedVariant
     ? getVariantLabel(selectedVariant)
     : "";
@@ -521,6 +641,11 @@ export default function ProductDetailPage() {
     productSlug,
     citySlug: effectiveCitySlug,
   });
+  const checkoutBagPath = buildTemplateScopedPath({
+    vendorId,
+    pathname: pathname || "/",
+    suffix: "checkout/bag",
+  });
 
   const summarySpecs = useMemo(() => {
     const rows: Array<[string, string]> = [];
@@ -573,6 +698,11 @@ export default function ProductDetailPage() {
   const handleAddToCart = async () => {
     setMessage("");
 
+    if (isDraftPreview) {
+      setMessage("Preview mode only. Save the product to enable cart actions.");
+      return;
+    }
+
     const auth = getTemplateAuth(vendorId);
     if (!auth) {
       window.location.href = `${loginPath}?next=${encodeURIComponent(productPath)}`;
@@ -621,6 +751,68 @@ export default function ProductDetailPage() {
       setMessage("Added to cart");
     } catch (error: any) {
       setMessage(error?.message || "Failed to add to cart");
+    } finally {
+      setAdding(false);
+    }
+  };
+
+  const handleBuyNow = async () => {
+    setMessage("");
+
+    if (isDraftPreview) {
+      setMessage("Preview mode only. Save the product to enable checkout.");
+      return;
+    }
+
+    const auth = getTemplateAuth(vendorId);
+    if (!auth) {
+      window.location.href = `${loginPath}?next=${encodeURIComponent(checkoutBagPath)}`;
+      return;
+    }
+
+    if (!selectedVariant?._id) {
+      setMessage("Variant not available");
+      return;
+    }
+
+    if (!productRecordId) {
+      setMessage("Product not available");
+      return;
+    }
+
+    if (stockQuantity <= 0) {
+      setMessage("This variant is out of stock");
+      return;
+    }
+
+    setAdding(true);
+    try {
+      await templateApiFetch(vendorId, "/cart", {
+        method: "POST",
+        body: JSON.stringify({
+          product_id: productRecordId,
+          variant_id: selectedVariant._id,
+          quantity,
+        }),
+      });
+
+      trackAddToCart({
+        vendorId,
+        userId: auth?.user?.id,
+        productId: productRecordId,
+        productName: product?.productName,
+        productPrice: basePrice,
+        quantity,
+      });
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("template-cart-updated"));
+      }
+
+      setMessage("Proceeding to checkout");
+      router.push(checkoutBagPath);
+    } catch (error: any) {
+      setMessage(error?.message || "Failed to proceed to checkout");
     } finally {
       setAdding(false);
     }
@@ -733,6 +925,18 @@ export default function ProductDetailPage() {
           </div>
 
           <div className="space-y-6">
+            {isDraftPreview ? (
+              <div
+                className={`rounded-2xl border px-4 py-3 text-sm ${
+                  isStudio
+                    ? "border-amber-500/40 bg-amber-500/10 text-amber-100"
+                    : "border-amber-200 bg-amber-50 text-amber-900"
+                }`}
+              >
+                Preview only. This product is shown temporarily on the storefront template and is
+                not live until the vendor saves it.
+              </div>
+            ) : null}
             <div>
               <h1 className="text-4xl font-extrabold lg:text-5xl">
                 {productTitle}
@@ -945,27 +1149,32 @@ export default function ProductDetailPage() {
             </div>
 
             <div className={`rounded-2xl p-5 ${panelClass}`}>
-              <div className="mb-4 flex items-end justify-between">
-                <div>
-                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Total Amount</p>
-                  <p className={`text-4xl font-bold ${accentTextClass}`}>
-                    {formatCurrency(subtotal)}
-                  </p>
-                </div>
-                <div className="text-right">
-                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Quantity</p>
-                  <p className="text-3xl font-bold">{quantity} pcs</p>
-                </div>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                <button
+                  type="button"
+                  onClick={handleAddToCart}
+                  disabled={adding || !selectedVariant || stockQuantity <= 0 || isDraftPreview}
+                  className="h-12 w-full rounded-lg font-semibold text-white transition template-accent-bg template-accent-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {adding ? "Adding..." : "Add to cart"}
+                </button>
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={adding || !selectedVariant || stockQuantity <= 0 || isDraftPreview}
+                  className={`h-12 w-full rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                    isStudio
+                      ? "border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
+                      : isWhiteRose
+                        ? "border-[#2874f0] bg-white text-[#2874f0] hover:bg-[#eef4ff]"
+                        : isTrend
+                          ? "border-rose-300 bg-white text-rose-600 hover:bg-rose-50"
+                          : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
+                  }`}
+                >
+                  {adding ? "Processing..." : "Buy now"}
+                </button>
               </div>
-
-              <button
-                type="button"
-                onClick={handleAddToCart}
-                disabled={adding || !selectedVariant || stockQuantity <= 0}
-                className="h-12 w-full rounded-lg font-semibold text-white transition template-accent-bg template-accent-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
-              >
-                {adding ? "Adding..." : "Add to cart"}
-              </button>
 
               {message && <p className={`mt-3 text-sm ${isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}>{message}</p>}
             </div>
@@ -1107,15 +1316,23 @@ export default function ProductDetailPage() {
               </div>
             )}
 
-            {activeTab === "reviews" && (
-              <ProductReviewsSection
-                productId={productRecordId}
-                token={templateToken}
-                loginPath={`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`}
-                onSummaryChange={setReviewSummary}
-                theme={isStudio ? "studio" : "default"}
-              />
-            )}
+            {activeTab === "reviews" &&
+              (isDraftPreview ? (
+                <div className={`rounded-2xl p-5 ${panelClass}`}>
+                  <p className={isStudio ? "text-slate-300" : "text-slate-600"}>
+                    Reviews are unavailable in draft preview. Save the product to view the live
+                    storefront review section.
+                  </p>
+                </div>
+              ) : (
+                <ProductReviewsSection
+                  productId={productRecordId}
+                  token={templateToken}
+                  loginPath={`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`}
+                  onSummaryChange={setReviewSummary}
+                  theme={isStudio ? "studio" : "default"}
+                />
+              ))}
           </div>
         </div>
 
