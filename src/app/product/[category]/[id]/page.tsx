@@ -101,6 +101,31 @@ const getVariantDisplayName = (
   return `Variant ${index + 1}`;
 };
 
+const getVariantDisplayName = (
+  variant: Variant | null,
+  index: number,
+  productName?: string,
+): string => {
+  const customName = String(
+    (variant as (Variant & { variantDisplayName?: string }) | null)
+      ?.variantDisplayName || "",
+  ).trim();
+  if (customName) return customName;
+
+  const summary = Object.values(variant?.variantAttributes || {})
+    .map((value) => String(value || "").trim())
+    .filter(Boolean)
+    .join(" / ");
+
+  if (summary) return summary;
+  if (index === 0) {
+    const baseProductName = String(productName || "").trim();
+    if (baseProductName) return baseProductName;
+  }
+
+  return `Variant ${index + 1}`;
+};
+
 
 const retailBenefits = [
   { icon: Truck, text: "Free shipping over Rs. 75" },
@@ -330,12 +355,12 @@ export default function ProductDetailPage() {
   const basePrice = selectedVariant?.finalPrice || 0;
   const actualPrice = selectedVariant?.actualPrice || 0;
   const selectedVariantIndex = product.variants.findIndex(
-    (variant: Variant) => variant?._id === selectedVariant?._id,
+    (variant: Variant) => variant._id === selectedVariant?._id,
   );
-  const selectedVariantDisplayName = getVariantDisplayName(
-    product.productName || "",
+  const selectedVariantName = getVariantDisplayName(
     selectedVariant,
-    selectedVariantIndex >= 0 ? selectedVariantIndex : 0,
+    selectedVariantIndex,
+    product.productName,
   );
   const productAverageRating = Number(product?.averageRating || 0);
   const productRatingsCount = Number(product?.ratingsCount || 0);
@@ -466,8 +491,13 @@ export default function ProductDetailPage() {
           <div className="w-full lg:w-1/2 flex flex-col gap-6">
             <div>
               <h1 className="text-4xl font-extrabold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
-                {selectedVariantDisplayName}
+                {selectedVariantName}
               </h1>
+              {selectedVariantName !== product.productName ? (
+                <p className="mt-2 text-base font-medium text-slate-600">
+                  {product.productName}
+                </p>
+              ) : null}
               <div className="flex items-center gap-4 mt-3">
                 <div className="flex items-center gap-1 bg-amber-50 px-3 py-1.5 rounded-full">
                   <Star className="text-amber-400 fill-amber-400 w-5 h-5" />
@@ -526,7 +556,7 @@ export default function ProductDetailPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 items-start">
               <div>
                 <div className="text-sm font-semibold mb-3 text-neutral-700">
-                  Select Color
+                  Select Variant
                 </div>
                 <div className="flex gap-3 flex-wrap">
                   {product.variants.map((v: Variant, index: number) => (
@@ -554,7 +584,7 @@ export default function ProductDetailPage() {
                       )}
                       <div className="flex flex-col items-start">
                         <span className="font-medium">
-                          {getVariantDisplayName(product.productName || "", v, index)}
+                          {getVariantDisplayName(v, index, product.productName)}
                         </span>
                         {v.stockQuantity <= 0 && (
                           <span className="text-xs text-red-500 font-semibold">

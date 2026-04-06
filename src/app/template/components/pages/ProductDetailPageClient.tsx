@@ -103,62 +103,23 @@ const getImageUrl = (image: VariantImage | null | undefined) => {
   return isNonEmptyString(url) ? url.trim() : "";
 };
 
-const getVariantAttributeValue = (
-  variant: ProductVariant | null | undefined,
-  preferredKeys: string[],
-) => {
+const getVariantLabel = (variant: ProductVariant) => {
+  if (isNonEmptyString(variant?.variantDisplayName)) {
+    return variant.variantDisplayName.trim();
+  }
+
   const attrs =
     variant?.variantAttributes && typeof variant.variantAttributes === "object"
       ? variant.variantAttributes
       : {};
 
-  const entries = Object.entries(attrs);
+  const joinedAttributes = Object.values(attrs)
+    .filter((value): value is string => isNonEmptyString(value))
+    .map((value) => value.trim())
+    .join(" / ");
 
-  for (const key of preferredKeys) {
-    const directValue = attrs[key];
-    if (isNonEmptyString(directValue)) {
-      return directValue.trim();
-    }
-
-    const matchedEntry = entries.find(
-      ([entryKey, entryValue]) =>
-        entryKey.trim().toLowerCase() === key.trim().toLowerCase() &&
-        isNonEmptyString(entryValue),
-    );
-
-    if (matchedEntry) return matchedEntry[1].trim();
-  }
-
-  return "";
-};
-
-const getVariantLabel = (
-  productName: string | undefined,
-  variant: ProductVariant,
-  index: number,
-) => {
-  if (index === 0 && isNonEmptyString(productName)) {
-    return productName.trim();
-  }
-
-  const customName = String(variant?.variantDisplayName || "").trim();
-  if (customName) return customName;
-
-  const colorValue = getVariantAttributeValue(variant, [
-    "color",
-    "colour",
-    "shade",
-    "finish",
-  ]);
-  if (isNonEmptyString(colorValue)) {
-    return colorValue;
-  }
-
-  const firstValue = Object.values(variant?.variantAttributes || {}).find((value) =>
-    isNonEmptyString(value),
-  );
-  if (isNonEmptyString(firstValue)) {
-    return firstValue;
+  if (isNonEmptyString(joinedAttributes)) {
+    return joinedAttributes;
   }
 
   return variant.variantSku || "Variant";
@@ -492,12 +453,10 @@ export default function ProductDetailPage() {
 
   const stockQuantity = toNumber(selectedVariant?.stockQuantity);
   const subtotal = basePrice * quantity;
-  const selectedVariantIndex = variants.findIndex(
-    (variant) => variant?._id === selectedVariant?._id,
-  );
   const selectedVariantLabel = selectedVariant
-    ? getVariantLabel(product?.productName, selectedVariant, selectedVariantIndex >= 0 ? selectedVariantIndex : 0)
-    : product?.productName || "Untitled Product";
+    ? getVariantLabel(selectedVariant)
+    : "";
+  const productTitle = selectedVariantLabel || product?.productName || "Untitled Product";
 
   const productDescription =
     selectedVariant?.variantMetaDescription ||
@@ -776,8 +735,13 @@ export default function ProductDetailPage() {
           <div className="space-y-6">
             <div>
               <h1 className="text-4xl font-extrabold lg:text-5xl">
-                {selectedVariantLabel}
+                {productTitle}
               </h1>
+              {product?.productName && selectedVariantLabel && selectedVariantLabel !== product.productName ? (
+                <p className={`mt-2 text-base font-medium ${subtleTextClass}`}>
+                  {product.productName}
+                </p>
+              ) : null}
               <div className="mt-3 flex flex-wrap items-center gap-3">
                 <div
                   className={`flex items-center gap-1 rounded-full px-3 py-1.5 text-sm ${

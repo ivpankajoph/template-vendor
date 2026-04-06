@@ -517,6 +517,7 @@ export function TemplateInlineEditorBridge() {
     [page, templateData]
   );
   const activeElementRef = useRef<HTMLElement | null>(null);
+  const hoverElementRef = useRef<HTMLElement | null>(null);
   const activePathRef = useRef<string[] | null>(null);
   const originalValueRef = useRef("");
   const lastSentValueRef = useRef("");
@@ -546,6 +547,17 @@ export function TemplateInlineEditorBridge() {
       activePathRef.current = null;
       originalValueRef.current = "";
       lastSentValueRef.current = "";
+    };
+
+    const setHoverElement = (element: HTMLElement | null) => {
+      const previous = hoverElementRef.current;
+      if (previous && previous !== element) {
+        previous.removeAttribute("data-template-inline-hover");
+      }
+      hoverElementRef.current = element;
+      if (element && element !== activeElementRef.current) {
+        element.setAttribute("data-template-inline-hover", "true");
+      }
     };
 
     const emitInlineUpdate = (path: string[], value: string) => {
@@ -599,25 +611,15 @@ export function TemplateInlineEditorBridge() {
       element.setAttribute("contenteditable", "true");
       element.setAttribute("spellcheck", "true");
       element.setAttribute("data-template-inline-active", "true");
-      element.focus();
+      element.focus({ preventScroll: true });
 
       const selection = window.getSelection();
       if (!selection) return;
       const range = document.createRange();
       range.selectNodeContents(element);
+      range.collapse(false);
       selection.removeAllRanges();
       selection.addRange(range);
-    };
-
-    const handleInput = (event: Event) => {
-      const active = activeElementRef.current;
-      const path = activePathRef.current;
-      if (!active || !path?.length) return;
-      const target = event.target;
-      if (!(target instanceof Node)) return;
-      if (!active.contains(target)) return;
-      const nextValue = (active.innerText || active.textContent || "").trim();
-      emitInlineUpdate(path, nextValue);
     };
 
     const bestTextCandidate = (rawText: string, sectionId: string) => {
@@ -706,8 +708,13 @@ export function TemplateInlineEditorBridge() {
         componentNode?.dataset.templateComponent ||
         (selectedPath?.length ? selectedPath.join(".") : "");
 
+      const editableHost =
+        explicitPathNode ||
+        textHost ||
+        (target.matches(SELECTOR_TEXT_HOST) ? target : null);
+
       return {
-        host: textHost,
+        host: editableHost,
         path: selectedPath,
         sectionId,
         componentId,
@@ -770,16 +777,58 @@ export function TemplateInlineEditorBridge() {
       commitActive();
     };
 
+    const handlePointerMove = (event: PointerEvent) => {
+      const target = event.target;
+      if (!(target instanceof HTMLElement)) {
+        setHoverElement(null);
+        return;
+      }
+      const selectionMeta = resolveSelectionMeta(target);
+      if (selectionMeta.isImage) {
+        const imageHost = target.closest("img");
+        setHoverElement(imageHost instanceof HTMLElement ? imageHost : null);
+        return;
+      }
+      setHoverElement(selectionMeta.host || null);
+    };
+
+    const handlePointerLeave = () => {
+      setHoverElement(null);
+    };
+
     const styleNode = document.createElement("style");
     styleNode.setAttribute("data-template-inline-style", "true");
     styleNode.textContent = `
+      [data-template-inline-hover="true"] {
+        outline: 2px solid rgba(37, 99, 235, 0.28);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.08);
+      }
       [data-template-inline-active="true"] {
-        outline: 2px solid rgba(15, 23, 42, 0.5);
-        outline-offset: 2px;
+        outline: 2px solid rgba(37, 99, 235, 0.78);
+        outline-offset: 3px;
+        box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.12);
+        background: rgba(255, 255, 255, 0.92);
       }
       [data-template-path],
       [data-template-section] img {
         cursor: text;
+      }
+      h1,
+      h2,
+      h3,
+      h4,
+      h5,
+      h6,
+      p,
+      span,
+      a,
+      button,
+      li,
+      label,
+      strong,
+      em {
+        transition: outline-color 120ms ease, box-shadow 120ms ease, background 120ms ease;
       }
       [data-template-section] img {
         cursor: pointer;
@@ -788,18 +837,21 @@ export function TemplateInlineEditorBridge() {
     document.head.appendChild(styleNode);
 
     document.addEventListener("click", handleClick, true);
-    document.addEventListener("input", handleInput, true);
     document.addEventListener("keydown", handleKeyDown, true);
     document.addEventListener("focusin", handleFocusIn, true);
+    document.addEventListener("pointermove", handlePointerMove, true);
+    document.addEventListener("pointerleave", handlePointerLeave, true);
 
     return () => {
       document.removeEventListener("click", handleClick, true);
-      document.removeEventListener("input", handleInput, true);
       document.removeEventListener("keydown", handleKeyDown, true);
       document.removeEventListener("focusin", handleFocusIn, true);
+      document.removeEventListener("pointermove", handlePointerMove, true);
+      document.removeEventListener("pointerleave", handlePointerLeave, true);
       if (styleNode.parentNode) {
         styleNode.parentNode.removeChild(styleNode);
       }
+      setHoverElement(null);
       clearActive();
     };
   }, [candidates, page, vendorId]);
