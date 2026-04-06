@@ -83,25 +83,6 @@ const getColorFromVariant = (variant: Variant): string => {
 };
 
 const getVariantDisplayName = (
-  productName: string,
-  variant: Variant | null | undefined,
-  index: number,
-) => {
-  if (index === 0 && productName.trim()) return productName.trim();
-
-  const customName = String(variant?.variantDisplayName || "").trim();
-  if (customName) return customName;
-
-  const summary = Object.values(variant?.variantAttributes || {})
-    .map((value) => String(value || "").trim())
-    .filter(Boolean)
-    .join(" / ");
-
-  if (summary) return summary;
-  return `Variant ${index + 1}`;
-};
-
-const getVariantDisplayName = (
   variant: Variant | null,
   index: number,
   productName?: string,

@@ -850,7 +850,7 @@ export default function ProductDetailPage() {
                         {variantImage ? (
                           <img
                             src={variantImage}
-                            alt={getVariantLabel(product?.productName, item, index)}
+                            alt={getVariantLabel(item)}
                             className="h-10 w-10 rounded-lg bg-white object-contain"
                           />
                         ) : (
@@ -859,7 +859,7 @@ export default function ProductDetailPage() {
 
                         <div>
                           <p className="text-sm font-semibold">
-                            {getVariantLabel(product?.productName, item, index)}
+                            {getVariantLabel(item)}
                           </p>
                           {!inStock && <p className="text-xs text-red-500">Out of stock</p>}
                         </div>
