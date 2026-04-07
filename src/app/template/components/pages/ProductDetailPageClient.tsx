@@ -120,6 +120,30 @@ const RETAIL_BENEFITS = [
   { icon: Zap, text: "Fast delivery in 3-7 days" },
 ];
 
+const resolveRetailBenefits = (templateData: any) => {
+  const config = templateData?.components?.social_page?.product_benefits;
+  const configuredItems = Array.isArray(config?.items) ? config.items : [];
+  const items = RETAIL_BENEFITS.map((fallback, index) => {
+    const current = configuredItems[index] || {};
+    return {
+      ...fallback,
+      text: String(current?.text || fallback.text).trim() || fallback.text,
+      enabled:
+        typeof current?.enabled === "boolean" ? Boolean(current.enabled) : true,
+    };
+  }).filter((item) => item.enabled && item.text);
+
+  return {
+    enabled: config?.enabled !== false,
+    items,
+  };
+};
+
+const extractProductBenefitsConfig = (payload: any) =>
+  payload?.components?.social_page?.product_benefits ||
+  payload?.social_page?.product_benefits ||
+  null;
+
 const toNumber = (value: unknown) => {
   const num = Number(value);
   return Number.isFinite(num) ? num : 0;
@@ -309,6 +333,20 @@ export default function ProductDetailPage() {
     (state: any) => (state?.alltemplatepage?.products || []) as Product[]
   );
   const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
+  const [remoteBenefitsConfig, setRemoteBenefitsConfig] = useState<any>(null);
+  const retailBenefits = useMemo(
+    () =>
+      resolveRetailBenefits({
+        components: {
+          social_page: {
+            product_benefits:
+              remoteBenefitsConfig ||
+              templateData?.components?.social_page?.product_benefits,
+          },
+        },
+      }),
+    [remoteBenefitsConfig, templateData]
+  );
 
   const productId = ((params as any).product_id || (params as any).product_slug) as string;
   const vendorId = params.vendor_id as string;
@@ -320,11 +358,46 @@ export default function ProductDetailPage() {
   ).trim();
   const effectiveCitySlug =
     citySlug && citySlug !== "all" ? citySlug : fallbackCitySlug || "all";
+  const websiteIdFromPath = useMemo(() => {
+    const segments = String(pathname || "/")
+      .split("/")
+      .filter(Boolean);
+    const websiteIndex = segments.indexOf("website");
+    if (websiteIndex >= 0 && websiteIndex + 1 < segments.length) {
+      return String(segments[websiteIndex + 1] || "").trim();
+    }
+    return "";
+  }, [pathname]);
   const loginPath = buildTemplateScopedPath({
     vendorId,
     pathname: pathname || "/",
     suffix: "login",
   });
+
+  useEffect(() => {
+    if (!vendorId) return;
+
+    const query = websiteIdFromPath
+      ? `?website_id=${encodeURIComponent(websiteIdFromPath)}`
+      : "";
+
+    const loadBenefits = async () => {
+      try {
+        const res = await fetch(
+          `${NEXT_PUBLIC_API_URL}/v1/templates/${vendorId}/social${query}`,
+          { cache: "no-store" }
+        );
+        if (!res.ok) return;
+        const json = await res.json().catch(() => null);
+        const config = extractProductBenefitsConfig(json?.data || json);
+        if (config) setRemoteBenefitsConfig(config);
+      } catch {
+        return;
+      }
+    };
+
+    void loadBenefits();
+  }, [vendorId, websiteIdFromPath]);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -579,8 +652,8 @@ export default function ProductDetailPage() {
   const productTitle = selectedVariantLabel || product?.productName || "Untitled Product";
 
   const productDescription =
-    selectedVariant?.variantMetaDescription ||
     product?.description ||
+    selectedVariant?.variantMetaDescription ||
     product?.shortDescription ||
     "No description available.";
   const productShortDescription = String(product?.shortDescription || "").trim();
@@ -1010,8 +1083,9 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
+              {retailBenefits.enabled && retailBenefits.items.length ? (
               <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {RETAIL_BENEFITS.map((benefit) => (
+                {retailBenefits.items.map((benefit) => (
                   <div
                     key={benefit.text}
                     className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isStudio ? "bg-slate-800 text-slate-200" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-blue-50 text-blue-900"}`}
@@ -1021,6 +1095,7 @@ export default function ProductDetailPage() {
                   </div>
                 ))}
               </div>
+              ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
