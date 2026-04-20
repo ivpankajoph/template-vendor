@@ -175,10 +175,84 @@ export const clearTemplateAuth = (vendorId: string, websiteId?: string) => {
   getVendorStorageKeys(vendorId).forEach((key) => {
     localStorage.removeItem(key);
   });
+  if (websiteId) {
+    localStorage.removeItem(storageKey(vendorId, websiteId));
+  }
   localStorage.removeItem(storageKey(vendorId));
   window.dispatchEvent(
     new CustomEvent("template-auth-updated", { detail: { vendorId } })
   );
+};
+
+export const useTemplateAuthState = (vendorId: string) => {
+  const [auth, setAuth] = useState<TemplateAuthPayload | null>(() =>
+    getTemplateAuth(vendorId)
+  );
+
+  useEffect(() => {
+    setAuth(getTemplateAuth(vendorId));
+
+    const syncAuth = () => {
+      setAuth(getTemplateAuth(vendorId));
+    };
+
+    window.addEventListener("template-auth-updated", syncAuth);
+    window.addEventListener("storage", syncAuth);
+    window.addEventListener("focus", syncAuth);
+
+    return () => {
+      window.removeEventListener("template-auth-updated", syncAuth);
+      window.removeEventListener("storage", syncAuth);
+      window.removeEventListener("focus", syncAuth);
+    };
+  }, [vendorId]);
+
+  return auth;
+};
+
+export const templateApiFetchWithToken = async (
+  vendorId: string,
+  token: string,
+  path: string,
+  options: RequestInit = {}
+) => {
+  const headers = new Headers(options.headers || {});
+  headers.set("Content-Type", "application/json");
+  if (typeof window !== "undefined") {
+    const websiteId = getCurrentTemplateWebsiteId();
+    if (websiteId) {
+      headers.set("x-template-website", websiteId);
+    }
+  }
+  headers.set("Authorization", `Bearer ${token}`);
+
+  const response = await fetch(`${API_BASE}/template-users${path}`, {
+    ...options,
+    headers,
+  });
+
+  if (response.status === 401) {
+    clearTemplateAuth(vendorId);
+    redirectToTemplateLogin(vendorId);
+  }
+
+  if (!response.ok) {
+    const errorText = await response.text().catch(() => "");
+    let errorMessage = "";
+
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText);
+        errorMessage = String(parsed?.message || parsed?.error || "").trim();
+      } catch {
+        errorMessage = errorText.trim();
+      }
+    }
+
+    throw new Error(errorMessage || `Request failed (${response.status})`);
+  }
+
+  return response.json();
 };
 
 export const templateApiFetch = async (
