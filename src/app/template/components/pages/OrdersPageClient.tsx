@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
@@ -41,7 +41,7 @@ export default function TemplateOrdersPage() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
   const productPath = (productId?: string) =>
@@ -96,7 +96,7 @@ export default function TemplateOrdersPage() {
       }
     };
     load();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   const formatAttrs = (attrs?: Record<string, string>) => {
     if (!attrs) return "";

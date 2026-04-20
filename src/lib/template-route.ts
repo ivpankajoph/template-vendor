@@ -95,10 +95,12 @@ export const buildTemplateScopedPath = ({
   vendorId,
   pathname,
   suffix = "",
+  citySlugOverride,
 }: {
   vendorId: string;
   pathname?: string;
   suffix?: string;
+  citySlugOverride?: string;
 }) => {
   const activePathname =
     String(pathname || "").trim() ||
@@ -106,12 +108,14 @@ export const buildTemplateScopedPath = ({
   const context = getTemplateRouteContext(activePathname, vendorId);
   const normalizedSuffix = String(suffix || "").replace(/^\/+/, "");
   const suffixPart = normalizedSuffix ? `/${normalizedSuffix}` : "";
+  const normalizedCityOverride = normalizeOptionalCitySlug(citySlugOverride);
 
   if (!isPlatformTemplatePath(activePathname, vendorId)) {
     return suffixPart || "/";
   }
 
-  const cityPart = context.citySlug ? `/${context.citySlug}` : "/all";
+  const resolvedCitySlug = normalizedCityOverride || context.citySlug || "all";
+  const cityPart = resolvedCitySlug ? `/${resolvedCitySlug}` : "/all";
   const websitePart = context.websiteSlug
     ? `/website/${encodeURIComponent(context.websiteSlug)}`
     : "";
@@ -134,15 +138,18 @@ export const buildStorefrontScopedPath = ({
   vendorId,
   pathname,
   suffix = '',
+  citySlugOverride,
 }: {
   vendorId: string
   pathname?: string
   suffix?: string
+  citySlugOverride?: string
 }) =>
   buildTemplateScopedPath({
     vendorId,
     pathname,
     suffix,
+    citySlugOverride,
   })
 
 export const buildTemplateProductPath = ({

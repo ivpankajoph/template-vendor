@@ -7,7 +7,7 @@ import { Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { trackCheckout } from "@/lib/analytics-events";
@@ -52,7 +52,7 @@ export default function TemplateCheckoutBagPageClient() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const homePath = buildTemplateScopedPath({ vendorId, suffix: "" });
   const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
   const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
@@ -104,7 +104,7 @@ export default function TemplateCheckoutBagPageClient() {
       return;
     }
     loadData();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   useEffect(() => {
     if (!auth || !cart) return;

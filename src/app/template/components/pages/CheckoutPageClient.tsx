@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { trackCheckout, trackPurchase } from "@/lib/analytics-events";
@@ -55,7 +55,7 @@ export default function TemplateCheckoutPage() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const checkoutPath = buildTemplateScopedPath({ vendorId, suffix: "checkout" });
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
@@ -135,7 +135,7 @@ export default function TemplateCheckoutPage() {
     };
 
     load();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   useEffect(() => {
     if (!auth || !cart) return;

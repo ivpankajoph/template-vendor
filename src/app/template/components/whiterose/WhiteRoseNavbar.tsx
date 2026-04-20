@@ -131,7 +131,10 @@ export function WhiteRoseNavbar() {
     }
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === `template_auth_${vendorId}`) {
+      if (
+        event.key === `template_auth_${vendorId}` ||
+        event.key?.startsWith(`template_auth_${vendorId}_`)
+      ) {
         loadCart()
       }
     }
@@ -147,7 +150,7 @@ export function WhiteRoseNavbar() {
       window.removeEventListener('focus', refresh)
       window.removeEventListener('storage', onStorage)
     }
-  }, [vendorId])
+  }, [vendorId, pathname])
 
   const handleSearchSubmit = (event: React.FormEvent<HTMLFormElement>) => {
     event.preventDefault()

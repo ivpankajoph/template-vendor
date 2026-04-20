@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useParams, usePathname, useRouter } from "next/navigation";
-import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
+import {
+  setTemplateAuth,
+  templateApiFetch,
+  templateApiFetchWithToken,
+} from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildStorefrontScopedPath } from "@/lib/template-route";
 import { toastError } from "@/lib/toast";
@@ -63,12 +67,16 @@ export default function TemplateRegisterPage() {
         }),
       });
       setTemplateAuth(vendorId, { token: data.token, user: data.user });
-      router.push(
-        buildStorefrontScopedPath({
-          vendorId,
-          pathname: pathname || undefined,
-        })
-      );
+      await templateApiFetchWithToken(vendorId, data.token, "/me");
+      const nextPath = buildStorefrontScopedPath({
+        vendorId,
+        pathname: pathname || undefined,
+      });
+      if (typeof window !== "undefined") {
+        window.location.assign(nextPath);
+        return;
+      }
+      router.push(nextPath);
     } catch (err: any) {
       setError("");
       toastError(String(err?.message || "Registration failed"));

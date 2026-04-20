@@ -5,7 +5,7 @@ import Image from "next/image";
 import { useParams, useRouter } from "next/navigation";
 
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { buildTemplateScopedPath } from "@/lib/template-route";
@@ -77,7 +77,7 @@ export default function TemplateCheckoutAddressPageClient() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
   const paymentPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/payment" });
   const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
@@ -132,7 +132,7 @@ export default function TemplateCheckoutAddressPageClient() {
       return;
     }
     loadData();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   const fetchShippingQuote = async (addressId: string) => {
     if (!addressId) return;

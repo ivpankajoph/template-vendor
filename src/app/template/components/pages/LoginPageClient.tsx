@@ -2,7 +2,11 @@
 
 import { useState } from "react";
 import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
-import { setTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
+import {
+  setTemplateAuth,
+  templateApiFetch,
+  templateApiFetchWithToken,
+} from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { buildStorefrontScopedPath } from "@/lib/template-route";
 import { toastError } from "@/lib/toast";
@@ -66,6 +70,11 @@ export default function TemplateLoginPage() {
         }),
       });
       setTemplateAuth(vendorId, { token: data.token, user: data.user });
+      await templateApiFetchWithToken(vendorId, data.token, "/me");
+      if (typeof window !== "undefined") {
+        window.location.assign(nextPath);
+        return;
+      }
       router.push(nextPath);
     } catch (err: any) {
       const message = String(err?.message || "Login failed");

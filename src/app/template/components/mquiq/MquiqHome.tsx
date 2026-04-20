@@ -274,17 +274,17 @@ export function MquiqHome() {
   const toStorefrontPath = (suffix = '') =>
     vendorId
       ? buildStorefrontScopedPath({
-          vendorId,
-          pathname: pathname || undefined,
-          suffix,
-        })
+        vendorId,
+        pathname: pathname || undefined,
+        suffix,
+      })
       : '#'
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
   const vendor = useSelector((state: any) => state?.vendorprofilepage?.vendor || {})
   const templateCitySlug = String(
     template?.components?.vendor_profile?.default_city_slug ||
-      vendor?.default_city_slug ||
-      ''
+    vendor?.default_city_slug ||
+    ''
   ).trim()
 
   // Use products already loaded into Redux store by TemplateDataLoader
@@ -393,12 +393,12 @@ export function MquiqHome() {
       _id: product?._id,
       slug: product?.slug,
       variantId: getPrimaryVariant(product)?._id || '',
-        title: configuredText(product?.productName, `Product ${index + 1}`),
-        subtitle: configuredText(
-          product?.brand,
-          getRichTextPreview(configuredText(product?.shortDescription), 100) ||
-            'Industrial-grade storage solution'
-        ),
+      title: configuredText(product?.productName, `Product ${index + 1}`),
+      subtitle: configuredText(
+        product?.brand,
+        getRichTextPreview(configuredText(product?.shortDescription), 100) ||
+        'Industrial-grade storage solution'
+      ),
       image: getProductImage(
         product,
         FALLBACK_PRODUCT_IMAGES[index % FALLBACK_PRODUCT_IMAGES.length]
@@ -662,12 +662,12 @@ export function MquiqHome() {
                     href={
                       vendorId && product?._id
                         ? buildTemplateProductPath({
-                            vendorId,
-                            pathname: pathname || undefined,
-                            productId: product._id,
-                            productSlug: product.slug,
-                            citySlug: templateCitySlug,
-                          })
+                          vendorId,
+                          pathname: pathname || undefined,
+                          productId: product._id,
+                          productSlug: product.slug,
+                          citySlug: templateCitySlug,
+                        })
                         : vendorId
                           ? toStorefrontPath('all-products')
                           : '#'
@@ -913,11 +913,19 @@ export function MquiqHome() {
             data-template-component='components.home_page.advantage.image'
           >
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
+            {/* <img
               src={advantageImage}
               alt='Why choose us'
               className='h-full min-h-[560px] w-full object-cover'
-            />
+            /> */}
+
+            {advantageImage && (
+              <img
+                src={advantageImage}
+                alt='Why choose us'
+                className='h-full min-h-[560px] w-full object-cover'
+              />
+            )}
             <div className='pointer-events-none absolute inset-0 bg-gradient-to-t from-[#0f172a]/38 via-transparent to-transparent' />
             <div className='absolute bottom-6 left-[-14px] rounded-full bg-[#f4b400] px-6 py-5 text-center text-white shadow-lg'>
               <p

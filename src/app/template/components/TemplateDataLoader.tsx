@@ -2,11 +2,12 @@
 
 import { useCallback, useEffect, useRef } from 'react'
 import { useDispatch, useSelector } from 'react-redux'
-import { usePathname, useSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { fetchAlltemplatepageTemplate } from '@/store/slices/alltemplateslice'
 import { fetchVendorProfile } from '@/store/slices/vendorProfileSlice'
 import type { AppDispatch, RootState } from '@/store'
 import { getTemplateCityFromPath } from '@/lib/template-route'
+import { buildStorefrontScopedPath } from '@/lib/template-route'
 import { getTemplateWebsiteIdFromSearch } from '@/lib/template-website'
 
 type Props = {
@@ -21,10 +22,12 @@ const REQUEST_RETRY_COOLDOWN_MS = 30 * 1000
 export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const pathname = usePathname()
+  const router = useRouter()
   const searchParams = useSearchParams()
   const focusRefreshRef = useRef(0)
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
+  const emptyHomeFallbackRef = useRef<string | null>(null)
   const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
   const routeWebsiteId = getTemplateWebsiteIdFromSearch(pathname || '/', searchParams)
   const websiteId = routeWebsiteId || websiteIdProp || undefined
@@ -32,6 +35,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
   const {
     templateData,
     templateLoading,
+    templateProducts,
     templateVendorId,
     templateCitySlug,
     templateWebsiteId,
@@ -43,6 +47,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
   } = useSelector((state: RootState) => ({
     templateData: state.alltemplatepage?.data,
     templateLoading: Boolean(state.alltemplatepage?.loading),
+    templateProducts: state.alltemplatepage?.products || [],
     templateVendorId: state.alltemplatepage?.currentVendorId || null,
     templateCitySlug: state.alltemplatepage?.currentCitySlug || null,
     templateWebsiteId: state.alltemplatepage?.currentWebsiteId || null,
@@ -52,6 +57,10 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
     vendorVendorId: state.vendorprofilepage?.currentVendorId || null,
     vendorLastFetchedAt: state.vendorprofilepage?.lastFetchedAt || null,
   }))
+
+  useEffect(() => {
+    emptyHomeFallbackRef.current = null
+  }, [pathname, vendorId, citySlug, websiteId])
 
   const canDispatchRequest = (
     requestMap: Record<string, number>,
@@ -141,6 +150,60 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
       document.removeEventListener("visibilitychange", handleVisibility)
     }
   }, [vendorId])
+
+  useEffect(() => {
+    if (!vendorId || !pathname) return
+    if (templateLoading) return
+    if (citySlug === 'all') return
+    if (templateVendorId !== vendorId) return
+    if ((templateCitySlug || 'all') !== citySlug) return
+    if ((templateWebsiteId || '') !== (websiteId || '')) return
+    if (!templateData) return
+    if (Array.isArray(templateProducts) && templateProducts.length > 0) return
+
+    const currentHomePath = buildStorefrontScopedPath({
+      vendorId,
+      pathname,
+    })
+    const normalizedPathname = String(pathname || '').replace(/\/+$/, '')
+    const normalizedHomePath = String(currentHomePath || '').replace(/\/+$/, '')
+    if (normalizedPathname !== normalizedHomePath) return
+
+    const vendorDefaultCitySlug = String(
+      (vendorProfile as { default_city_slug?: string } | null)?.default_city_slug || ''
+    )
+      .trim()
+      .toLowerCase()
+    const fallbackCity =
+      vendorDefaultCitySlug && vendorDefaultCitySlug !== citySlug
+        ? vendorDefaultCitySlug
+        : 'all'
+    if (fallbackCity === citySlug) return
+
+    const fallbackHomePath = buildStorefrontScopedPath({
+      vendorId,
+      pathname,
+      citySlugOverride: fallbackCity,
+    })
+
+    if (!fallbackHomePath || emptyHomeFallbackRef.current === fallbackHomePath) return
+
+    emptyHomeFallbackRef.current = fallbackHomePath
+    router.replace(fallbackHomePath, { scroll: false })
+  }, [
+    citySlug,
+    pathname,
+    router,
+    templateCitySlug,
+    templateData,
+    templateLoading,
+    templateProducts,
+    templateVendorId,
+    templateWebsiteId,
+    vendorId,
+    vendorProfile,
+    websiteId,
+  ])
 
   return null
 }

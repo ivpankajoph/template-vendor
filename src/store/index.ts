@@ -35,16 +35,27 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-export const store = configureStore({
-  reducer: persistedReducer,
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware({
-      serializableCheck: {
-        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-      },
-    }),
-});
+export const makeStore = (preloadedState?: Partial<RootState>) =>
+  configureStore({
+    reducer: persistedReducer,
+    preloadedState: preloadedState as any,
+    middleware: (getDefaultMiddleware) =>
+      getDefaultMiddleware({
+        serializableCheck: {
+          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        },
+      }),
+  });
 
-export const persistor = persistStore(store);
-export type AppDispatch = typeof store.dispatch;
-export type RootState = ReturnType<typeof store.getState>;
+export type AppStore = ReturnType<typeof makeStore>;
+export type RootState = ReturnType<typeof rootReducer>;
+export type AppDispatch = AppStore["dispatch"];
+
+export let store = makeStore();
+export let persistor = persistStore(store);
+
+export const replaceStoreInstance = (nextStore: AppStore) => {
+  store = nextStore;
+  persistor = persistStore(store);
+  return { store, persistor };
+};

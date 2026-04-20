@@ -170,7 +170,12 @@ export function OragzeNavbar() {
     }
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === `template_auth_${vendorId}`) refresh()
+      if (
+        event.key === `template_auth_${vendorId}` ||
+        event.key?.startsWith(`template_auth_${vendorId}_`)
+      ) {
+        refresh()
+      }
     }
 
     window.addEventListener('template-cart-updated', refresh)
@@ -184,7 +189,7 @@ export function OragzeNavbar() {
       window.removeEventListener('focus', refresh)
       window.removeEventListener('storage', onStorage)
     }
-  }, [vendorId])
+  }, [vendorId, pathname])
 
   useEffect(() => {
     if (selectedCategoryPath) return

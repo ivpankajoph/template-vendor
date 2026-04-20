@@ -5,7 +5,7 @@ import { X, CheckCircle } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
@@ -35,7 +35,7 @@ export default function ShoppingCartPage() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const cartPath = buildTemplateScopedPath({ vendorId, suffix: "cart" });
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
   const checkoutBagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
@@ -102,7 +102,7 @@ export default function ShoppingCartPage() {
       return;
     }
     loadCart();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   const updateQuantity = async (itemId: string, quantity: number) => {
     if (quantity < 1) return;

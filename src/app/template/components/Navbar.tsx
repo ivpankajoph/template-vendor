@@ -146,7 +146,10 @@ export default function Navbar() {
 
     const onStorage = (event: StorageEvent) => {
       if (!event.key) return;
-      if (event.key === `template_auth_${currentVendorId}`) {
+      if (
+        event.key === `template_auth_${currentVendorId}` ||
+        event.key.startsWith(`template_auth_${currentVendorId}_`)
+      ) {
         loadCart();
       }
     };
@@ -162,7 +165,7 @@ export default function Navbar() {
       window.removeEventListener("focus", refreshCart);
       window.removeEventListener("storage", onStorage);
     };
-  }, [isCustomVariant, vendor_id]);
+  }, [isCustomVariant, vendor_id, pathname]);
 
   const subcategoriesByCategory = useMemo(() => {
     return subcategories.reduce<Record<string, any[]>>((acc, sub) => {

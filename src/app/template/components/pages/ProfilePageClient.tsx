@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
@@ -41,7 +41,7 @@ export default function TemplateProfilePage() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const profilePath = buildTemplateScopedPath({ vendorId, suffix: "profile" });
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
 
@@ -95,7 +95,7 @@ export default function TemplateProfilePage() {
       }
     };
     load();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   if (!auth) {
     return (

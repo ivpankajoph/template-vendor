@@ -6,7 +6,7 @@ import { useParams, useRouter } from "next/navigation";
 import { Banknote, CreditCard, Landmark, Smartphone, Wallet } from "lucide-react";
 
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { trackPurchase } from "@/lib/analytics-events";
@@ -63,7 +63,7 @@ export default function TemplateCheckoutPaymentPageClient() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
   const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
@@ -121,7 +121,7 @@ export default function TemplateCheckoutPaymentPageClient() {
       return;
     }
     loadData();
-  }, [vendorId]);
+  }, [auth, vendorId]);
 
   useEffect(() => {
     saveTemplateCheckoutPaymentMethod(vendorId, paymentMethod);

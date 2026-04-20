@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { useParams, useRouter } from "next/navigation";
 import {
-  getTemplateAuth,
+  useTemplateAuthState,
   templateApiFetch,
 } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
@@ -59,7 +59,7 @@ export default function OrderDetailPageClient() {
   const vendorId = params.vendor_id as string;
   const orderId = params.order_id as string;
   const router = useRouter();
-  const auth = getTemplateAuth(vendorId);
+  const auth = useTemplateAuthState(vendorId);
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
   const orderDetailPath = buildTemplateScopedPath({
@@ -114,7 +114,7 @@ export default function OrderDetailPageClient() {
       }
     };
     if (orderId) load();
-  }, [vendorId, orderId]);
+  }, [auth, vendorId, orderId]);
 
   const totals = useMemo(() => {
     if (!order) return null;

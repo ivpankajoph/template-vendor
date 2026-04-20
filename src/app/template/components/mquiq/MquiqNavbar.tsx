@@ -165,7 +165,12 @@ export function MquiqNavbar() {
     }
 
     const onStorage = (event: StorageEvent) => {
-      if (event.key === `template_auth_${vendorId}`) refresh()
+      if (
+        event.key === `template_auth_${vendorId}` ||
+        event.key?.startsWith(`template_auth_${vendorId}_`)
+      ) {
+        refresh()
+      }
     }
 
     window.addEventListener('template-cart-updated', refresh)
@@ -179,7 +184,7 @@ export function MquiqNavbar() {
       window.removeEventListener('focus', refresh)
       window.removeEventListener('storage', onStorage)
     }
-  }, [vendorId])
+  }, [vendorId, pathname])
 
   const isHome = pathname === homeHref || pathname === '/'
 
