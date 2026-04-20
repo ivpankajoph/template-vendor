@@ -56,6 +56,8 @@ export default function TemplateCheckoutPage() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const authToken = auth?.token || "";
+  const authUserId = auth?.user?.id || "";
   const checkoutPath = buildTemplateScopedPath({ vendorId, suffix: "checkout" });
   const loginPath = buildTemplateScopedPath({ vendorId, suffix: "login" });
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
@@ -111,7 +113,7 @@ export default function TemplateCheckoutPage() {
   const total = useMemo(() => subtotal + shippingFee, [subtotal, shippingFee]);
 
   useEffect(() => {
-    if (!auth) {
+    if (!authToken) {
       setLoading(false);
       return;
     }
@@ -135,13 +137,13 @@ export default function TemplateCheckoutPage() {
     };
 
     load();
-  }, [vendorId]);
+  }, [authToken, vendorId]);
 
   useEffect(() => {
-    if (!auth || !cart) return;
+    if (!authUserId || !cart) return;
     trackCheckout({
       vendorId,
-      userId: auth?.user?.id,
+      userId: authUserId,
       cartTotal: cart.subtotal,
       metadata: {
         items: cart.items?.map((item) => ({
@@ -151,7 +153,7 @@ export default function TemplateCheckoutPage() {
         })),
       },
     });
-  }, [auth, cart, vendorId]);
+  }, [authUserId, cart, vendorId]);
 
   const fetchShippingQuote = async (addressId: string) => {
     try {

@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useMemo } from 'react'
-import { useSelector } from 'react-redux'
+import { shallowEqual, useSelector } from 'react-redux'
 import { useParams, usePathname, useSearchParams } from 'next/navigation'
 
 export type TemplateVariantKey =
@@ -13,6 +13,7 @@ export type TemplateVariantKey =
   | 'poupqz'
   | 'oragze'
   | 'whiterose'
+  | 'pocofood'
 
 export type TemplateVariant = {
   key: TemplateVariantKey
@@ -65,9 +66,24 @@ export const TEMPLATE_VARIANTS: TemplateVariant[] = [
     description:
       'Amazon/Flipkart-style B2C storefront with department rails, trust-led merchandising, and conversion-first catalog pages.',
   },
+  {
+    key: 'pocofood',
+    name: 'Oph Food',
+    description:
+      'Swiggy-inspired food storefront with bold offers, menu rails, combo cards, and delivery-first sections.',
+  },
 ]
 
 export const DEFAULT_TEMPLATE_VARIANT: TemplateVariantKey = 'mquiq'
+
+const selectTemplateVariantState = (state: any) => ({
+  rawKey:
+    state?.alltemplatepage?.data?.template_key ||
+    state?.alltemplatepage?.data?.templateKey,
+  currentWebsiteId: String(
+    state?.alltemplatepage?.currentWebsiteId || ''
+  ).trim(),
+})
 
 const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => {
   if (typeof value !== 'string') return undefined
@@ -88,6 +104,8 @@ const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => 
   if (key.includes('oragze') || key.includes('organic')) return 'oragze'
   if (collapsed.includes('whiterose'))
     return 'whiterose'
+  if (collapsed.includes('pocofood') || key.includes('poco-food') || key.includes('poco'))
+    return 'pocofood'
   if (key.includes('classic')) return 'classic'
   if (key === '0') return 'classic'
   if (key === '1') return 'studio'
@@ -97,6 +115,7 @@ const normalizeVariantKey = (value: unknown): TemplateVariantKey | undefined => 
   if (key === '5') return 'poupqz'
   if (key === '6') return 'oragze'
   if (key === '7') return 'whiterose'
+  if (key === '8') return 'pocofood'
   return undefined
 }
 
@@ -151,15 +170,8 @@ export function useTemplateVariant() {
       : undefined
   const templateQuery = searchParams?.get('template')
   const { rawKey, currentWebsiteId } = useSelector(
-    (state: any) =>
-      ({
-        rawKey:
-          state?.alltemplatepage?.data?.template_key ||
-          state?.alltemplatepage?.data?.templateKey,
-        currentWebsiteId: String(
-          state?.alltemplatepage?.currentWebsiteId || ''
-        ).trim(),
-      })
+    selectTemplateVariantState,
+    shallowEqual
   )
 
   const variant = useMemo(() => {

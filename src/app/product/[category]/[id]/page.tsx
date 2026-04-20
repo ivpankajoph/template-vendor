@@ -38,6 +38,9 @@ import { trackAddToCart } from "@/lib/analytics-events";
 import PromotionalBanner from "@/components/promotional-banner";
 import Navbar from "@/components/navbar/Navbar";
 import Footer from "@/components/footer";
+
+const API_BASE_URL = String(NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+const API_BASE = API_BASE_URL.endsWith("/v1") ? API_BASE_URL : `${API_BASE_URL}/v1`;
 import MightInterested from "@/components/MightInterested";
 import RichTextContent from "@/components/RichTextContent";
 import Link from "next/link";
@@ -193,10 +196,9 @@ export default function ProductDetailPage() {
 
     const loadBenefits = async () => {
       try {
-        const res = await fetch(
-          `${NEXT_PUBLIC_API_URL}/v1/templates/${vendorId}/social${query}`,
-          { cache: "no-store" }
-        );
+        const res = await fetch(`${API_BASE}/templates/${vendorId}/social${query}`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const json = await res.json().catch(() => null);
         const config = extractProductBenefitsConfig(json?.data || json);

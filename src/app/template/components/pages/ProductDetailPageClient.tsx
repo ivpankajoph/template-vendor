@@ -13,6 +13,7 @@ import {
   Shield,
   Zap,
   Check,
+  Heart,
   MessageSquareMore,
 } from "lucide-react";
 
@@ -30,6 +31,11 @@ import ProductReviewsSection, {
   ProductReviewSummary,
 } from "@/components/reviews/ProductReviewsSection";
 import RichTextContent from "@/components/RichTextContent";
+import {
+  readPocoFoodWishlist,
+  writePocoFoodWishlist,
+  type PocoFoodWishlistItem,
+} from "@/app/template/components/pocofood/pocofood-wishlist";
 
 type VariantImage = {
   url?: string;
@@ -113,6 +119,53 @@ type Product = {
 
 type ProductTab = "description" | "specifications" | "faqs" | "reviews";
 
+type FoodAddonOption = {
+  name?: string;
+  price?: number;
+  is_free?: boolean;
+};
+
+type FoodVariantOption = {
+  name?: string;
+  price?: number;
+  offer_price?: number;
+  is_default?: boolean;
+  is_available?: boolean;
+};
+
+type FoodMenuItem = {
+  _id?: string;
+  item_name?: string;
+  category?: string;
+  description?: string;
+  image_url?: string;
+  gallery_images?: string[];
+  food_type?: string;
+  is_available?: boolean;
+  price?: number;
+  offer_price?: number;
+  prep_time_minutes?: number;
+  addons?: FoodAddonOption[];
+  variants?: FoodVariantOption[];
+};
+
+type FoodRestaurantProfile = {
+  restaurant_name?: string;
+  mobile?: string;
+  minimum_order_amount?: number;
+  average_preparation_time?: number;
+  delivery_radius_km?: number;
+};
+
+type FoodOffer = {
+  offer_title?: string;
+  offer_type?: string;
+  discount_percent?: number;
+  flat_discount?: number;
+  combo_price?: number;
+  free_item_name?: string;
+};
+
 const RETAIL_BENEFITS = [
   { icon: Truck, text: "Free shipping over Rs. 75" },
   { icon: RefreshCw, text: "30-day easy returns" },
@@ -150,6 +203,8 @@ const toNumber = (value: unknown) => {
 };
 
 const formatCurrency = (value: number) => `Rs. ${toNumber(value).toLocaleString()}`;
+const API_BASE_URL = String(NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+const API_BASE = API_BASE_URL.endsWith("/v1") ? API_BASE_URL : `${API_BASE_URL}/v1`;
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
@@ -202,6 +257,66 @@ const getUniqueImages = (product: Product | null) => {
 const getPrimaryVariant = (product: Product | null | undefined) => {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
   return variants.find((variant) => variant?.isActive !== false) || variants[0] || null;
+};
+
+const getFoodPrimaryVariant = (item: FoodMenuItem | null | undefined) => {
+  const variants = Array.isArray(item?.variants) ? item.variants : [];
+  return (
+    variants.find((variant) => variant?.is_available && variant?.is_default) ||
+    variants.find((variant) => variant?.is_available) ||
+    variants.find((variant) => variant?.is_default) ||
+    variants[0] ||
+    null
+  );
+};
+
+const getFoodFinalPrice = (
+  item: FoodMenuItem | null | undefined,
+  variantName?: string,
+  selectedAddons: FoodAddonOption[] = []
+) => {
+  const variants = Array.isArray(item?.variants) ? item.variants : [];
+  const normalizedName = String(variantName || "").trim().toLowerCase();
+  const selectedVariant =
+    variants.find(
+      (variant) =>
+        String(variant?.name || "").trim().toLowerCase() === normalizedName
+    ) || getFoodPrimaryVariant(item);
+
+  const variantPrice = toNumber(selectedVariant?.price);
+  const variantOfferPrice = toNumber(selectedVariant?.offer_price);
+  const itemPrice = toNumber(item?.price);
+  const itemOfferPrice = toNumber(item?.offer_price);
+  const itemHasTwoPrices = itemPrice > 0 && itemOfferPrice > 0 && itemPrice !== itemOfferPrice;
+  const variantHasTwoPrices =
+    variantPrice > 0 && variantOfferPrice > 0 && variantPrice !== variantOfferPrice;
+  const enteredPrice = variantHasTwoPrices || !itemHasTwoPrices ? variantPrice || itemPrice : itemPrice;
+  const enteredOfferPrice =
+    variantHasTwoPrices || !itemHasTwoPrices ? variantOfferPrice || itemOfferPrice : itemOfferPrice;
+  const hasTwoPrices = enteredPrice > 0 && enteredOfferPrice > 0 && enteredPrice !== enteredOfferPrice;
+  const baseFinal = hasTwoPrices
+    ? Math.min(enteredPrice, enteredOfferPrice)
+    : enteredOfferPrice || enteredPrice;
+  const baseActual = hasTwoPrices
+    ? Math.max(enteredPrice, enteredOfferPrice)
+    : enteredPrice || baseFinal;
+  const addonTotal = selectedAddons.reduce((sum, addon) => {
+    if (addon?.is_free) return sum;
+    return sum + toNumber(addon?.price);
+  }, 0);
+
+  return {
+    actualPrice: baseActual + addonTotal,
+    finalPrice: baseFinal + addonTotal,
+  };
+};
+
+const getFoodMenuImages = (item: FoodMenuItem | null | undefined) => {
+  const primary = String(item?.image_url || "").trim();
+  const gallery = Array.isArray(item?.gallery_images) ? item.gallery_images : [];
+  return Array.from(
+    new Set([primary, ...gallery.map((image) => String(image || "").trim())].filter(Boolean))
+  );
 };
 
 const mapDraftPreviewToProduct = (
@@ -325,6 +440,7 @@ const collectProductCategoryLabels = (product: Product | null | undefined) => {
 
 export default function ProductDetailPage() {
   const variantTheme = useTemplateVariant();
+  const isPocoFood = variantTheme.key === "pocofood";
   const params = useParams();
   const pathname = usePathname();
   const router = useRouter();
@@ -383,10 +499,9 @@ export default function ProductDetailPage() {
 
     const loadBenefits = async () => {
       try {
-        const res = await fetch(
-          `${NEXT_PUBLIC_API_URL}/v1/templates/${vendorId}/social${query}`,
-          { cache: "no-store" }
-        );
+        const res = await fetch(`${API_BASE}/templates/${vendorId}/social${query}`, {
+          cache: "no-store",
+        });
         if (!res.ok) return;
         const json = await res.json().catch(() => null);
         const config = extractProductBenefitsConfig(json?.data || json);
@@ -398,6 +513,54 @@ export default function ProductDetailPage() {
 
     void loadBenefits();
   }, [vendorId, websiteIdFromPath]);
+
+  useEffect(() => {
+    if (!isPocoFood || !vendorId) return;
+    let active = true;
+
+    const loadFoodMenu = async () => {
+      if (active) {
+        setFoodLoading(true);
+        setFoodLoadError("");
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/vendors/${vendorId}/food-storefront`, {
+          cache: "no-store",
+        });
+        const data = await response.json().catch(() => null);
+
+        if (!active) return;
+
+        const items = Array.isArray(data?.data?.menu_items) ? data.data.menu_items : [];
+        const offers = Array.isArray(data?.data?.offers) ? data.data.offers : [];
+        const restaurant =
+          data?.data?.restaurant && typeof data.data.restaurant === "object"
+            ? data.data.restaurant
+            : null;
+        setFoodRestaurant(restaurant);
+        setFoodOffers(offers);
+        setFoodMenuItems(items);
+        if (!items.some((item: FoodMenuItem) => String(item?._id || "") === String(productId || ""))) {
+          setFoodLoadError("Food item not found.");
+        }
+      } catch {
+        if (active) {
+          setFoodRestaurant(null);
+          setFoodOffers([]);
+          setFoodMenuItems([]);
+          setFoodLoadError("Food item not found.");
+        }
+      } finally {
+        if (active) setFoodLoading(false);
+      }
+    };
+
+    void loadFoodMenu();
+    return () => {
+      active = false;
+    };
+  }, [isPocoFood, productId, vendorId]);
 
   const [product, setProduct] = useState<Product | null>(null);
   const [loading, setLoading] = useState(true);
@@ -413,6 +576,15 @@ export default function ProductDetailPage() {
     averageRating: 0,
     ratingsCount: 0,
   });
+  const [foodMenuItems, setFoodMenuItems] = useState<FoodMenuItem[]>([]);
+  const [foodRestaurant, setFoodRestaurant] = useState<FoodRestaurantProfile | null>(null);
+  const [foodOffers, setFoodOffers] = useState<FoodOffer[]>([]);
+  const [foodLoading, setFoodLoading] = useState(false);
+  const [foodLoadError, setFoodLoadError] = useState("");
+  const [selectedFoodVariantName, setSelectedFoodVariantName] = useState("");
+  const [selectedFoodAddons, setSelectedFoodAddons] = useState<string[]>([]);
+  const [selectedFoodImage, setSelectedFoodImage] = useState("");
+  const [foodWishlistIds, setFoodWishlistIds] = useState<string[]>([]);
 
   const isStudio = variantTheme.key === "studio";
   const isWhiteRose = variantTheme.key === "whiterose";
@@ -480,6 +652,11 @@ export default function ProductDetailPage() {
             : "fixed bottom-8 right-6 z-[60] h-12 rounded-full border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-900 shadow-[0_18px_45px_rgba(15,23,42,0.14)] transition hover:-translate-y-0.5 hover:bg-slate-50 md:right-8";
 
   useEffect(() => {
+    if (isPocoFood) {
+      setLoading(false);
+      setProduct(null);
+      return;
+    }
     if (isDraftPreview) return;
     if (!productId) return;
     let active = true;
@@ -531,9 +708,10 @@ export default function ProductDetailPage() {
     return () => {
       active = false;
     };
-  }, [productId, effectiveCitySlug, isDraftPreview]);
+  }, [effectiveCitySlug, isDraftPreview, isPocoFood, productId]);
 
   useEffect(() => {
+    if (isPocoFood) return;
     if (!isDraftPreview) return;
     if (!previewSessionId) {
       setLoading(false);
@@ -570,7 +748,7 @@ export default function ProductDetailPage() {
       window.clearTimeout(timeoutId);
       window.removeEventListener("message", handleMessage);
     };
-  }, [isDraftPreview, previewSessionId, productId]);
+  }, [isDraftPreview, isPocoFood, previewSessionId, productId]);
 
   useEffect(() => {
     setActiveTab("specifications");
@@ -719,6 +897,179 @@ export default function ProductDetailPage() {
     pathname: pathname || "/",
     suffix: "checkout/bag",
   });
+  const foodProduct = useMemo(
+    () =>
+      foodMenuItems.find(
+        (item) => String(item?._id || "").trim() === String(productId || "").trim()
+      ) || null,
+    [foodMenuItems, productId]
+  );
+  const selectedFoodVariant = useMemo(() => {
+    if (!foodProduct) return null;
+    const variants = Array.isArray(foodProduct.variants) ? foodProduct.variants : [];
+    return (
+      variants.find(
+        (variant) =>
+          String(variant?.name || "").trim().toLowerCase() ===
+          String(selectedFoodVariantName || "").trim().toLowerCase()
+      ) || getFoodPrimaryVariant(foodProduct)
+    );
+  }, [foodProduct, selectedFoodVariantName]);
+  const selectedFoodAddonRecords = useMemo(() => {
+    const addons = Array.isArray(foodProduct?.addons) ? foodProduct.addons : [];
+    return addons.filter((addon) =>
+      selectedFoodAddons.includes(String(addon?.name || "").trim())
+    );
+  }, [foodProduct, selectedFoodAddons]);
+  const foodPricing = useMemo(
+    () => getFoodFinalPrice(foodProduct, selectedFoodVariant?.name, selectedFoodAddonRecords),
+    [foodProduct, selectedFoodAddonRecords, selectedFoodVariant?.name]
+  );
+  const foodImageUrls = useMemo(() => getFoodMenuImages(foodProduct), [foodProduct]);
+  const relatedFoodProducts = useMemo(() => {
+    if (!foodProduct?._id) return [] as FoodMenuItem[];
+    const category = String(foodProduct?.category || "").trim().toLowerCase();
+    const items = foodMenuItems.filter((item) => String(item?._id || "") !== String(foodProduct._id));
+    const sameCategory = items.filter(
+      (item) => String(item?.category || "").trim().toLowerCase() === category
+    );
+    return (sameCategory.length ? sameCategory : items).slice(0, 4);
+  }, [foodMenuItems, foodProduct]);
+  const foodOfferBadge = useMemo(() => {
+    const offer = foodOffers[0];
+    if (!offer) return "";
+    if (toNumber(offer.discount_percent) > 0) return `${toNumber(offer.discount_percent)}% OFF`;
+    if (toNumber(offer.flat_discount) > 0) return `Save Rs. ${toNumber(offer.flat_discount)}`;
+    if (offer.free_item_name) return `${offer.free_item_name} Free`;
+    if (offer.offer_title) return String(offer.offer_title).trim();
+    return "";
+  }, [foodOffers]);
+  const foodEstimatedDelivery = useMemo(() => {
+    const prep = toNumber(foodRestaurant?.average_preparation_time || foodProduct?.prep_time_minutes);
+    const min = Math.max(prep + 10, 20);
+    const max = Math.max(min + 10, 30);
+    return `${min}-${max} mins`;
+  }, [foodProduct?.prep_time_minutes, foodRestaurant?.average_preparation_time]);
+  const foodSavings = Math.max(0, toNumber(foodPricing.actualPrice) - toNumber(foodPricing.finalPrice));
+
+  useEffect(() => {
+    if (!foodProduct) {
+      setSelectedFoodVariantName("");
+      setSelectedFoodAddons([]);
+      setSelectedFoodImage("");
+      setQuantity(1);
+      return;
+    }
+
+    const primary = getFoodPrimaryVariant(foodProduct);
+    setSelectedFoodVariantName(String(primary?.name || "").trim());
+    setSelectedFoodAddons([]);
+    setSelectedFoodImage(getFoodMenuImages(foodProduct)[0] || "");
+    setQuantity(1);
+  }, [foodProduct?._id]);
+
+  useEffect(() => {
+    if (!isPocoFood || typeof window === "undefined") return;
+
+    const syncWishlist = () => {
+      setFoodWishlistIds(readPocoFoodWishlist(vendorId).map((item) => item.product_id));
+    };
+
+    syncWishlist();
+    window.addEventListener("pocofood-wishlist-updated", syncWishlist);
+    window.addEventListener("storage", syncWishlist);
+
+    return () => {
+      window.removeEventListener("pocofood-wishlist-updated", syncWishlist);
+      window.removeEventListener("storage", syncWishlist);
+    };
+  }, [isPocoFood, vendorId]);
+
+  const toggleFoodWishlist = () => {
+    if (!foodProduct?._id) return;
+    const nextProductId = String(foodProduct._id);
+    const currentItems = readPocoFoodWishlist(vendorId);
+    const exists = currentItems.some((item) => item.product_id === nextProductId);
+    const href = buildTemplateScopedPath({
+      vendorId,
+      pathname: pathname || "/",
+      suffix: `product/${nextProductId}`,
+    });
+    const nextItems = exists
+      ? currentItems.filter((item) => item.product_id !== nextProductId)
+      : [
+          {
+            product_id: nextProductId,
+            product_name: String(foodProduct.item_name || "Food item"),
+            category: String(foodProduct.category || ""),
+            image_url: selectedFoodImage || getFoodMenuImages(foodProduct)[0] || "",
+            price: foodPricing.finalPrice,
+            href,
+            added_at: new Date().toISOString(),
+          } satisfies PocoFoodWishlistItem,
+          ...currentItems.filter((item) => item.product_id !== nextProductId),
+        ];
+
+    writePocoFoodWishlist(vendorId, nextItems);
+    setFoodWishlistIds(nextItems.map((item) => item.product_id));
+    setMessage(exists ? "Removed from wishlist." : "Added to wishlist.");
+  };
+
+  const handleFoodAddonToggle = (addonName: string) => {
+    setSelectedFoodAddons((current) =>
+      current.includes(addonName)
+        ? current.filter((item) => item !== addonName)
+        : [...current, addonName]
+    );
+  };
+
+  const handleAddFoodToCart = async () => {
+    if (!vendorId || !foodProduct?._id) return;
+
+    const auth = getTemplateAuth(vendorId);
+    if (!auth) {
+      router.push(`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`);
+      return;
+    }
+
+    setAdding(true);
+    setMessage("");
+    try {
+      await templateApiFetch(vendorId, "/cart", {
+        method: "POST",
+        body: JSON.stringify({
+          item_type: "food",
+          food_menu_item_id: foodProduct._id,
+          quantity,
+          variant_name: String(selectedFoodVariant?.name || "").trim() || undefined,
+          selected_addons: selectedFoodAddonRecords.map((addon) => ({
+            name: String(addon?.name || "").trim(),
+            price: toNumber(addon?.price),
+            is_free: Boolean(addon?.is_free),
+          })),
+        }),
+      });
+
+      trackAddToCart({
+        vendorId,
+        userId: auth?.user?.id,
+        productId: String(foodProduct._id),
+        productName: foodProduct.item_name,
+        productPrice: foodPricing.finalPrice,
+        quantity,
+      });
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("template-cart-updated"));
+      }
+
+      setMessage("Food item added to cart");
+    } catch (error: any) {
+      setMessage(error?.message || "Failed to add food item");
+    } finally {
+      setAdding(false);
+    }
+  };
 
   const summarySpecs = useMemo(() => {
     const rows: Array<[string, string]> = [];
@@ -890,6 +1241,401 @@ export default function ProductDetailPage() {
       setAdding(false);
     }
   };
+
+  if (isPocoFood) {
+    if (foodLoading) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">Loading food item...</div>
+        </div>
+      );
+    }
+
+    if (!foodProduct) {
+      return (
+        <div className="flex min-h-screen items-center justify-center">
+          <div className="text-gray-500">{foodLoadError || "Food item not found."}</div>
+        </div>
+      );
+    }
+
+    const isFoodWishlisted = foodWishlistIds.includes(String(foodProduct._id || ""));
+
+    return (
+      <div className="min-h-screen bg-[#faf7f1] pb-24 text-[#1f1720] lg:pb-0">
+        <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
+          <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8b6d58]">
+            <Link href={buildTemplateScopedPath({ vendorId, pathname: pathname || "/", suffix: "menu" })}>
+              Menu
+            </Link>
+            <span>/</span>
+            <span className="text-[#c06f22]">{foodProduct.category || "Food item"}</span>
+          </div>
+
+          <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.92fr)_420px] xl:grid-cols-[minmax(0,0.9fr)_440px]">
+            <div className="self-start overflow-hidden rounded-3xl border border-[#eadfce] bg-white shadow-[0_18px_45px_rgba(80,47,22,0.08)]">
+              <div className="relative flex aspect-[4/3] items-center justify-center overflow-hidden bg-[#fffaf2] sm:aspect-[16/9] lg:h-[340px] lg:aspect-auto">
+                <div className="absolute inset-x-0 top-0 h-32 bg-[radial-gradient(circle_at_top,rgba(245,182,56,0.26),transparent_72%)]" />
+                {foodOfferBadge ? (
+                  <span className="absolute left-5 top-5 z-10 rounded-full bg-[#1f1720] px-4 py-2 text-xs font-semibold uppercase tracking-[0.18em] text-white shadow-lg">
+                    {foodOfferBadge}
+                  </span>
+                ) : null}
+                {selectedFoodImage ? (
+                  <img
+                    src={selectedFoodImage}
+                    alt={foodProduct.item_name || "Food item"}
+                    className="relative z-[1] h-full w-full object-cover"
+                  />
+                ) : (
+                  <div className="text-sm uppercase tracking-[0.28em] text-[#b39a87]">No Image</div>
+                )}
+              </div>
+
+              {foodImageUrls.length > 1 ? (
+                <div className="flex gap-3 overflow-x-auto border-t border-[#f0e3d3] bg-white p-4">
+                  {foodImageUrls.slice(0, 4).map((image, index) => (
+                    <button
+                      key={`${image}-${index}`}
+                      type="button"
+                      onClick={() => setSelectedFoodImage(image)}
+                      className={`h-20 w-24 shrink-0 overflow-hidden rounded-2xl border transition ${
+                        selectedFoodImage === image
+                          ? "border-[#1f1720] ring-2 ring-[#f5d493]"
+                          : "border-[#eadfce] hover:border-[#c97b38]"
+                      }`}
+                    >
+                      <img
+                        src={image}
+                        alt={`${foodProduct.item_name || "Food item"} ${index + 1}`}
+                        className="h-full w-full object-cover"
+                      />
+                    </button>
+                  ))}
+                </div>
+              ) : null}
+
+              <div className="border-t border-[#f0e3d3] bg-white p-4">
+                <div className="grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-[#f0e3d3] bg-[#fffaf2] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
+                      Estimated delivery
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-[#1f1720]">{foodEstimatedDelivery}</p>
+                    <p className="mt-1 text-sm leading-6 text-[#7b685b]">Prep plus nearby rider dispatch included.</p>
+                  </div>
+                  <div className="rounded-2xl border border-[#f0e3d3] bg-[#fffaf2] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
+                      Your savings
+                    </p>
+                    <p className="mt-2 text-2xl font-extrabold text-[#1f1720]">
+                      {foodSavings > 0 ? formatCurrency(foodSavings) : "Fresh price"}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-[#7b685b]">
+                      {foodSavings > 0 ? "Discount already included in this dish." : "No active discount on this dish."}
+                    </p>
+                  </div>
+                </div>
+
+                <div className="mt-3 rounded-2xl border border-[#f0e3d3] bg-[linear-gradient(135deg,#fffaf2,#ffffff)] p-4">
+                  <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+                    <div>
+                      <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
+                        Restaurant
+                      </p>
+                      <h3 className="mt-1 text-xl font-bold text-[#1f1720]">
+                        {String(foodRestaurant?.restaurant_name || "Your restaurant").trim()}
+                      </h3>
+                      <p className="mt-1 text-sm text-[#7b685b]">
+                        Call {String(foodRestaurant?.mobile || "").trim() || "for live order support"}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap gap-2 text-sm">
+                      <span className="rounded-full bg-white px-3 py-1 text-[#6b584a] shadow-sm">
+                        Fast kitchen prep
+                      </span>
+                      <span className="rounded-full bg-white px-3 py-1 text-[#6b584a] shadow-sm">
+                        Secure checkout
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                  <div className="rounded-2xl border border-[#f3e7d9] bg-[linear-gradient(135deg,#fff9f0,#ffffff)] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
+                      Dish Notes
+                    </p>
+                    <p className="mt-2 text-sm leading-7 text-[#6e5a4c]">
+                      {String(foodProduct.description || "").trim() ||
+                        "Freshly prepared dish with your selected customization options."}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl border border-[#f3e7d9] bg-[linear-gradient(135deg,#fff9f0,#ffffff)] p-4">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
+                      Order info
+                    </p>
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
+                        Min {formatCurrency(toNumber(foodRestaurant?.minimum_order_amount) || foodPricing.finalPrice)}
+                      </span>
+                      <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
+                        {toNumber(foodRestaurant?.delivery_radius_km) || 5} km radius
+                      </span>
+                      <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
+                        Easy checkout
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="rounded-3xl border border-[#eadfce] bg-white p-5 shadow-[0_18px_45px_rgba(80,47,22,0.1)] lg:sticky lg:top-28 lg:self-start">
+              <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#b46a2d]">
+                {foodProduct.category || "Menu item"}
+              </p>
+              <h1 className="mt-3 text-2xl font-extrabold leading-tight tracking-tight text-[#111827] sm:text-3xl">
+                {foodProduct.item_name || "Untitled food item"}
+              </h1>
+
+              <div className="mt-3 flex flex-wrap gap-2 text-sm">
+                <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-[#8f5b31]">
+                  {foodProduct.food_type === "veg" ? "Veg" : foodProduct.food_type === "non_veg" ? "Non-veg" : "Food"}
+                </span>
+                <span className="rounded-full bg-[#f8efe3] px-3 py-1 text-[#735c4b]">
+                  Prep {toNumber(foodProduct.prep_time_minutes) || 15} mins
+                </span>
+                <span className="rounded-full bg-[#f8efe3] px-3 py-1 text-[#735c4b]">
+                  {foodProduct.is_available === false ? "Currently unavailable" : "Available now"}
+                </span>
+              </div>
+
+              <p className="mt-4 text-sm leading-7 text-[#5f534e]">
+                {String(foodProduct.description || "").trim() || "Freshly prepared menu item from your restaurant."}
+              </p>
+
+              <div className="mt-5 flex items-end gap-3 border-b border-[#f0e3d3] pb-5">
+                <p className="text-3xl font-extrabold text-[#1f1720]">{formatCurrency(foodPricing.finalPrice)}</p>
+                {foodPricing.actualPrice > foodPricing.finalPrice ? (
+                  <p className="pb-1 text-lg text-[#ab9482] line-through">
+                    {formatCurrency(foodPricing.actualPrice)}
+                  </p>
+                ) : null}
+              </div>
+
+              {Array.isArray(foodProduct.variants) && foodProduct.variants.length > 0 ? (
+                <div className="mt-6">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#907a69]">
+                    Choose variant
+                  </h2>
+                  <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                    {foodProduct.variants.map((variant, index) => {
+                      const name = String(variant?.name || `Variant ${index + 1}`).trim();
+                      const isSelected =
+                        name.toLowerCase() === String(selectedFoodVariant?.name || "").trim().toLowerCase();
+                      const variantPricing = getFoodFinalPrice(foodProduct, name);
+
+                      return (
+                        <button
+                          key={`${name}-${index}`}
+                          type="button"
+                          onClick={() => setSelectedFoodVariantName(name)}
+                          className={`rounded-2xl border px-4 py-3 text-left transition ${
+                            isSelected
+                              ? "border-[#1f1720] bg-[#fff7eb]"
+                              : "border-[#eadfce] bg-white hover:border-[#c97b38]"
+                          }`}
+                        >
+                          <p className="font-semibold text-[#1f1720]">{name}</p>
+                          <p className="mt-1 text-sm text-[#7b685b]">
+                            {formatCurrency(variantPricing.finalPrice)}
+                            {variantPricing.actualPrice > variantPricing.finalPrice ? (
+                              <span className="ml-2 text-[#ab9482] line-through">
+                                {formatCurrency(variantPricing.actualPrice)}
+                              </span>
+                            ) : null}
+                          </p>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              {Array.isArray(foodProduct.addons) && foodProduct.addons.length > 0 ? (
+                <div className="mt-6">
+                  <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#907a69]">
+                    Add extras
+                  </h2>
+                  <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
+                    {foodProduct.addons.map((addon, index) => {
+                      const addonName = String(addon?.name || `Addon ${index + 1}`).trim();
+                      const checked = selectedFoodAddons.includes(addonName);
+                      return (
+                        <label
+                          key={`${addonName}-${index}`}
+                          className="flex cursor-pointer items-center justify-between rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3"
+                        >
+                          <div>
+                            <p className="font-medium text-[#1f1720]">{addonName}</p>
+                            <p className="text-sm text-[#7b685b]">
+                              {addon?.is_free ? "Free" : formatCurrency(toNumber(addon?.price))}
+                            </p>
+                          </div>
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={() => handleFoodAddonToggle(addonName)}
+                            className="h-4 w-4 rounded border-[#d7c2ac] text-[#c97b38] focus:ring-[#c97b38]"
+                          />
+                        </label>
+                      );
+                    })}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="mt-6 flex flex-col gap-3">
+                <div className="flex items-center justify-between gap-3">
+                  <div className="inline-flex h-12 items-center rounded-full border border-[#eadfce] bg-[#fffdf9]">
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((current) => Math.max(1, current - 1))}
+                    className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
+                    aria-label="Decrease quantity"
+                  >
+                    <Minus size={18} />
+                  </button>
+                  <span className="min-w-[42px] text-center text-lg font-extrabold">{quantity}</span>
+                  <button
+                    type="button"
+                    onClick={() => setQuantity((current) => current + 1)}
+                    className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
+                    aria-label="Increase quantity"
+                  >
+                    <Plus size={18} />
+                  </button>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b7d68]">Total</p>
+                    <p className="text-2xl font-extrabold text-[#1f1720]">
+                      {formatCurrency(foodPricing.finalPrice * quantity)}
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  type="button"
+                  disabled={adding || foodProduct.is_available === false}
+                  onClick={handleAddFoodToCart}
+                  className="inline-flex w-full items-center justify-center rounded-full bg-[#f5b638] px-6 py-4 text-sm font-extrabold uppercase tracking-[0.12em] text-[#1f1720] transition hover:bg-[#efad24] disabled:cursor-not-allowed disabled:bg-slate-300"
+                >
+                  {adding ? "Adding..." : foodProduct.is_available === false ? "Unavailable" : "Add to cart"}
+                </button>
+                <button
+                  type="button"
+                  onClick={toggleFoodWishlist}
+                  className={`inline-flex w-full items-center justify-center gap-2 rounded-full border px-6 py-3 text-sm font-extrabold uppercase tracking-[0.12em] transition ${
+                    isFoodWishlisted
+                      ? "border-[#d94b2b] bg-[#fff3e2] text-[#d94b2b]"
+                      : "border-[#eadfce] bg-white text-[#1f1720] hover:border-[#d94b2b] hover:text-[#d94b2b]"
+                  }`}
+                >
+                  <Heart className={`h-4 w-4 ${isFoodWishlisted ? "fill-current" : ""}`} />
+                  {isFoodWishlisted ? "Saved" : "Wishlist"}
+                </button>
+              </div>
+
+              {message ? <p className="mt-4 text-sm text-[#7b685b]">{message}</p> : null}
+            </div>
+          </div>
+
+          <div className="mt-12">
+            <div className="mb-5 flex items-end justify-between gap-4">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.24em] text-[#b46a2d]">
+                  Same category
+                </p>
+                <h2 className="mt-2 text-2xl font-bold">Related food items</h2>
+              </div>
+            </div>
+
+            {relatedFoodProducts.length > 0 ? (
+              <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+                {relatedFoodProducts.map((item, index) => {
+                  const pricing = getFoodFinalPrice(item, getFoodPrimaryVariant(item)?.name);
+                  const relatedPath = buildTemplateScopedPath({
+                    vendorId,
+                    pathname: pathname || "/",
+                    suffix: `product/${item._id}`,
+                  });
+
+                  return (
+                    <Link
+                      key={String(item?._id || `related-food-${index}`)}
+                      href={relatedPath}
+                      className="overflow-hidden rounded-[1.6rem] border border-[#eadfce] bg-white shadow-[0_14px_32px_rgba(83,45,27,0.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(83,45,27,0.08)]"
+                    >
+                      <div className="h-52 overflow-hidden bg-[#fff8ef]">
+                        {getFoodMenuImages(item)[0] ? (
+                          <img
+                            src={getFoodMenuImages(item)[0]}
+                            alt={item.item_name || "Food item"}
+                            className="h-full w-full object-cover"
+                            loading="lazy"
+                          />
+                        ) : (
+                          <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.2em] text-[#b39a87]">
+                            No Image
+                          </div>
+                        )}
+                      </div>
+                      <div className="space-y-2 p-4">
+                        <p className="text-xs uppercase tracking-[0.18em] text-[#9a7d67]">
+                          {item.category || "Menu"}
+                        </p>
+                        <h3 className="line-clamp-2 text-lg font-semibold text-[#1f1720]">
+                          {item.item_name || "Untitled item"}
+                        </h3>
+                        <p className="text-lg font-bold text-[#1f1720]">{formatCurrency(pricing.finalPrice)}</p>
+                      </div>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="rounded-[1.6rem] border border-dashed border-[#eadfce] bg-white p-6 text-sm text-[#7b685b]">
+                Is category me aur food items abhi available nahi hain.
+              </div>
+            )}
+          </div>
+
+          <div className="fixed inset-x-0 bottom-0 z-30 border-t border-[#eadfce] bg-white/95 px-4 py-3 shadow-[0_-12px_35px_rgba(31,23,32,0.12)] backdrop-blur lg:hidden">
+            <div className="mx-auto flex max-w-3xl items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-extrabold text-[#111827]">
+                  {foodProduct.item_name || "Food item"}
+                </p>
+                <p className="text-xs font-semibold text-[#6f5b4b]">
+                  {quantity} qty - {formatCurrency(foodPricing.finalPrice * quantity)}
+                </p>
+              </div>
+
+              <button
+                type="button"
+                disabled={adding || foodProduct.is_available === false}
+                onClick={handleAddFoodToCart}
+                className="shrink-0 rounded-full bg-[#1f1720] px-5 py-3 text-xs font-extrabold uppercase tracking-[0.1em] text-white transition hover:bg-[#32252d] disabled:cursor-not-allowed disabled:bg-slate-300"
+              >
+                {adding ? "Adding..." : "Add"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (loading) {
     return (

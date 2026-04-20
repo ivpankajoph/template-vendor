@@ -22,6 +22,8 @@ import {
 type TemplateCartItem = {
   _id: string;
   image_url?: string;
+  item_type?: "product" | "food";
+  product_name?: string;
 };
 
 type TemplateCart = {
@@ -39,6 +41,8 @@ type TemplateAddress = {
   city: string;
   state: string;
   pincode: string;
+  landmark?: string;
+  delivery_instructions?: string;
 };
 
 type AddressForm = {
@@ -50,6 +54,8 @@ type AddressForm = {
   city: string;
   state: string;
   pincode: string;
+  landmark: string;
+  delivery_instructions: string;
 };
 
 const DEFAULT_FORM: AddressForm = {
@@ -61,6 +67,8 @@ const DEFAULT_FORM: AddressForm = {
   city: "",
   state: "",
   pincode: "",
+  landmark: "",
+  delivery_instructions: "",
 };
 
 const getEstimateDate = () => {
@@ -204,6 +212,8 @@ export default function TemplateCheckoutAddressPageClient() {
       city: address.city || "",
       state: address.state || "",
       pincode: address.pincode || "",
+      landmark: address.landmark || "",
+      delivery_instructions: address.delivery_instructions || "",
     });
     setIsFormOpen(true);
   };
@@ -374,6 +384,16 @@ export default function TemplateCheckoutAddressPageClient() {
                         <p className="text-xl text-slate-700">
                           {address.city}, {address.state} - {address.pincode}
                         </p>
+                        {address.landmark ? (
+                          <p className="text-sm text-slate-500">
+                            Landmark: {address.landmark}
+                          </p>
+                        ) : null}
+                        {address.delivery_instructions ? (
+                          <p className="text-sm text-slate-500">
+                            Instructions: {address.delivery_instructions}
+                          </p>
+                        ) : null}
                         <p className="mt-2 text-xl text-slate-900">
                           Mobile: {address.phone}
                         </p>
@@ -520,6 +540,27 @@ export default function TemplateCheckoutAddressPageClient() {
                     value={form.pincode}
                     onChange={onFormChange}
                     className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-slate-800">Landmark</label>
+                  <input
+                    name="landmark"
+                    value={form.landmark}
+                    onChange={onFormChange}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  />
+                </div>
+                <div className="space-y-2 sm:col-span-2">
+                  <label className="text-sm font-medium text-slate-800">
+                    Delivery Instructions
+                  </label>
+                  <input
+                    name="delivery_instructions"
+                    value={form.delivery_instructions}
+                    onChange={onFormChange}
+                    className="h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                    placeholder="e.g. Ring the bell once, leave at gate"
                   />
                 </div>
               </div>

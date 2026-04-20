@@ -18,13 +18,27 @@ export type TemplateAuthPayload = {
   };
 };
 
+const normalizeWebsiteId = (value?: string | null) => String(value || "").trim();
+
+const getTemplateWebsiteIdFromDocument = () => {
+  if (typeof document === "undefined") return "";
+
+  return normalizeWebsiteId(
+    document.body?.dataset?.templateWebsite ||
+      document.documentElement?.dataset?.templateWebsite ||
+      ""
+  );
+};
+
 const getCurrentTemplateWebsiteId = () => {
   if (typeof window === "undefined") return "";
   return (
     getTemplateWebsiteIdFromSearch(
       window.location.pathname,
       new URLSearchParams(window.location.search)
-    ) || ""
+    ) ||
+    getTemplateWebsiteIdFromDocument() ||
+    ""
   );
 };
 
@@ -37,8 +51,22 @@ const legacyStorageKey = (vendorId: string) => `template_auth_${vendorId}`;
 
 const storageKey = (vendorId: string, websiteId?: string) => {
   const normalizedWebsiteId =
-    String(websiteId || getCurrentTemplateWebsiteId() || "").trim() || "default";
+    normalizeWebsiteId(websiteId || getCurrentTemplateWebsiteId()) || "default";
   return `template_auth_${vendorId}_${normalizedWebsiteId}`;
+};
+
+const getVendorStorageKeys = (vendorId: string) => {
+  if (typeof window === "undefined") return [];
+
+  const keys: string[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (key?.startsWith(`template_auth_${vendorId}_`)) {
+      keys.push(key);
+    }
+  }
+
+  return keys;
 };
 
 const decodeJwtPayload = (token: string): { exp?: number } | null => {
@@ -89,20 +117,50 @@ const redirectToTemplateLogin = (vendorId: string) => {
 
 export const getTemplateAuth = (vendorId: string): TemplateAuthPayload | null => {
   if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem(storageKey(vendorId));
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as TemplateAuthPayload;
-  } catch {
-    return null;
+  const currentWebsiteId = normalizeWebsiteId(getCurrentTemplateWebsiteId());
+
+  const candidateKeys = [
+    storageKey(vendorId),
+    storageKey(vendorId, getTemplateWebsiteIdFromDocument()),
+    legacyStorageKey(vendorId),
+    ...getVendorStorageKeys(vendorId),
+  ].filter((value, index, array) => Boolean(value) && array.indexOf(value) === index);
+
+  const parsedPayloads: TemplateAuthPayload[] = [];
+
+  for (const key of candidateKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
+
+    try {
+      const payload = JSON.parse(raw) as TemplateAuthPayload;
+      parsedPayloads.push(payload);
+      const payloadWebsiteId = normalizeWebsiteId(payload?.user?.website_id);
+      const payloadWebsiteSlug = normalizeWebsiteId(payload?.user?.website_slug);
+      if (
+        currentWebsiteId &&
+        (payloadWebsiteId === currentWebsiteId || payloadWebsiteSlug === currentWebsiteId)
+      ) {
+        return payload;
+      }
+    } catch {
+      localStorage.removeItem(key);
+    }
   }
+
+  return parsedPayloads[0] || null;
 };
 
 export const setTemplateAuth = (vendorId: string, payload: TemplateAuthPayload) => {
   if (typeof window === "undefined") return;
-  const websiteId = String(getCurrentTemplateWebsiteId() || "").trim();
+  const routeWebsiteId = getCurrentTemplateWebsiteId();
+  const websiteId =
+    normalizeWebsiteId(payload?.user?.website_id) || routeWebsiteId;
   localStorage.removeItem(legacyStorageKey(vendorId));
   localStorage.setItem(storageKey(vendorId, websiteId), JSON.stringify(payload));
+  if (routeWebsiteId && routeWebsiteId !== websiteId) {
+    localStorage.setItem(storageKey(vendorId, routeWebsiteId), JSON.stringify(payload));
+  }
   window.dispatchEvent(
     new CustomEvent("template-auth-updated", { detail: { vendorId, websiteId } })
   );
@@ -110,8 +168,11 @@ export const setTemplateAuth = (vendorId: string, payload: TemplateAuthPayload) 
 
 export const clearTemplateAuth = (vendorId: string) => {
   if (typeof window === "undefined") return;
-  localStorage.removeItem(storageKey(vendorId));
   localStorage.removeItem(legacyStorageKey(vendorId));
+  getVendorStorageKeys(vendorId).forEach((key) => {
+    localStorage.removeItem(key);
+  });
+  localStorage.removeItem(storageKey(vendorId));
   window.dispatchEvent(
     new CustomEvent("template-auth-updated", { detail: { vendorId } })
   );
@@ -132,10 +193,7 @@ export const templateApiFetch = async (
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
   if (typeof window !== "undefined") {
-    const websiteId = getTemplateWebsiteIdFromSearch(
-      window.location.pathname,
-      new URLSearchParams(window.location.search)
-    );
+    const websiteId = getCurrentTemplateWebsiteId();
     if (websiteId) {
       headers.set("x-template-website", websiteId);
     }
@@ -155,8 +213,19 @@ export const templateApiFetch = async (
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(error?.message || "Request failed");
+    const errorText = await response.text().catch(() => "");
+    let errorMessage = "";
+
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText);
+        errorMessage = String(parsed?.message || parsed?.error || "").trim();
+      } catch {
+        errorMessage = errorText.trim();
+      }
+    }
+
+    throw new Error(errorMessage || `Request failed (${response.status})`);
   }
 
   return response.json();

@@ -17,6 +17,7 @@ import {
   clearTemplateCheckoutSession,
   formatAmount,
   getTemplateCheckoutAddressId,
+  getTemplateCheckoutCouponCode,
   getTemplateCheckoutPaymentMethod,
   saveTemplateCheckoutAddressId,
   saveTemplateCheckoutPaymentMethod,
@@ -38,6 +39,9 @@ type TemplateAddress = {
 
 type TemplateCartItem = {
   _id: string;
+  item_type?: "product" | "food";
+  product_id?: string;
+  food_menu_item_id?: string;
   product_name: string;
   quantity: number;
   total_price: number;
@@ -46,6 +50,22 @@ type TemplateCartItem = {
 type TemplateCart = {
   items: TemplateCartItem[];
   subtotal: number;
+};
+
+type TemplateOrderSummary = {
+  _id: string;
+  order_number?: string;
+  status?: string;
+  payment_method?: string;
+  payment_status?: string;
+  total?: number;
+};
+
+type OfferSummary = {
+  total_discount: number;
+  final_total: number;
+  applied_auto_offer?: { offer_title?: string; discount_amount?: number } | null;
+  applied_coupon_offer?: { offer_title?: string; discount_amount?: number; coupon_code?: string } | null;
 };
 
 const loadRazorpayScript = () =>
@@ -64,6 +84,8 @@ export default function TemplateCheckoutPaymentPageClient() {
   const vendorId = params.vendor_id as string;
   const router = useRouter();
   const auth = getTemplateAuth(vendorId);
+  const authToken = auth?.token || "";
+  const homePath = buildTemplateScopedPath({ vendorId, suffix: "" });
   const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
   const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
   const ordersPath = buildTemplateScopedPath({ vendorId, suffix: "orders" });
@@ -80,24 +102,32 @@ export default function TemplateCheckoutPaymentPageClient() {
   const [shippingFee, setShippingFee] = useState(0);
   const [shippingLoading, setShippingLoading] = useState(false);
   const [shippingError, setShippingError] = useState("");
+  const [offerSummary, setOfferSummary] = useState<OfferSummary | null>(null);
+  const [couponCode, setCouponCode] = useState("");
 
   const [paymentProcessing, setPaymentProcessing] = useState(false);
   const [error, setError] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
   const [orderCompleted, setOrderCompleted] = useState(false);
+  const [latestOrder, setLatestOrder] = useState<TemplateOrderSummary | null>(null);
 
   const loadData = async () => {
     try {
       setLoading(true);
       setError("");
-      const [cartResponse, addressResponse] = await Promise.all([
+      const [cartResponse, addressResponse, ordersResponse] = await Promise.all([
         templateApiFetch(vendorId, "/cart"),
         templateApiFetch(vendorId, "/addresses"),
+        templateApiFetch(vendorId, "/orders"),
       ]);
       const nextCart = cartResponse?.cart || null;
       const nextAddresses = addressResponse?.addresses || [];
+      const nextOrders = Array.isArray(ordersResponse?.orders)
+        ? ordersResponse.orders
+        : [];
       setCart(nextCart);
       setAddresses(nextAddresses);
+      setLatestOrder(nextOrders[0] || null);
 
       const storedAddressId = getTemplateCheckoutAddressId(vendorId);
       const selected =
@@ -107,6 +137,7 @@ export default function TemplateCheckoutPaymentPageClient() {
       setSelectedAddressId(selected);
       saveTemplateCheckoutAddressId(vendorId, selected);
       setPaymentMethod(getTemplateCheckoutPaymentMethod(vendorId));
+      setCouponCode(getTemplateCheckoutCouponCode(vendorId));
     } catch (err: any) {
       setError(err?.message || "Failed to load payment data");
       setCart(null);
@@ -116,12 +147,12 @@ export default function TemplateCheckoutPaymentPageClient() {
   };
 
   useEffect(() => {
-    if (!auth) {
+    if (!authToken) {
       setLoading(false);
       return;
     }
     loadData();
-  }, [vendorId]);
+  }, [authToken, vendorId]);
 
   useEffect(() => {
     saveTemplateCheckoutPaymentMethod(vendorId, paymentMethod);
@@ -159,6 +190,29 @@ export default function TemplateCheckoutPaymentPageClient() {
     fetchShippingQuote(selectedAddressId, paymentMethod);
   }, [selectedAddressId, paymentMethod]);
 
+  useEffect(() => {
+    if (!authToken || !cart?.items?.length) {
+      setOfferSummary(null);
+      return;
+    }
+
+    const previewOffers = async () => {
+      try {
+        const response = await templateApiFetch(vendorId, "/cart/offers/preview", {
+          method: "POST",
+          body: JSON.stringify({
+            coupon_code: getTemplateCheckoutCouponCode(vendorId),
+          }),
+        });
+        setOfferSummary(response?.summary || null);
+      } catch {
+        setOfferSummary(null);
+      }
+    };
+
+    void previewOffers();
+  }, [authToken, cart?.items?.length, cart?.subtotal, vendorId]);
+
   const selectedAddress = useMemo(
     () => addresses.find((item) => item._id === selectedAddressId),
     [addresses, selectedAddressId],
@@ -166,7 +220,9 @@ export default function TemplateCheckoutPaymentPageClient() {
 
   const subtotal = Number(cart?.subtotal || 0);
   const orderItems = cart?.items || [];
-  const totalAmount = subtotal + shippingFee;
+  const totalDiscount = Number(offerSummary?.total_discount || 0);
+  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
+  const totalAmount = discountedSubtotal + shippingFee;
 
   const handleRazorpayPayment = async (order: any, payment: any) => {
     const loaded = await loadRazorpayScript();
@@ -243,17 +299,22 @@ export default function TemplateCheckoutPaymentPageClient() {
     try {
       setPaymentProcessing(true);
       setError("");
+      const normalizedCouponCode = couponCode.trim().toUpperCase();
+      const orderPayload: Record<string, unknown> = {
+        address_id: selectedAddressId,
+        payment_method: paymentMethod,
+        shipping_fee: shippingFee,
+        notes: "",
+        delivery_provider: "borzo",
+      };
+
+      if (normalizedCouponCode) {
+        orderPayload.coupon_code = normalizedCouponCode;
+      }
 
       const orderResponse = await templateApiFetch(vendorId, "/orders", {
         method: "POST",
-        body: JSON.stringify({
-          address_id: selectedAddressId,
-          payment_method: paymentMethod,
-          shipping_fee: shippingFee,
-          discount: 0,
-          notes: "",
-          delivery_provider: "borzo",
-        }),
+        body: JSON.stringify(orderPayload),
       });
 
       if (paymentMethod === "razorpay") {
@@ -330,17 +391,58 @@ export default function TemplateCheckoutPaymentPageClient() {
   }
 
   if (!loading && orderItems.length === 0) {
+    const paymentFailed = latestOrder?.payment_method === "razorpay" &&
+      latestOrder?.payment_status === "failed";
+    const paymentPending = latestOrder?.payment_method === "razorpay" &&
+      !["paid", "failed"].includes(String(latestOrder?.payment_status || "").toLowerCase());
+
     return (
       <TemplateCheckoutShell vendorId={vendorId} activeStep="payment">
         <div className="min-h-[60vh] flex items-center justify-center">
-          <div className="w-full max-w-md rounded-lg border border-slate-200 bg-white p-6 text-center">
-            <p className="text-lg font-semibold text-slate-900">Your bag is empty.</p>
-            <button
-              onClick={() => router.push(bagPath)}
-              className="mt-4 rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
-            >
-              Go To Bag
-            </button>
+          <div className="w-full max-w-xl rounded-lg border border-slate-200 bg-white p-6 text-center shadow-sm">
+            <p className="text-lg font-semibold text-slate-900">
+              {paymentFailed
+                ? "Payment was not completed."
+                : paymentPending
+                  ? "Payment is still being processed."
+                  : latestOrder?._id
+                    ? "This checkout has already been processed."
+                    : "Your bag is empty."}
+            </p>
+            <p className="mt-2 text-sm text-slate-600">
+              {latestOrder?._id
+                ? `Order ${latestOrder.order_number || ""} is currently ${String(
+                    paymentFailed
+                      ? latestOrder.payment_status || "failed"
+                      : latestOrder.status || latestOrder.payment_status || "created",
+                  )
+                    .replaceAll("_", " ")
+                    .toLowerCase()}.`
+                : "Add items to your bag to continue checkout."}
+            </p>
+            <div className="mt-5 flex flex-col justify-center gap-3 sm:flex-row">
+              {latestOrder?._id ? (
+                <button
+                  onClick={() => router.push(ordersPath)}
+                  className="rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  View Orders
+                </button>
+              ) : (
+                <button
+                  onClick={() => router.push(bagPath)}
+                  className="rounded-md bg-slate-900 px-5 py-2.5 text-sm font-semibold text-white"
+                >
+                  Go To Bag
+                </button>
+              )}
+              <button
+                onClick={() => router.push(homePath)}
+                className="rounded-md border border-slate-300 px-5 py-2.5 text-sm font-semibold text-slate-700"
+              >
+                Continue Shopping
+              </button>
+            </div>
           </div>
         </div>
       </TemplateCheckoutShell>
@@ -524,6 +626,22 @@ export default function TemplateCheckoutPaymentPageClient() {
               <span>Total MRP</span>
               <span>{formatAmount(subtotal)}</span>
             </div>
+            {offerSummary?.applied_auto_offer ? (
+              <div className="flex items-center justify-between text-emerald-700">
+                <span>{offerSummary.applied_auto_offer.offer_title}</span>
+                <span>
+                  -{formatAmount(Number(offerSummary.applied_auto_offer.discount_amount || 0))}
+                </span>
+              </div>
+            ) : null}
+            {offerSummary?.applied_coupon_offer ? (
+              <div className="flex items-center justify-between text-emerald-700">
+                <span>Coupon {offerSummary.applied_coupon_offer.coupon_code || ""}</span>
+                <span>
+                  -{formatAmount(Number(offerSummary.applied_coupon_offer.discount_amount || 0))}
+                </span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between">
               <span>Delivery Fee (Borzo)</span>
               <span>

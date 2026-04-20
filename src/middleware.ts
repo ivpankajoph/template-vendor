@@ -30,6 +30,7 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "subcategory",
   "terms",
   "website",
+  "wishlist",
 ]);
 
 const normalizeSlug = (value?: string) =>

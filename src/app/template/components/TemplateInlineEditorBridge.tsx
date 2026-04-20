@@ -40,13 +40,44 @@ const inferPage = (pathname: string | null): PageKey | null => {
   const cleanPath = pathname.split("?")[0];
   const segments = cleanPath.split("/").filter(Boolean);
   if (segments[0] !== "template") return null;
-  if (segments.length === 2) return "home";
 
   // Supports both:
-  // 1) /template/:vendor_id/:page?
-  // 2) /template/:vendor_id/preview/:template_key/:page?
+  // 1) /template/:vendor_id/:city?/website/:website_id?/:page?
+  // 2) /template/:vendor_id/preview/:template_key/:city?/website/:website_id?/:page?
   const isPreviewPath = segments[2] === "preview" && Boolean(segments[3]);
-  const pageSegment = isPreviewPath ? segments[4] : segments[2];
+  let index = isPreviewPath ? 4 : 2;
+  const knownPageSegments = new Set([
+    "about",
+    "all-products",
+    "blog",
+    "cart",
+    "category",
+    "checkout",
+    "contact",
+    "login",
+    "orders",
+    "page",
+    "privacy",
+    "product",
+    "profile",
+    "register",
+    "shipping-return-policy",
+    "subcategory",
+    "terms",
+    "website",
+    "wishlist",
+  ]);
+
+  const candidate = (segments[index] || "").toLowerCase();
+  if (candidate && !knownPageSegments.has(candidate)) {
+    index += 1;
+  }
+
+  if (segments[index] === "website" && segments[index + 1]) {
+    index += 2;
+  }
+
+  const pageSegment = segments[index];
 
   if (!pageSegment) return "home";
   if (pageSegment === "about") return "about";
@@ -54,6 +85,45 @@ const inferPage = (pathname: string | null): PageKey | null => {
   if (pageSegment === "home") return "home";
   return "full";
 };
+
+const looksLikeImagePath = (path: string[]) => {
+  const joined = path.join(".").toLowerCase();
+  return (
+    joined.includes("image") ||
+    joined.includes("banner") ||
+    joined.includes("thumbnail") ||
+    joined.endsWith(".logo") ||
+    joined.includes(".logo.")
+  );
+};
+
+const looksLikeColorPath = (path: string[]) => {
+  const joined = path.join(".").toLowerCase();
+  return (
+    joined.includes("color") ||
+    joined.includes("background") ||
+    joined.includes("accent") ||
+    joined.includes("surface") ||
+    joined.includes("border")
+  );
+};
+
+const looksLikeNumericStylePath = (path: string[]) => {
+  const joined = path.join(".").toLowerCase();
+  return (
+    joined.includes("opacity") ||
+    joined.includes("size") ||
+    joined.includes("scale")
+  );
+};
+
+const canInlineEditPath = (path: string[] | null) =>
+  Boolean(
+    path?.length &&
+      !looksLikeImagePath(path) &&
+      !looksLikeColorPath(path) &&
+      !looksLikeNumericStylePath(path)
+  );
 
 const inferSectionFromPath = (page: PageKey, path: string[]) => {
   const joined = path.join(".");
@@ -709,16 +779,19 @@ export function TemplateInlineEditorBridge() {
         (selectedPath?.length ? selectedPath.join(".") : "");
 
       const editableHost =
-        explicitPathNode ||
-        textHost ||
-        (target.matches(SELECTOR_TEXT_HOST) ? target : null);
+        selectedPath && canInlineEditPath(selectedPath)
+          ? explicitPathNode ||
+            textHost ||
+            (target.matches(SELECTOR_TEXT_HOST) ? target : null)
+          : null;
 
       return {
         host: editableHost,
         path: selectedPath,
         sectionId,
         componentId,
-        isImage: Boolean(imageHost),
+        isImage: Boolean(imageHost) || looksLikeImagePath(selectedPath || []),
+        canInlineEdit: canInlineEditPath(selectedPath),
       };
     };
 
@@ -743,7 +816,7 @@ export function TemplateInlineEditorBridge() {
         });
       }
 
-      if (selectionMeta.isImage) {
+      if (selectionMeta.isImage || !selectionMeta.canInlineEdit) {
         event.preventDefault();
         event.stopPropagation();
         return;

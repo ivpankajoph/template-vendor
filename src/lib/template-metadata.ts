@@ -28,6 +28,7 @@ type TemplateMetadataPage =
   | "checkout"
   | "orders"
   | "profile"
+  | "wishlist"
   | "login"
   | "register";
 
@@ -322,7 +323,9 @@ const fetchTemplatePreview = cache(
       ? `&website_id=${encodeURIComponent(resolvedWebsiteId)}`
       : "";
     const previewUrl = `${apiBase}/templates/${encodeURIComponent(vendorId)}/preview?${cityQuery}${websiteQuery}`;
-    const fallbackUrl = `${apiBase}/templates/template-all?vendor_id=${encodeURIComponent(vendorId)}&${cityQuery}${websiteQuery}`;
+    const fallbackUrl = `${apiBase}/templates/preview?vendor_id=${encodeURIComponent(
+      vendorId
+    )}&${cityQuery}${websiteQuery}`;
     const preferredEndpoint = metadataEndpointPreference.get(scopeKey);
     const endpointOrder =
       preferredEndpoint === "fallback"
@@ -675,6 +678,10 @@ export async function buildTemplateMetadata(
     profile: {
       title: `Profile | ${storeName}`,
       description: `Manage your profile and addresses in ${storeName}.`,
+    },
+    wishlist: {
+      title: `Wishlist | ${storeName}`,
+      description: `View your saved items from ${storeName}.`,
     },
     login: {
       title: `Login | ${storeName}`,

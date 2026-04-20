@@ -39,8 +39,22 @@ export const store = configureStore({
   reducer: persistedReducer,
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
+      immutableCheck: {
+        ignoredPaths: [
+          "alltemplatepage.data",
+          "alltemplatepage.products",
+          "vendorprofilepage.vendor",
+        ],
+        warnAfter: 96,
+      },
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredPaths: [
+          "alltemplatepage.data",
+          "alltemplatepage.products",
+          "vendorprofilepage.vendor",
+        ],
+        warnAfter: 96,
       },
     }),
 });

@@ -12,7 +12,7 @@ import {
   X,
 } from "lucide-react";
 import Link from "next/link";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { RootState } from "@/store";
 import { useParams, usePathname } from "next/navigation";
 import axios from "axios";
@@ -23,7 +23,12 @@ import { MquiqNavbar } from "./mquiq/MquiqNavbar";
 import { PoupqzNavbar } from "./poupqz/PoupqzNavbar";
 import { OragzeNavbar } from "./oragze/OragzeNavbar";
 import { WhiteRoseNavbar } from "./whiterose/WhiteRoseNavbar";
+import { PocoFoodNavbar } from "./pocofood/PocoFoodNavbar";
 import { buildTemplateScopedPath } from "@/lib/template-route";
+
+const selectNavbarTemplateState = (state: RootState) => ({
+  homepage: (state as any).alltemplatepage?.data,
+});
 
 export default function Navbar() {
   const variant = useTemplateVariant();
@@ -34,9 +39,7 @@ export default function Navbar() {
   const [cartCount, setCartCount] = useState(0);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
-  const { homepage } = useSelector((state: RootState) => ({
-    homepage: (state as any).alltemplatepage?.data,
-  }));
+  const { homepage } = useSelector(selectNavbarTemplateState, shallowEqual);
   const customPages =
     (homepage as any)?.components?.custom_pages?.filter(
       (page: any) => page?.isPublished !== false
@@ -61,7 +64,9 @@ export default function Navbar() {
   const isPoupqz = variant.key === "poupqz";
   const isOragze = variant.key === "oragze";
   const isWhiteRose = variant.key === "whiterose";
-  const isCustomVariant = isMquiq || isPoupqz || isOragze || isWhiteRose;
+  const isPocoFood = variant.key === "pocofood";
+  const isCustomVariant =
+    isMquiq || isPoupqz || isOragze || isWhiteRose || isPocoFood;
   const desktopLinkTone = isStudio
     ? "text-slate-100 hover:text-sky-300"
     : isTrend
@@ -199,6 +204,9 @@ export default function Navbar() {
   }
   if (isWhiteRose) {
     return <WhiteRoseNavbar />;
+  }
+  if (isPocoFood) {
+    return <PocoFoodNavbar />;
   }
 
   return (

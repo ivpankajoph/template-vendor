@@ -29,7 +29,8 @@ const initialState: TemplateState = {
   lastFetchedAt: null,
 };
 
-const BASE_URL = NEXT_PUBLIC_API_URL;
+const API_BASE_URL = String(NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
+const BASE_URL = API_BASE_URL.endsWith("/v1") ? API_BASE_URL : `${API_BASE_URL}/v1`;
 const REQUEST_TIMEOUT_MS = 8_000;
 const NOT_FOUND_RETRY_MS = 60 * 1000;
 const MIN_REQUEST_GAP_MS = 5_000;
@@ -109,9 +110,9 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
   const previewUrl = `${BASE_URL}/templates/${vendorId}/preview?city=${encodeURIComponent(
     normalizedCity
   )}${websiteQuery}`;
-  const fallbackUrl = `${BASE_URL}/templates/template-all?vendor_id=${vendorId}${websiteQuery}`;
-  const socialFaqUrl = `${BASE_URL}/v1/templates/social-faqs?vendor_id=${vendorId}${websiteQuery}`;
-  const socialFaqFallbackUrl = `${BASE_URL}/v1/templates/social-faqs/${vendorId}`;
+  const fallbackUrl = `${BASE_URL}/templates/preview?vendor_id=${encodeURIComponent(
+    vendorId
+  )}&city=${encodeURIComponent(normalizedCity)}${websiteQuery}`;
 
   const fetchPreview = async () => {
     const response = await axios.get(previewUrl, { timeout: REQUEST_TIMEOUT_MS });
@@ -125,86 +126,54 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
     return response.data;
   };
 
-  const mergeSocialFaqPayload = async (templateResponse: any) => {
+  const fetchVendorCatalogProducts = async () => {
     try {
-      const socialResponse = await axios.get(socialFaqUrl, {
+      const response = await axios.get(`${BASE_URL}/vendors/catalog/${vendorId}`, {
         timeout: REQUEST_TIMEOUT_MS,
       });
-      const socialPayload =
-        socialResponse?.data?.data ||
-        socialResponse?.data?.template ||
-        socialResponse?.data;
-      const socialPage =
-        socialPayload?.social_page || socialPayload?.components?.social_page;
-
-      if (!socialPage) return templateResponse;
-
-      const targetTemplate =
-        templateResponse?.data?.template ||
-        templateResponse?.template ||
-        templateResponse?.data ||
-        templateResponse;
-
-      if (targetTemplate && typeof targetTemplate === "object") {
-        const components = asRecord((targetTemplate as Record<string, any>).components);
-        (targetTemplate as Record<string, any>).components = {
-          ...components,
-          social_page: {
-            ...asRecord(components.social_page),
-            ...asRecord(socialPage),
-          },
-        };
-      }
-      return templateResponse;
+      const payload = response?.data;
+      return Array.isArray(payload?.products) ? payload.products : [];
     } catch {
-      try {
-        const socialResponse = await axios.get(socialFaqFallbackUrl, {
-          timeout: REQUEST_TIMEOUT_MS,
-        });
-        const socialPayload =
-          socialResponse?.data?.data ||
-          socialResponse?.data?.template ||
-          socialResponse?.data;
-        const socialPage =
-          socialPayload?.social_page || socialPayload?.components?.social_page;
+      return [];
+    }
+  };
 
-        if (!socialPage) return templateResponse;
+  const ensureProductsFallback = async (templateResponse: any) => {
+    const currentProducts = Array.isArray(templateResponse?.data?.products)
+      ? templateResponse.data.products
+      : Array.isArray(templateResponse?.products)
+        ? templateResponse.products
+        : [];
 
-        const targetTemplate =
-          templateResponse?.data?.template ||
-          templateResponse?.template ||
-          templateResponse?.data ||
-          templateResponse;
+    if (currentProducts.length > 0) return templateResponse;
 
-        if (targetTemplate && typeof targetTemplate === "object") {
-          const components = asRecord((targetTemplate as Record<string, any>).components);
-          (targetTemplate as Record<string, any>).components = {
-            ...components,
-            social_page: {
-              ...asRecord(components.social_page),
-              ...asRecord(socialPage),
-            },
-          };
-        }
-      } catch {
-        return templateResponse;
-      }
+    const fallbackProducts = await fetchVendorCatalogProducts();
+    if (!fallbackProducts.length) return templateResponse;
+
+    if (templateResponse?.data && typeof templateResponse.data === "object") {
+      templateResponse.data.products = fallbackProducts;
       return templateResponse;
     }
+
+    if (templateResponse && typeof templateResponse === "object") {
+      templateResponse.products = fallbackProducts;
+    }
+
+    return templateResponse;
   };
 
   if (preferredEndpoint === "fallback") {
     try {
-      return await mergeSocialFaqPayload(await fetchFallback());
+      return await ensureProductsFallback(await fetchFallback());
     } catch {
-      return mergeSocialFaqPayload(await fetchPreview());
+      return ensureProductsFallback(await fetchPreview());
     }
   }
 
   try {
-    return await mergeSocialFaqPayload(await fetchPreview());
+    return await ensureProductsFallback(await fetchPreview());
   } catch {
-    return mergeSocialFaqPayload(await fetchFallback());
+    return ensureProductsFallback(await fetchFallback());
   }
 };
 
