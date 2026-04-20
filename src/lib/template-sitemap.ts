@@ -129,7 +129,7 @@ const fetchTemplatePreview = async (
 
   const endpoints = [
     `${apiBase}/templates/${encodeURIComponent(vendorId)}/preview?${cityQuery}${websiteQuery}`,
-    `${apiBase}/templates/template-all?vendor_id=${encodeURIComponent(vendorId)}&${cityQuery}${websiteQuery}`,
+    `${apiBase}/templates/preview?vendor_id=${encodeURIComponent(vendorId)}&${cityQuery}${websiteQuery}`,
   ];
 
   for (const endpoint of endpoints) {

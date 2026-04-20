@@ -14,15 +14,23 @@ import {
   MapPin,
 } from "lucide-react";
 import Link from "next/link";
-import { useSelector } from "react-redux";
+import { shallowEqual, useSelector } from "react-redux";
 import { useParams, usePathname } from "next/navigation";
 import { useTemplateVariant } from "./useTemplateVariant";
 import { MquiqFooter } from "./mquiq/MquiqFooter";
 import { PoupqzFooter } from "./poupqz/PoupqzFooter";
 import { OragzeFooter } from "./oragze/OragzeFooter";
 import { WhiteRoseFooter } from "./whiterose/WhiteRoseFooter";
+import { PocoFoodFooter } from "./pocofood/PocoFoodFooter";
 import { buildTemplateScopedPath } from "@/lib/template-route";
 import { resolveTemplateBlogHref } from "@/app/template/components/blog-page";
+
+const EMPTY_PRODUCTS: any[] = [];
+
+const selectFooterTemplateState = (state: RootState) => ({
+  homepage: (state as any).alltemplatepage?.data,
+  products: (state as any).alltemplatepage?.products || EMPTY_PRODUCTS,
+});
 
 export default function Footer() {
   const variant = useTemplateVariant();
@@ -32,6 +40,7 @@ export default function Footer() {
   const isPoupqz = variant.key === "poupqz";
   const isOragze = variant.key === "oragze";
   const isWhiteRose = variant.key === "whiterose";
+  const isPocoFood = variant.key === "pocofood";
   const params = useParams();
   const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
@@ -43,10 +52,7 @@ export default function Footer() {
     });
 
   const contact = useSelector((state: any) => state?.vendorprofilepage?.vendor);
-  const { homepage, products } = useSelector((state: RootState) => ({
-    homepage: (state as any).alltemplatepage?.data,
-    products: (state as any).alltemplatepage?.products || [],
-  }));
+  const { homepage, products } = useSelector(selectFooterTemplateState, shallowEqual);
 
   const customPages =
     (homepage as any)?.components?.custom_pages?.filter(
@@ -116,6 +122,9 @@ export default function Footer() {
   }
   if (isWhiteRose) {
     return <WhiteRoseFooter />;
+  }
+  if (isPocoFood) {
+    return <PocoFoodFooter />;
   }
 
   return (

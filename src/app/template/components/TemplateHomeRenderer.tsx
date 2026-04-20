@@ -11,6 +11,7 @@ import { MquiqHome } from './mquiq/MquiqHome'
 import { PoupqzHome } from './poupqz/PoupqzHome'
 import { OragzeHome } from './oragze/OragzeHome'
 import { WhiteRoseHome } from './whiterose/WhiteRoseHome'
+import { PocoFoodHome } from './pocofood/PocoFoodHome'
 import { getRichTextPreview } from '@/lib/rich-text'
 
 import { configuredArray, configuredText } from './template-content'
@@ -208,6 +209,9 @@ export function TemplateHomeRenderer() {
   }
   if (variant.key === 'whiterose') {
     return <WhiteRoseHome />
+  }
+  if (variant.key === 'pocofood') {
+    return <PocoFoodHome />
   }
 
   if (variant.key === 'studio') {

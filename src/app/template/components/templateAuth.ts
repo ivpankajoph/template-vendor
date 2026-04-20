@@ -20,7 +20,17 @@ export type TemplateAuthPayload = {
   };
 };
 
-const normalizeStorageToken = (value?: string | null) => String(value || "").trim();
+const normalizeWebsiteId = (value?: string | null) => String(value || "").trim();
+
+const getTemplateWebsiteIdFromDocument = () => {
+  if (typeof document === "undefined") return "";
+
+  return normalizeWebsiteId(
+    document.body?.dataset?.templateWebsite ||
+      document.documentElement?.dataset?.templateWebsite ||
+      ""
+  );
+};
 
 const getCurrentTemplateWebsiteId = () => {
   if (typeof window === "undefined") return "";
@@ -28,7 +38,9 @@ const getCurrentTemplateWebsiteId = () => {
     getTemplateWebsiteIdFromSearch(
       window.location.pathname,
       new URLSearchParams(window.location.search)
-    ) || ""
+    ) ||
+    getTemplateWebsiteIdFromDocument() ||
+    ""
   );
 };
 
@@ -40,87 +52,24 @@ const API_BASE =
 const legacyStorageKey = (vendorId: string) => `template_auth_${vendorId}`;
 
 const storageKey = (vendorId: string, websiteId?: string) => {
-  const normalizedVendorId = normalizeStorageToken(vendorId);
+  const normalizedVendorId = normalizeWebsiteId(vendorId);
   const normalizedWebsiteId =
-    normalizeStorageToken(websiteId || getCurrentTemplateWebsiteId() || "") || "default";
+    normalizeWebsiteId(websiteId || getCurrentTemplateWebsiteId()) || "default";
   return `template_auth_${normalizedVendorId}_${normalizedWebsiteId}`;
 };
 
-const normalizeWebsiteIdentifier = (value?: string | null) =>
-  String(value || "").trim().toLowerCase();
+const getVendorStorageKeys = (vendorId: string) => {
+  if (typeof window === "undefined") return [];
 
-const isObjectIdLike = (value?: string | null) =>
-  /^[a-f0-9]{24}$/i.test(String(value || "").trim());
-
-const getVendorStorageAliases = (
-  vendorId: string,
-  payload?: TemplateAuthPayload | null
-) => {
-  const aliases = new Set<string>();
-  const requestedVendorId = normalizeStorageToken(vendorId);
-  const accountVendorId = normalizeStorageToken(payload?.user?.vendor_id);
-
-  if (requestedVendorId) aliases.add(requestedVendorId);
-  if (accountVendorId) aliases.add(accountVendorId);
-
-  return Array.from(aliases);
-};
-
-const getScopedStorageKeys = (vendorId: string, payload?: TemplateAuthPayload | null) => {
-  const identifiers = new Set<string>();
-  const currentWebsiteId = normalizeWebsiteIdentifier(getCurrentTemplateWebsiteId());
-  const accountWebsiteId = normalizeWebsiteIdentifier(payload?.user?.website_id);
-  const accountWebsiteSlug = normalizeWebsiteIdentifier(payload?.user?.website_slug);
-
-  if (currentWebsiteId) identifiers.add(currentWebsiteId);
-  if (accountWebsiteSlug) identifiers.add(accountWebsiteSlug);
-  if (accountWebsiteId) identifiers.add(accountWebsiteId);
-  if (!identifiers.size) identifiers.add("default");
-
-  return getVendorStorageAliases(vendorId, payload).flatMap((alias) =>
-    Array.from(identifiers).map((identifier) => storageKey(alias, identifier))
-  );
-};
-
-const parseTemplateAuthPayload = (raw: string | null): TemplateAuthPayload | null => {
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as TemplateAuthPayload;
-  } catch {
-    return null;
-  }
-};
-
-const isAuthAllowedOnCurrentWebsite = (
-  payload: TemplateAuthPayload | null,
-  websiteId?: string
-) => {
-  if (!payload) return false;
-  const currentWebsiteId = normalizeWebsiteIdentifier(
-    websiteId || getCurrentTemplateWebsiteId() || ""
-  );
-  const accountWebsiteId = normalizeWebsiteIdentifier(payload.user?.website_id);
-  const accountWebsiteSlug = normalizeWebsiteIdentifier(payload.user?.website_slug);
-
-  if (!currentWebsiteId) return true;
-  if (!accountWebsiteId && !accountWebsiteSlug) return true;
-
-  if (accountWebsiteSlug) {
-    return currentWebsiteId === accountWebsiteSlug || currentWebsiteId === accountWebsiteId;
+  const keys: string[] = [];
+  for (let index = 0; index < window.localStorage.length; index += 1) {
+    const key = window.localStorage.key(index);
+    if (key?.startsWith(`template_auth_${vendorId}_`)) {
+      keys.push(key);
+    }
   }
 
-  if (accountWebsiteId && isObjectIdLike(currentWebsiteId)) {
-    return currentWebsiteId === accountWebsiteId;
-  }
-
-  return true;
-};
-
-const dispatchTemplateAuthUpdated = (vendorId: string, websiteId?: string) => {
-  if (typeof window === "undefined") return;
-  window.dispatchEvent(
-    new CustomEvent("template-auth-updated", { detail: { vendorId, websiteId } })
-  );
+  return keys;
 };
 
 const decodeJwtPayload = (token: string): { exp?: number } | null => {
@@ -171,119 +120,65 @@ const redirectToTemplateLogin = (vendorId: string) => {
 
 export const getTemplateAuth = (vendorId: string): TemplateAuthPayload | null => {
   if (typeof window === "undefined") return null;
-  const normalizedVendorId = normalizeStorageToken(vendorId);
-  if (!normalizedVendorId) return null;
-  const currentWebsiteId = String(getCurrentTemplateWebsiteId() || "").trim();
-  const scopedKey = storageKey(normalizedVendorId, currentWebsiteId);
-  const legacyKey = legacyStorageKey(normalizedVendorId);
+  const currentWebsiteId = normalizeWebsiteId(getCurrentTemplateWebsiteId());
 
-  const legacyRaw = localStorage.getItem(legacyKey);
-  if (legacyRaw) {
-    localStorage.removeItem(legacyKey);
-  }
+  const candidateKeys = [
+    storageKey(vendorId),
+    storageKey(vendorId, getTemplateWebsiteIdFromDocument()),
+    legacyStorageKey(vendorId),
+    ...getVendorStorageKeys(vendorId),
+  ].filter((value, index, array) => Boolean(value) && array.indexOf(value) === index);
 
-  let raw = localStorage.getItem(scopedKey);
-  let payload = parseTemplateAuthPayload(raw);
+  const parsedPayloads: TemplateAuthPayload[] = [];
 
-  if (!raw) {
-    const vendorScopedPrefix = `template_auth_${normalizedVendorId}_`;
-    const candidateKeys = Object.keys(localStorage).filter((key) =>
-      key.startsWith(vendorScopedPrefix)
-    );
+  for (const key of candidateKeys) {
+    const raw = localStorage.getItem(key);
+    if (!raw) continue;
 
-    for (const candidateKey of candidateKeys) {
-      const candidateRaw = localStorage.getItem(candidateKey);
-      const candidatePayload = parseTemplateAuthPayload(candidateRaw);
-      if (!candidatePayload) continue;
-      if (!isAuthAllowedOnCurrentWebsite(candidatePayload, currentWebsiteId)) continue;
-
-      raw = candidateRaw;
-      payload = candidatePayload;
-      if (candidateKey !== scopedKey && candidateRaw) {
-        localStorage.setItem(scopedKey, candidateRaw);
+    try {
+      const payload = JSON.parse(raw) as TemplateAuthPayload;
+      parsedPayloads.push(payload);
+      const payloadWebsiteId = normalizeWebsiteId(payload?.user?.website_id);
+      const payloadWebsiteSlug = normalizeWebsiteId(payload?.user?.website_slug);
+      if (
+        currentWebsiteId &&
+        (payloadWebsiteId === currentWebsiteId || payloadWebsiteSlug === currentWebsiteId)
+      ) {
+        return payload;
       }
-      break;
+    } catch {
+      localStorage.removeItem(key);
     }
   }
 
-  if (!raw) return null;
-  if (!payload || !isAuthAllowedOnCurrentWebsite(payload, currentWebsiteId)) {
-    localStorage.removeItem(scopedKey);
-    dispatchTemplateAuthUpdated(vendorId, currentWebsiteId);
-    return null;
-  }
-
-  return payload;
-};
-
-export const useTemplateAuthState = (vendorId: string) => {
-  const [auth, setAuth] = useState<TemplateAuthPayload | null>(() =>
-    getTemplateAuth(vendorId)
-  );
-
-  useEffect(() => {
-    const syncAuth = () => {
-      setAuth(getTemplateAuth(vendorId));
-    };
-
-    syncAuth();
-
-    const onStorage = (event: StorageEvent) => {
-      if (!event.key) return;
-      if (
-        event.key === legacyStorageKey(vendorId) ||
-        event.key.startsWith(`template_auth_${vendorId}_`)
-      ) {
-        syncAuth();
-      }
-    };
-
-    window.addEventListener("template-auth-updated", syncAuth);
-    window.addEventListener("focus", syncAuth);
-    window.addEventListener("storage", onStorage);
-
-    return () => {
-      window.removeEventListener("template-auth-updated", syncAuth);
-      window.removeEventListener("focus", syncAuth);
-      window.removeEventListener("storage", onStorage);
-    };
-  }, [vendorId]);
-
-  return auth;
+  return parsedPayloads[0] || null;
 };
 
 export const setTemplateAuth = (vendorId: string, payload: TemplateAuthPayload) => {
   if (typeof window === "undefined") return;
-  const vendorAliases = getVendorStorageAliases(vendorId, payload);
-  if (!vendorAliases.length) return;
-  const websiteId = String(getCurrentTemplateWebsiteId() || "").trim();
-  const normalizedPayload: TemplateAuthPayload = {
-    ...payload,
-    user: {
-      ...payload.user,
-      website_id: payload.user?.website_id || websiteId || null,
-    },
-  };
-  vendorAliases.forEach((alias) => {
-    localStorage.removeItem(legacyStorageKey(alias));
-  });
-  const serializedPayload = JSON.stringify(normalizedPayload);
-  getScopedStorageKeys(vendorId, normalizedPayload).forEach((key) => {
-    localStorage.setItem(key, serializedPayload);
-  });
-  vendorAliases.forEach((alias) => {
-    dispatchTemplateAuthUpdated(alias, websiteId);
-  });
+  const routeWebsiteId = getCurrentTemplateWebsiteId();
+  const websiteId =
+    normalizeWebsiteId(payload?.user?.website_id) || routeWebsiteId;
+  localStorage.removeItem(legacyStorageKey(vendorId));
+  localStorage.setItem(storageKey(vendorId, websiteId), JSON.stringify(payload));
+  if (routeWebsiteId && routeWebsiteId !== websiteId) {
+    localStorage.setItem(storageKey(vendorId, routeWebsiteId), JSON.stringify(payload));
+  }
+  window.dispatchEvent(
+    new CustomEvent("template-auth-updated", { detail: { vendorId, websiteId } })
+  );
 };
 
 export const clearTemplateAuth = (vendorId: string, websiteId?: string) => {
   if (typeof window === "undefined") return;
-  const normalizedVendorId = normalizeStorageToken(vendorId);
-  if (!normalizedVendorId) return;
-  const normalizedWebsiteId = String(websiteId || getCurrentTemplateWebsiteId() || "").trim();
-  localStorage.removeItem(storageKey(normalizedVendorId, normalizedWebsiteId));
-  localStorage.removeItem(legacyStorageKey(normalizedVendorId));
-  dispatchTemplateAuthUpdated(normalizedVendorId, normalizedWebsiteId);
+  localStorage.removeItem(legacyStorageKey(vendorId));
+  getVendorStorageKeys(vendorId).forEach((key) => {
+    localStorage.removeItem(key);
+  });
+  localStorage.removeItem(storageKey(vendorId));
+  window.dispatchEvent(
+    new CustomEvent("template-auth-updated", { detail: { vendorId } })
+  );
 };
 
 export const templateApiFetch = async (
@@ -301,10 +196,7 @@ export const templateApiFetch = async (
   const headers = new Headers(options.headers || {});
   headers.set("Content-Type", "application/json");
   if (typeof window !== "undefined") {
-    const websiteId = getTemplateWebsiteIdFromSearch(
-      window.location.pathname,
-      new URLSearchParams(window.location.search)
-    );
+    const websiteId = getCurrentTemplateWebsiteId();
     if (websiteId) {
       headers.set("x-template-website", websiteId);
     }
@@ -324,52 +216,19 @@ export const templateApiFetch = async (
   }
 
   if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    const message = String(error?.message || "Request failed");
-    if (
-      response.status === 403 &&
-      message.includes("not allowed on the current website")
-    ) {
-      clearTemplateAuth(vendorId);
-      redirectToTemplateLogin(vendorId);
+    const errorText = await response.text().catch(() => "");
+    let errorMessage = "";
+
+    if (errorText) {
+      try {
+        const parsed = JSON.parse(errorText);
+        errorMessage = String(parsed?.message || parsed?.error || "").trim();
+      } catch {
+        errorMessage = errorText.trim();
+      }
     }
-    throw new Error(message);
-  }
 
-  return response.json();
-};
-
-export const templateApiFetchWithToken = async (
-  vendorId: string,
-  token: string,
-  path: string,
-  options: RequestInit = {}
-) => {
-  const headers = new Headers(options.headers || {});
-  headers.set("Content-Type", "application/json");
-
-  if (typeof window !== "undefined") {
-    const websiteId = getTemplateWebsiteIdFromSearch(
-      window.location.pathname,
-      new URLSearchParams(window.location.search)
-    );
-    if (websiteId) {
-      headers.set("x-template-website", websiteId);
-    }
-  }
-
-  if (token) {
-    headers.set("Authorization", `Bearer ${token}`);
-  }
-
-  const response = await fetch(`${API_BASE}/template-users${path}`, {
-    ...options,
-    headers,
-  });
-
-  if (!response.ok) {
-    const error = await response.json().catch(() => ({}));
-    throw new Error(String(error?.message || "Request failed"));
+    throw new Error(errorMessage || `Request failed (${response.status})`);
   }
 
   return response.json();

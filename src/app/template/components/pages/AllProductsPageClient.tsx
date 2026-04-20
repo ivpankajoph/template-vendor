@@ -83,6 +83,10 @@ const toNumber = (value: unknown) => {
 };
 
 const formatPrice = (value: unknown) => `Rs. ${toNumber(value).toLocaleString()}`;
+const API_BASE =
+  NEXT_PUBLIC_API_URL && NEXT_PUBLIC_API_URL.endsWith("/v1")
+    ? NEXT_PUBLIC_API_URL
+    : `${NEXT_PUBLIC_API_URL}/v1`;
 
 const getPrimaryVariant = (product: any) => {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
@@ -130,10 +134,114 @@ const getProductImageUrl = (product: any) => {
   return "";
 };
 
+type FoodMenuVariant = {
+  _id?: string;
+  name?: string;
+  price?: number;
+  offer_price?: number;
+  is_default?: boolean;
+  is_available?: boolean;
+};
+
+type FoodMenuAddon = {
+  name?: string;
+  price?: number;
+  is_free?: boolean;
+};
+
+type FoodMenuItem = {
+  _id: string;
+  item_name?: string;
+  category?: string;
+  image_url?: string;
+  gallery_images?: string[];
+  description?: string;
+  food_type?: string;
+  is_available?: boolean;
+  price?: number;
+  offer_price?: number;
+  prep_time_minutes?: number;
+  addons?: FoodMenuAddon[];
+  variants?: FoodMenuVariant[];
+};
+
+type FoodOffer = {
+  _id?: string;
+  offer_title?: string;
+  offer_type?: string;
+  discount_percent?: number;
+  flat_discount?: number;
+  combo_price?: number;
+  free_item_name?: string;
+  min_cart_value?: number;
+  max_discount?: number;
+  coupon_code?: string;
+  is_active?: boolean;
+};
+
+const getFoodMenuImageUrl = (item: FoodMenuItem) => {
+  const primary = normalizeText(item?.image_url);
+  if (primary) return primary;
+  const gallery = Array.isArray(item?.gallery_images) ? item.gallery_images : [];
+  return gallery.map((image) => normalizeText(image)).find(Boolean) || "";
+};
+
+const getFoodPrimaryVariant = (item: FoodMenuItem) => {
+  const variants = Array.isArray(item?.variants) ? item.variants : [];
+  return (
+    variants.find((variant) => variant?.is_available && variant?.is_default) ||
+    variants.find((variant) => variant?.is_available) ||
+    variants.find((variant) => variant?.is_default) ||
+    variants[0] ||
+    null
+  );
+};
+
+const getFoodPricing = (item: FoodMenuItem) => {
+  const variant = getFoodPrimaryVariant(item);
+  const actualPrice = toNumber(variant?.price ?? item?.price);
+  const finalPrice = toNumber(
+    variant?.offer_price ?? item?.offer_price ?? variant?.price ?? item?.price
+  );
+  let discountPercent = 0;
+
+  if (actualPrice > finalPrice && actualPrice > 0) {
+    discountPercent = Math.round(((actualPrice - finalPrice) / actualPrice) * 100);
+  }
+
+  return {
+    actualPrice,
+    finalPrice,
+    discountPercent,
+    variantName: normalizeText(variant?.name),
+  };
+};
+
+const getFoodOfferValueLabel = (offer?: FoodOffer | null) => {
+  if (!offer) return "Live offer";
+  if (toNumber(offer.discount_percent) > 0) return `${toNumber(offer.discount_percent)}% OFF`;
+  if (toNumber(offer.flat_discount) > 0) return `Save ${formatPrice(offer.flat_discount)}`;
+  if (toNumber(offer.combo_price) > 0) return `Combo ${formatPrice(offer.combo_price)}`;
+  if (offer.free_item_name) return `${offer.free_item_name} free`;
+  if (offer.coupon_code) return `Use ${offer.coupon_code}`;
+  return "Live offer";
+};
+
+const getFoodOfferFinePrint = (offer?: FoodOffer | null) => {
+  if (!offer) return "Available for a limited time.";
+  const parts = [
+    offer.coupon_code ? `Coupon ${offer.coupon_code}` : "",
+    toNumber(offer.min_cart_value) > 0 ? `Min order ${formatPrice(offer.min_cart_value)}` : "",
+    toNumber(offer.max_discount) > 0 ? `Max discount ${formatPrice(offer.max_discount)}` : "",
+  ].filter(Boolean);
+  return parts.join(" • ") || "Available on eligible food orders.";
+};
+
 export default function AllProducts() {
   const variant = useTemplateVariant();
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
   const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
+  const isPocoFood = variant.key === "pocofood";
   const templateCitySlug = String(
     templateData?.components?.vendor_profile?.default_city_slug || ""
   ).trim();
@@ -159,6 +267,8 @@ export default function AllProducts() {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
+  const [foodMenuItems, setFoodMenuItems] = useState<FoodMenuItem[]>([]);
+  const [foodOffers, setFoodOffers] = useState<FoodOffer[]>([]);
   const [addingById, setAddingById] = useState<Record<string, boolean>>({});
   
   // New Filter states
@@ -235,6 +345,47 @@ export default function AllProducts() {
     };
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+
+    const loadFoodStorefront = async () => {
+      if (!isPocoFood || !vendorId) {
+        if (mounted) {
+          setFoodMenuItems([]);
+          setFoodOffers([]);
+        }
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_BASE}/vendors/${vendorId}/food-storefront`, {
+          cache: "no-store",
+        });
+        const result = await response.json().catch(() => null);
+        const items = Array.isArray(result?.data?.menu_items)
+          ? result.data.menu_items.filter((item: FoodMenuItem) => Boolean(item?._id))
+          : [];
+        const offers = Array.isArray(result?.data?.offers)
+          ? result.data.offers.filter((offer: FoodOffer) => offer?.is_active !== false)
+          : [];
+        if (mounted) {
+          setFoodMenuItems(items);
+          setFoodOffers(offers);
+        }
+      } catch {
+        if (mounted) {
+          setFoodMenuItems([]);
+          setFoodOffers([]);
+        }
+      }
+    };
+
+    loadFoodStorefront();
+    return () => {
+      mounted = false;
+    };
+  }, [isPocoFood, vendorId]);
+
   const normalizedProducts = useMemo<NormalizedProduct[]>(
     () =>
       products.map((product: any) => ({
@@ -245,12 +396,20 @@ export default function AllProducts() {
   );
 
   const categories = useMemo(() => {
+    if (isPocoFood) {
+      const list = new Set<string>();
+      foodMenuItems.forEach((item) => {
+        const label = normalizeCategoryLabel(item?.category);
+        if (label) list.add(label);
+      });
+      return ["All", ...Array.from(list).sort((a, b) => a.localeCompare(b))];
+    }
     const list = new Set<string>();
     normalizedProducts.forEach(({ category }) => {
       if (category.label) list.add(category.label);
     });
     return ["All", ...Array.from(list).sort((a, b) => a.localeCompare(b))];
-  }, [normalizedProducts]);
+  }, [foodMenuItems, isPocoFood, normalizedProducts]);
 
   const brands = useMemo(() => {
     const list = new Set<string>();
@@ -385,6 +544,72 @@ export default function AllProducts() {
     }
   };
 
+  const handleAddFoodToCart = async (item: FoodMenuItem) => {
+    if (!vendor_id || !item?._id) return;
+
+    const auth = getTemplateAuth(vendor_id);
+    if (!auth) {
+      const loginPath = buildTemplateScopedPath({
+        vendorId,
+        pathname: pathname || "/",
+        suffix: "login",
+      });
+      window.location.href = `${loginPath}?next=${encodeURIComponent(allProductsPath)}`;
+      return;
+    }
+
+    if (item?.is_available === false) {
+      toastError("This food item is currently unavailable");
+      return;
+    }
+
+    const primaryVariant = getFoodPrimaryVariant(item);
+    const selectedAddons = Array.isArray(item?.addons)
+      ? item.addons
+          .filter((addon) => normalizeText(addon?.name))
+          .filter((addon) => addon?.is_free)
+          .map((addon) => ({
+            name: normalizeText(addon?.name),
+            price: toNumber(addon?.price),
+            is_free: Boolean(addon?.is_free),
+          }))
+      : [];
+
+    setAddingById((prev) => ({ ...prev, [item._id]: true }));
+    try {
+      const pricing = getFoodPricing(item);
+      await templateApiFetch(vendor_id, "/cart", {
+        method: "POST",
+        body: JSON.stringify({
+          item_type: "food",
+          food_menu_item_id: item._id,
+          quantity: 1,
+          variant_name: normalizeText(primaryVariant?.name) || undefined,
+          selected_addons: selectedAddons,
+        }),
+      });
+
+      trackAddToCart({
+        vendorId: vendor_id,
+        userId: auth?.user?.id,
+        productId: item._id,
+        productName: item?.item_name,
+        productPrice: pricing.finalPrice,
+        quantity: 1,
+      });
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(new CustomEvent("template-cart-updated"));
+      }
+
+      toastSuccess("Food item added to cart");
+    } catch (error: any) {
+      toastError(error?.message || "Failed to add food item to cart");
+    } finally {
+      setAddingById((prev) => ({ ...prev, [item._id]: false }));
+    }
+  };
+
   const filteredProducts = normalizedProducts.filter(({ product, category }) => {
     const name = normalizeText(product?.productName).toLowerCase();
     const categoryLabel = category.label.toLowerCase();
@@ -409,6 +634,259 @@ export default function AllProducts() {
     : gridClass;
   const visibleProductCount = filteredProducts.length;
   const visibleProductWord = visibleProductCount === 1 ? "product" : "products";
+  const filteredFoodItems = foodMenuItems.filter((item) => {
+    const name = normalizeText(item?.item_name).toLowerCase();
+    const category = normalizeCategoryLabel(item?.category).toLowerCase();
+    const description = normalizeText(item?.description).toLowerCase();
+    const term = searchTerm.toLowerCase();
+
+    const matchesSearch =
+      !term || name.includes(term) || category.includes(term) || description.includes(term);
+    const matchesCategory =
+      selectedCategory === "All" ||
+      normalizeCategoryLabel(item?.category) === selectedCategory;
+
+    return matchesSearch && matchesCategory;
+  });
+  const visibleFoodCount = filteredFoodItems.length;
+  const visibleFoodWord = visibleFoodCount === 1 ? "item" : "items";
+  const featuredFoodOffer = foodOffers[0] || null;
+
+  if (isPocoFood) {
+    return (
+      <div className="min-h-screen bg-[#fcf8f1] py-10 text-[#1f1720] lg:py-14">
+        <div className="mx-auto max-w-7xl px-4 sm:px-6">
+          <div className="mb-8 rounded-[2rem] border border-[#eadfce] bg-gradient-to-r from-[#fff6e7] via-white to-[#fff0f0] p-6 shadow-[0_18px_40px_rgba(83,45,27,0.07)]">
+            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b46a2d]">
+                  PocoFood Menu
+                </p>
+                <h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] sm:text-4xl">
+                  All food items
+                </h1>
+                <p className="mt-3 max-w-2xl text-sm leading-7 text-[#6a5a51]">
+                  Yahan sirf aapke Food Hub ke menu items show honge. Ecommerce products is page par nahi aayenge.
+                </p>
+              </div>
+
+              <div className="rounded-2xl border border-[#eadfce] bg-white px-5 py-4 text-center shadow-sm">
+                <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#9f8471]">
+                  Live Menu
+                </p>
+                <p className="mt-1 text-3xl font-bold text-[#1f1720]">{visibleFoodCount}</p>
+                <p className="text-xs text-[#8d786a]">{visibleFoodWord} found</p>
+              </div>
+            </div>
+          </div>
+
+          {foodOffers.length ? (
+            <div className="mb-8 rounded-[1.75rem] border border-[#eadfce] bg-[#1f1720] p-5 text-white shadow-[0_18px_40px_rgba(83,45,27,0.14)]">
+              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#ffc222]">
+                    Active offers
+                  </p>
+                  <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] sm:text-3xl">
+                    {featuredFoodOffer?.offer_title || "Food offers are live"}
+                  </h2>
+                  <p className="mt-2 text-sm leading-6 text-white/70">
+                    {getFoodOfferFinePrint(featuredFoodOffer)}
+                  </p>
+                </div>
+
+                <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[430px]">
+                  {foodOffers.slice(0, 2).map((offer, index) => (
+                    <div
+                      key={offer?._id || `${offer?.offer_title || "offer"}-${index}`}
+                      className="rounded-[1.2rem] border border-white/10 bg-white/10 p-4"
+                    >
+                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/55">
+                        {String(offer?.offer_type || "offer").replace(/_/g, " ")}
+                      </p>
+                      <p className="mt-2 text-2xl font-bold text-[#ffc222]">
+                        {getFoodOfferValueLabel(offer)}
+                      </p>
+                      <p className="mt-2 line-clamp-1 text-sm font-semibold text-white">
+                        {offer?.offer_title || "Live food deal"}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          ) : null}
+
+          <div className="mb-8 flex flex-col gap-4 rounded-[1.75rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative w-full lg:max-w-xl">
+              <input
+                type="text"
+                placeholder="Search food items, categories, dishes..."
+                className="w-full rounded-2xl border border-[#e7d7c4] bg-[#fffdf9] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-[#c97b38]"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+              <Search className="absolute left-3.5 top-3.5 text-[#ad8c72]" size={18} />
+            </div>
+
+            <div className="flex flex-wrap gap-2">
+              {categories.map((cat) => (
+                <button
+                  key={cat}
+                  onClick={() => setSelectedCategory(cat)}
+                  className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                    selectedCategory === cat
+                      ? "bg-[#1f1720] text-white"
+                      : "border border-[#e7d7c4] bg-[#fffaf3] text-[#5d4c40] hover:border-[#c97b38] hover:text-[#c97b38]"
+                  }`}
+                >
+                  {cat}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          {filteredFoodItems.length > 0 ? (
+            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+              {filteredFoodItems.map((item) => {
+                const pricing = getFoodPricing(item);
+                const imageUrl = getFoodMenuImageUrl(item);
+                const isAdding = Boolean(addingById[item._id]);
+                const primaryVariant = getFoodPrimaryVariant(item);
+                const foodProductPath = buildTemplateScopedPath({
+                  vendorId,
+                  pathname: pathname || "/",
+                  suffix: `product/${item._id}`,
+                });
+                const foodType =
+                  item?.food_type === "veg"
+                    ? "Veg"
+                    : item?.food_type === "non_veg"
+                      ? "Non-veg"
+                      : "Food";
+
+                return (
+                  <div
+                    key={item._id}
+                    className="overflow-hidden rounded-[1.75rem] border border-[#eadfce] bg-white shadow-[0_18px_40px_rgba(83,45,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(83,45,27,0.1)]"
+                  >
+                    <Link href={foodProductPath} className="relative block h-64 overflow-hidden bg-[#fff8ef]">
+                      {imageUrl ? (
+                        <img
+                          src={imageUrl}
+                          alt={item?.item_name || "Food item"}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-xs uppercase tracking-[0.3em] text-[#b39a87]">
+                          No Image
+                        </div>
+                      )}
+
+                      <div className="absolute left-4 top-4 flex flex-wrap gap-2">
+                        <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#5d4c40] shadow-sm">
+                          {normalizeCategoryLabel(item?.category) || "Menu"}
+                        </span>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
+                            item?.food_type === "veg"
+                              ? "bg-emerald-100 text-emerald-700"
+                              : "bg-rose-100 text-rose-700"
+                          }`}
+                        >
+                          {foodType}
+                        </span>
+                      </div>
+
+                      {pricing.discountPercent > 0 ? (
+                        <span className="absolute right-4 top-4 rounded-full bg-[#c97b38] px-3 py-1 text-xs font-semibold text-white shadow-sm">
+                          {pricing.discountPercent}% OFF
+                        </span>
+                      ) : featuredFoodOffer ? (
+                        <span className="absolute right-4 top-4 rounded-full bg-[#1f1720] px-3 py-1 text-xs font-semibold text-[#ffc222] shadow-sm">
+                          Offer available
+                        </span>
+                      ) : null}
+                    </Link>
+
+                    <div className="p-5">
+                      <div className="flex items-start justify-between gap-3">
+                        <div>
+                          <Link href={foodProductPath} className="block">
+                            <h3 className="text-xl font-semibold text-[#1f1720]">
+                              {item?.item_name || "Untitled food item"}
+                            </h3>
+                          </Link>
+                          <p className="mt-1 text-sm text-[#7f6c5f]">
+                            {primaryVariant?.name
+                              ? `Variant: ${primaryVariant.name}`
+                              : "Standard serving"}
+                          </p>
+                        </div>
+                        <span
+                          className={`rounded-full px-3 py-1 text-xs font-semibold ${
+                            item?.is_available === false
+                              ? "bg-slate-100 text-slate-500"
+                              : "bg-emerald-50 text-emerald-700"
+                          }`}
+                        >
+                          {item?.is_available === false ? "Unavailable" : "Available"}
+                        </span>
+                      </div>
+
+                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-[#6a5a51]">
+                        {normalizeText(item?.description) || "Freshly prepared food item from your menu."}
+                      </p>
+
+                      <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-[#8f7869]">
+                        <span className="rounded-full bg-[#f8efe3] px-3 py-1">
+                          Prep: {toNumber(item?.prep_time_minutes) || 15} mins
+                        </span>
+                        <span className="rounded-full bg-[#f8efe3] px-3 py-1">
+                          Addons: {Array.isArray(item?.addons) ? item.addons.length : 0}
+                        </span>
+                      </div>
+
+                      <div className="mt-5 flex items-end justify-between gap-4">
+                        <div className="flex items-end gap-2">
+                          <p className="text-2xl font-bold text-[#1f1720]">
+                            {formatPrice(pricing.finalPrice)}
+                          </p>
+                          {pricing.actualPrice > pricing.finalPrice ? (
+                            <p className="pb-0.5 text-sm text-[#a28d7d] line-through">
+                              {formatPrice(pricing.actualPrice)}
+                            </p>
+                          ) : null}
+                        </div>
+
+                        <button
+                          type="button"
+                          disabled={isAdding || item?.is_available === false}
+                          onClick={() => handleAddFoodToCart(item)}
+                          className="inline-flex items-center justify-center gap-2 rounded-full bg-[#1f1720] px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-[#3a2932] disabled:cursor-not-allowed disabled:bg-slate-300"
+                        >
+                          <ShoppingBag size={15} />
+                          {isAdding ? "Adding..." : "Add"}
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="rounded-[1.75rem] border border-dashed border-[#e2cfb6] bg-white px-6 py-16 text-center">
+              <h3 className="text-xl font-semibold text-[#1f1720]">No food items found</h3>
+              <p className="mt-2 text-sm text-[#7f6c5f]">
+                Food Hub me menu items add karo, phir yahan sirf wahi items show honge.
+              </p>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  }
 
   if (isWhiteRose) {
     return (

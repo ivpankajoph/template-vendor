@@ -35,17 +35,29 @@ const persistConfig = {
 
 const persistedReducer = persistReducer(persistConfig, rootReducer);
 
-export const makeStore = (preloadedState?: Partial<RootState>) =>
-  configureStore({
-    reducer: persistedReducer,
-    preloadedState: preloadedState as any,
-    middleware: (getDefaultMiddleware) =>
-      getDefaultMiddleware({
-        serializableCheck: {
-          ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
-        },
-      }),
-  });
+export const store = configureStore({
+  reducer: persistedReducer,
+  middleware: (getDefaultMiddleware) =>
+    getDefaultMiddleware({
+      immutableCheck: {
+        ignoredPaths: [
+          "alltemplatepage.data",
+          "alltemplatepage.products",
+          "vendorprofilepage.vendor",
+        ],
+        warnAfter: 96,
+      },
+      serializableCheck: {
+        ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
+        ignoredPaths: [
+          "alltemplatepage.data",
+          "alltemplatepage.products",
+          "vendorprofilepage.vendor",
+        ],
+        warnAfter: 96,
+      },
+    }),
+});
 
 export type AppStore = ReturnType<typeof makeStore>;
 export type RootState = ReturnType<typeof rootReducer>;

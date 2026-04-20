@@ -7,6 +7,8 @@ const getAddressKey = (vendorId: string) =>
   `template_checkout_address_${vendorId}`;
 const getPaymentKey = (vendorId: string) =>
   `template_checkout_payment_${vendorId}`;
+const getCouponKey = (vendorId: string) =>
+  `template_checkout_coupon_${vendorId}`;
 
 const canUseStorage = () => typeof window !== "undefined";
 
@@ -52,4 +54,23 @@ export const clearTemplateCheckoutSession = (vendorId: string) => {
   if (!canUseStorage()) return;
   localStorage.removeItem(getAddressKey(vendorId));
   localStorage.removeItem(getPaymentKey(vendorId));
+  localStorage.removeItem(getCouponKey(vendorId));
+};
+
+export const saveTemplateCheckoutCouponCode = (
+  vendorId: string,
+  couponCode: string,
+) => {
+  if (!canUseStorage()) return;
+  const normalizedCode = String(couponCode || "").trim().toUpperCase();
+  if (!normalizedCode) {
+    localStorage.removeItem(getCouponKey(vendorId));
+    return;
+  }
+  localStorage.setItem(getCouponKey(vendorId), normalizedCode);
+};
+
+export const getTemplateCheckoutCouponCode = (vendorId: string) => {
+  if (!canUseStorage()) return "";
+  return localStorage.getItem(getCouponKey(vendorId)) || "";
 };

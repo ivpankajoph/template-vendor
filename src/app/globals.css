@@ -225,6 +225,15 @@
   --template-body-font: var(--font-manrope), "Manrope", "Poppins", sans-serif;
 }
 
+.template-variant-pocofood {
+  --template-surface: #ffffff;
+  --template-surface-muted: #fbf5de;
+  --template-border: #eadfb7;
+  --template-radius: 22px;
+  --template-heading-font: "Poppins", "DM Sans", sans-serif;
+  --template-body-font: "Poppins", "DM Sans", sans-serif;
+}
+
 .template-variant-studio nav {
   background: rgba(2, 6, 23, 0.85);
   border-bottom: 1px solid rgba(148, 163, 184, 0.2);
@@ -264,6 +273,11 @@
 .template-variant-whiterose nav {
   background: #ffffff;
   border-bottom: 1px solid #dfe3eb;
+}
+
+.template-variant-pocofood nav {
+  background: #ffffff;
+  border-bottom: 1px solid #eadfb7;
 }
 
 .template-variant-studio {
@@ -326,6 +340,13 @@
   background: #f1f3f6;
 }
 
+.template-variant-pocofood {
+  color: #171717;
+  background:
+    radial-gradient(circle at top, rgba(255, 194, 34, 0.16), transparent 30%),
+    #fbf5de;
+}
+
 .template-variant-minimal .template-accent {
   color: #111827;
 }
@@ -348,6 +369,10 @@
 
 .template-variant-whiterose .template-accent {
   color: #0b74c6;
+}
+
+.template-variant-pocofood .template-accent {
+  color: #11a44c;
 }
 
 .template-variant-minimal .template-accent-bg {
@@ -380,6 +405,11 @@
   border-radius: 14px;
 }
 
+.template-variant-pocofood .template-accent-bg {
+  background: linear-gradient(135deg, #ffc222 0%, #ffae00 100%);
+  border-radius: 18px;
+}
+
 .template-variant-minimal .template-accent-soft {
   background-color: #ffffff;
   border: 1px solid #e5e7eb;
@@ -408,6 +438,11 @@
 .template-variant-whiterose .template-accent-soft {
   background-color: #eef4ff;
   border: 1px solid #dfe3eb;
+}
+
+.template-variant-pocofood .template-accent-soft {
+  background-color: #fff6d6;
+  border: 1px solid #eadfb7;
 }
 
 .template-variant-minimal .template-accent-gradient {
@@ -440,6 +475,11 @@
   border: 1px solid #dfe3eb;
 }
 
+.template-variant-pocofood .template-accent-gradient {
+  background: linear-gradient(135deg, #fff2c0 0%, #fff9e7 100%);
+  border: 1px solid #eadfb7;
+}
+
 .template-variant-minimal .template-accent-bg-hover:hover {
   background-color: #000000;
 }
@@ -462,6 +502,10 @@
 
 .template-variant-whiterose .template-accent-bg-hover:hover {
   background: linear-gradient(135deg, #174ea6 0%, #123b80 100%);
+}
+
+.template-variant-pocofood .template-accent-bg-hover:hover {
+  background: linear-gradient(135deg, #ffb000 0%, #ff9800 100%);
 }
 
 .template-home {
@@ -516,6 +560,10 @@
 
 .template-home-whiterose {
   background: #f1f3f6;
+}
+
+.template-home-pocofood {
+  background: linear-gradient(180deg, #ffffff 0%, #fbf5de 34%, #fffdf4 100%);
 }
 
 .template-minimal-panel {
@@ -784,6 +832,12 @@
     radial-gradient(circle at 0% 18%, rgba(255, 159, 0, 0.08), transparent 45%);
 }
 
+.template-variant-pocofood .template-page-shell::before {
+  opacity: 0.72;
+  background: radial-gradient(circle at 100% 0%, rgba(255, 194, 34, 0.16), transparent 36%),
+    radial-gradient(circle at 0% 18%, rgba(17, 164, 76, 0.1), transparent 45%);
+}
+
 .template-variant-trend .template-section-title {
   font-family: "DM Sans", sans-serif;
   font-weight: 800;
@@ -812,6 +866,12 @@
   font-family: var(--font-sora), "Sora", "Poppins", sans-serif;
   font-weight: 700;
   letter-spacing: -0.03em;
+}
+
+.template-variant-pocofood .template-section-title {
+  font-family: "Poppins", "DM Sans", sans-serif;
+  font-weight: 800;
+  letter-spacing: -0.035em;
 }
 
 .template-variant-trend .template-surface-card {
@@ -844,6 +904,12 @@
   box-shadow: 0 14px 28px -22px rgba(15, 23, 42, 0.2);
 }
 
+.template-variant-pocofood .template-surface-card {
+  border-radius: 22px;
+  border-color: #eadfb7;
+  box-shadow: 0 18px 34px -28px rgba(71, 49, 0, 0.22);
+}
+
 .template-variant-trend .template-primary-button {
   border-radius: 999px;
   background: linear-gradient(135deg, #ec4899 0%, #f43f5e 100%);
@@ -869,6 +935,11 @@
   background: linear-gradient(135deg, #2874f0 0%, #174ea6 100%);
 }
 
+.template-variant-pocofood .template-primary-button {
+  border-radius: 18px;
+  background: linear-gradient(135deg, #ffc222 0%, #ffae00 100%);
+}
+
 .template-variant-trend .template-product-card:hover {
   box-shadow: 0 18px 32px -24px rgba(244, 63, 94, 0.55);
 }
@@ -887,4 +958,8 @@
 
 .template-variant-whiterose .template-product-card:hover {
   box-shadow: 0 18px 34px -24px rgba(40, 116, 240, 0.24);
+}
+
+.template-variant-pocofood .template-product-card:hover {
+  box-shadow: 0 18px 34px -24px rgba(255, 174, 0, 0.28);
 }

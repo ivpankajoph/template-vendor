@@ -1,9 +1,12 @@
 'use client'
 
 import { useCallback, useEffect, useRef } from 'react'
-import { useDispatch, useSelector } from 'react-redux'
+import { shallowEqual, useDispatch, useSelector } from 'react-redux'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { fetchAlltemplatepageTemplate } from '@/store/slices/alltemplateslice'
+import {
+  clearTemplate,
+  fetchAlltemplatepageTemplate,
+} from '@/store/slices/alltemplateslice'
 import { fetchVendorProfile } from '@/store/slices/vendorProfileSlice'
 import type { AppDispatch, RootState } from '@/store'
 import { getTemplateCityFromPath } from '@/lib/template-route'
@@ -19,18 +22,35 @@ const DATA_STALE_MS = 2 * 60 * 1000
 const FOCUS_REFRESH_COOLDOWN_MS = 20 * 1000
 const REQUEST_RETRY_COOLDOWN_MS = 30 * 1000
 
+const selectTemplateLoaderState = (state: RootState) => ({
+  templateData: state.alltemplatepage?.data,
+  templateLoading: Boolean(state.alltemplatepage?.loading),
+  templateVendorId: state.alltemplatepage?.currentVendorId || null,
+  templateCitySlug: state.alltemplatepage?.currentCitySlug || null,
+  templateWebsiteId: state.alltemplatepage?.currentWebsiteId || null,
+  templateLastFetchedAt: state.alltemplatepage?.lastFetchedAt || null,
+  templateProducts: state.alltemplatepage?.data?.products || null,
+  vendorProfile: state.vendorprofilepage?.vendor,
+  vendorLoading: Boolean(state.vendorprofilepage?.loading),
+  vendorVendorId: state.vendorprofilepage?.currentVendorId || null,
+  vendorLastFetchedAt: state.vendorprofilepage?.lastFetchedAt || null,
+})
+
 export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props) {
   const dispatch = useDispatch<AppDispatch>()
   const pathname = usePathname()
   const router = useRouter()
   const searchParams = useSearchParams()
   const focusRefreshRef = useRef(0)
+  const handledRefreshTokenRef = useRef('')
   const templateRequestByVendorRef = useRef<Record<string, number>>({})
   const vendorRequestByVendorRef = useRef<Record<string, number>>({})
   const emptyHomeFallbackRef = useRef<string | null>(null)
   const citySlug = getTemplateCityFromPath(pathname || '/', vendorId)
   const routeWebsiteId = getTemplateWebsiteIdFromSearch(pathname || '/', searchParams)
   const websiteId = routeWebsiteId || websiteIdProp || undefined
+  const refreshToken = String(searchParams.get('template_refresh') || '').trim()
+  const isPreviewRoute = (pathname || '/').split('/').filter(Boolean).includes('preview')
   const templateRequestKey = `${vendorId || ''}::${citySlug}::${websiteId || 'default'}`
   const {
     templateData,
@@ -44,19 +64,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
     vendorLoading,
     vendorVendorId,
     vendorLastFetchedAt,
-  } = useSelector((state: RootState) => ({
-    templateData: state.alltemplatepage?.data,
-    templateLoading: Boolean(state.alltemplatepage?.loading),
-    templateProducts: state.alltemplatepage?.products || [],
-    templateVendorId: state.alltemplatepage?.currentVendorId || null,
-    templateCitySlug: state.alltemplatepage?.currentCitySlug || null,
-    templateWebsiteId: state.alltemplatepage?.currentWebsiteId || null,
-    templateLastFetchedAt: state.alltemplatepage?.lastFetchedAt || null,
-    vendorProfile: state.vendorprofilepage?.vendor,
-    vendorLoading: Boolean(state.vendorprofilepage?.loading),
-    vendorVendorId: state.vendorprofilepage?.currentVendorId || null,
-    vendorLastFetchedAt: state.vendorprofilepage?.lastFetchedAt || null,
-  }))
+  } = useSelector(selectTemplateLoaderState, shallowEqual)
 
   useEffect(() => {
     emptyHomeFallbackRef.current = null
@@ -78,6 +86,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
     const now = Date.now()
 
     const templateIsFresh =
+      !isPreviewRoute &&
       templateVendorId === vendorId &&
       (templateCitySlug || 'all') === citySlug &&
       (templateWebsiteId || '') === (websiteId || '') &&
@@ -116,6 +125,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
     vendorId,
     citySlug,
     websiteId,
+    isPreviewRoute,
     templateRequestKey,
     vendorLastFetchedAt,
     vendorLoading,
@@ -130,6 +140,14 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
 
   useEffect(() => {
     if (!vendorId) return
+    if (refreshToken && handledRefreshTokenRef.current !== refreshToken) {
+      handledRefreshTokenRef.current = refreshToken
+      templateRequestByVendorRef.current = {}
+      dispatch(clearTemplate())
+      dispatch(fetchAlltemplatepageTemplate({ vendorId, citySlug, websiteId }))
+      return
+    }
+
     refreshIfStaleRef.current()
 
     const handleFocus = () => {
@@ -149,7 +167,7 @@ export function TemplateDataLoader({ vendorId, websiteId: websiteIdProp }: Props
       window.removeEventListener("focus", handleFocus)
       document.removeEventListener("visibilitychange", handleVisibility)
     }
-  }, [vendorId])
+  }, [citySlug, dispatch, refreshToken, vendorId, websiteId])
 
   useEffect(() => {
     if (!vendorId || !pathname) return

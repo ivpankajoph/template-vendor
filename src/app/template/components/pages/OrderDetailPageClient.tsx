@@ -13,7 +13,9 @@ import { buildTemplateScopedPath } from "@/lib/template-route";
 
 type OrderItem = {
   _id?: string;
+  item_type?: "product" | "food";
   product_id?: string;
+  food_menu_item_id?: string;
   product_name: string;
   image_url?: string;
   variant_attributes?: Record<string, string>;
@@ -42,6 +44,8 @@ type OrderDetail = {
     city?: string;
     state?: string;
     pincode?: string;
+    landmark?: string;
+    delivery_instructions?: string;
     country?: string;
   };
 };
@@ -240,32 +244,52 @@ export default function OrderDetailPageClient() {
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-slate-900">Items</h2>
                   <div className="mt-4 space-y-4">
-                    {order.items?.map((item) => (
+                    {order.items?.map((item, index) => (
                       <div
-                        key={item._id || item.product_id}
+                        key={item._id || item.product_id || item.food_menu_item_id || `${item.product_name}-${index}`}
                         className="flex flex-col gap-4 rounded-xl border border-slate-100 bg-white p-4 sm:flex-row sm:items-center"
                       >
-                        <Link
-                          href={productPath(item.product_id)}
-                          className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100"
-                        >
-                          {/* eslint-disable-next-line @next/next/no-img-element */}
-                          <img
-                            src={
-                              item.image_url ||
-                              "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=200&q=80"
-                            }
-                            alt={item.product_name || "Product"}
-                            className="h-full w-full object-cover"
-                          />
-                        </Link>
-                        <div className="flex-1 space-y-1">
+                        {item.product_id ? (
                           <Link
                             href={productPath(item.product_id)}
-                            className="text-base font-semibold text-slate-900 hover:text-slate-700"
+                            className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100"
                           >
-                            {item.product_name}
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={
+                                item.image_url ||
+                                "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=200&q=80"
+                              }
+                              alt={item.product_name || "Product"}
+                              className="h-full w-full object-cover"
+                            />
                           </Link>
+                        ) : (
+                          <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-slate-100">
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img
+                              src={
+                                item.image_url ||
+                                "https://images.unsplash.com/photo-1614594975525-e45190c55d0b?w=200&q=80"
+                              }
+                              alt={item.product_name || "Product"}
+                              className="h-full w-full object-cover"
+                            />
+                          </div>
+                        )}
+                        <div className="flex-1 space-y-1">
+                          {item.product_id ? (
+                            <Link
+                              href={productPath(item.product_id)}
+                              className="text-base font-semibold text-slate-900 hover:text-slate-700"
+                            >
+                              {item.product_name}
+                            </Link>
+                          ) : (
+                            <p className="text-base font-semibold text-slate-900">
+                              {item.product_name}
+                            </p>
+                          )}
                           <p className="text-xs text-slate-500">
                             {Object.values(item.variant_attributes || {}).join(" / ") || "Standard"}
                           </p>
@@ -295,6 +319,14 @@ export default function OrderDetailPageClient() {
                       {order.shipping_address?.city}, {order.shipping_address?.state}{" "}
                       {order.shipping_address?.pincode}
                     </p>
+                    {order.shipping_address?.landmark ? (
+                      <p>Landmark: {order.shipping_address.landmark}</p>
+                    ) : null}
+                    {order.shipping_address?.delivery_instructions ? (
+                      <p>
+                        Instructions: {order.shipping_address.delivery_instructions}
+                      </p>
+                    ) : null}
                     <p>{order.shipping_address?.country || "India"}</p>
                   </div>
                 </div>

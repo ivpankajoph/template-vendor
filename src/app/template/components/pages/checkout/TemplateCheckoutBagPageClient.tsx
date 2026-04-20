@@ -7,8 +7,9 @@ import { Trash2 } from "lucide-react";
 import { useParams, useRouter } from "next/navigation";
 
 import {
-  useTemplateAuthState,
+
   templateApiFetch,
+  getTemplateAuth,
 } from "@/app/template/components/templateAuth";
 import { trackCheckout } from "@/lib/analytics-events";
 import { buildTemplateScopedPath } from "@/lib/template-route";
@@ -17,24 +18,37 @@ import TemplateCheckoutShell from "./template-checkout-shell";
 import {
   formatAmount,
   getTemplateCheckoutAddressId,
+  getTemplateCheckoutCouponCode,
   getTemplateCheckoutPaymentMethod,
   saveTemplateCheckoutAddressId,
+  saveTemplateCheckoutCouponCode,
 } from "./template-checkout-utils";
 
 type TemplateCartItem = {
   _id: string;
-  product_id: string;
+  item_type?: "product" | "food";
+  product_id?: string;
+  food_menu_item_id?: string;
   product_name: string;
   image_url?: string;
   quantity: number;
   unit_price: number;
   total_price: number;
   variant_attributes?: Record<string, any>;
+  selected_addons?: Array<{ name?: string; price?: number; is_free?: boolean } | string>;
+  addons?: Array<{ name?: string; price?: number; is_free?: boolean } | string>;
 };
 
 type TemplateCart = {
   items: TemplateCartItem[];
   subtotal: number;
+};
+
+type OfferSummary = {
+  total_discount: number;
+  final_total: number;
+  applied_auto_offer?: { offer_title?: string; discount_amount?: number } | null;
+  applied_coupon_offer?: { offer_title?: string; discount_amount?: number; coupon_code?: string } | null;
 };
 
 type TemplateAddress = {
@@ -48,11 +62,36 @@ type TemplateAddress = {
   pincode: string;
 };
 
+const formatVariantText = (attrs?: Record<string, any>) =>
+  Object.values(attrs || {})
+    .filter((value) => value && (typeof value === "string" || typeof value === "number"))
+    .join(" / ");
+
+const formatAddonNames = (
+  addons?: Array<{ name?: string; price?: number; is_free?: boolean } | string>,
+) =>
+  (Array.isArray(addons) ? addons : [])
+    .map((addon) =>
+      typeof addon === "string"
+        ? addon.trim()
+        : String(addon?.name || "").trim(),
+    )
+    .filter(Boolean)
+    .join(", ");
+
+const getAddonSummary = (item: TemplateCartItem) =>
+  formatAddonNames(item.selected_addons) ||
+  formatAddonNames(item.addons) ||
+  formatAddonNames(item.variant_attributes?.selected_addons) ||
+  formatAddonNames(item.variant_attributes?.addons);
+
 export default function TemplateCheckoutBagPageClient() {
   const params = useParams();
   const vendorId = params.vendor_id as string;
   const router = useRouter();
-  const auth = useTemplateAuthState(vendorId);
+  const auth = getTemplateAuth(vendorId);
+  const authToken = auth?.token || "";
+  const authUserId = auth?.user?.id || "";
   const homePath = buildTemplateScopedPath({ vendorId, suffix: "" });
   const bagPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/bag" });
   const addressPath = buildTemplateScopedPath({ vendorId, suffix: "checkout/address" });
@@ -69,6 +108,9 @@ export default function TemplateCheckoutBagPageClient() {
   const [shippingError, setShippingError] = useState("");
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState("");
+  const [couponCode, setCouponCode] = useState("");
+  const [couponMessage, setCouponMessage] = useState("");
+  const [offerSummary, setOfferSummary] = useState<OfferSummary | null>(null);
 
   const loadData = async () => {
     try {
@@ -90,6 +132,7 @@ export default function TemplateCheckoutBagPageClient() {
         "";
       setSelectedAddressId(selected);
       saveTemplateCheckoutAddressId(vendorId, selected);
+      setCouponCode(getTemplateCheckoutCouponCode(vendorId));
     } catch (err: any) {
       setError(err?.message || "Failed to load bag data");
       setCart(null);
@@ -99,18 +142,18 @@ export default function TemplateCheckoutBagPageClient() {
   };
 
   useEffect(() => {
-    if (!auth) {
+    if (!authToken) {
       setLoading(false);
       return;
     }
     loadData();
-  }, [auth, vendorId]);
+  }, [authToken, vendorId]);
 
   useEffect(() => {
-    if (!auth || !cart) return;
+    if (!authUserId || !cart) return;
     trackCheckout({
       vendorId,
-      userId: auth?.user?.id || "",
+      userId: authUserId,
       cartTotal: cart.subtotal,
       metadata: {
         items: cart.items?.map((item) => ({
@@ -120,7 +163,30 @@ export default function TemplateCheckoutBagPageClient() {
         })),
       },
     });
-  }, [auth, cart, vendorId]);
+  }, [authUserId, cart, vendorId]);
+
+  useEffect(() => {
+    if (!authToken || !cart?.items?.length) {
+      setOfferSummary(null);
+      return;
+    }
+
+    const previewOffers = async () => {
+      try {
+        const response = await templateApiFetch(vendorId, "/cart/offers/preview", {
+          method: "POST",
+          body: JSON.stringify({
+            coupon_code: getTemplateCheckoutCouponCode(vendorId),
+          }),
+        });
+        setOfferSummary(response?.summary || null);
+      } catch {
+        setOfferSummary(null);
+      }
+    };
+
+    void previewOffers();
+  }, [authToken, cart?.items?.length, cart?.subtotal, vendorId]);
 
   const fetchShippingQuote = async (addressId: string) => {
     if (!addressId) {
@@ -216,7 +282,30 @@ export default function TemplateCheckoutBagPageClient() {
 
   const bagItems = cart?.items || [];
   const subtotal = Number(cart?.subtotal || 0);
-  const totalAmount = subtotal + shippingFee;
+  const totalDiscount = Number(offerSummary?.total_discount || 0);
+  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
+  const totalAmount = discountedSubtotal + shippingFee;
+
+  const applyCoupon = async () => {
+    try {
+      setCouponMessage("");
+      const normalizedCode = couponCode.trim().toUpperCase();
+      const response = await templateApiFetch(vendorId, "/cart/offers/preview", {
+        method: "POST",
+        body: JSON.stringify({ coupon_code: normalizedCode }),
+      });
+      saveTemplateCheckoutCouponCode(vendorId, normalizedCode);
+      setCouponCode(normalizedCode);
+      setOfferSummary(response?.summary || null);
+      setCouponMessage(
+        normalizedCode ? `Coupon ${normalizedCode} applied successfully.` : "Offers refreshed.",
+      );
+    } catch (err: any) {
+      saveTemplateCheckoutCouponCode(vendorId, "");
+      setOfferSummary(null);
+      setCouponMessage(err?.message || "Failed to apply coupon");
+    }
+  };
 
   if (!loading && bagItems.length === 0) {
     return (
@@ -278,36 +367,55 @@ export default function TemplateCheckoutBagPageClient() {
 
           <div className="space-y-3">
             {bagItems.map((item) => {
-              const variantText =
-                Object.values(item.variant_attributes || {}).join(" / ") ||
-                "Default variant";
+              const variantText = formatVariantText(item.variant_attributes) || "Default variant";
+              const addonText = getAddonSummary(item);
               return (
                 <div
                   key={item._id}
                   className="template-checkout-card rounded-md border border-slate-200 bg-white p-4"
                 >
                   <div className="flex items-start gap-4">
-                    <Link
-                      href={productPath(item.product_id)}
-                      className="relative h-28 w-24 flex-shrink-0 overflow-hidden rounded-md bg-slate-100"
-                    >
-                      <Image
-                        src={item.image_url || "/placeholder.png"}
-                        alt={item.product_name || "Product"}
-                        fill
-                        className="object-cover"
-                      />
-                    </Link>
+                    {item.product_id ? (
+                      <Link
+                        href={productPath(item.product_id)}
+                        className="relative h-28 w-24 flex-shrink-0 overflow-hidden rounded-md bg-slate-100"
+                      >
+                        <Image
+                          src={item.image_url || "/placeholder.png"}
+                          alt={item.product_name || "Product"}
+                          fill
+                          className="object-cover"
+                        />
+                      </Link>
+                    ) : (
+                      <div className="relative h-28 w-24 flex-shrink-0 overflow-hidden rounded-md bg-slate-100">
+                        <Image
+                          src={item.image_url || "/placeholder.png"}
+                          alt={item.product_name || "Product"}
+                          fill
+                          className="object-cover"
+                        />
+                      </div>
+                    )}
 
                     <div className="flex min-w-0 flex-1 justify-between gap-4">
                       <div className="min-w-0">
-                        <Link
-                          href={productPath(item.product_id)}
-                          className="block text-lg font-semibold text-slate-900 hover:text-[#ff3f6c]"
-                        >
-                          {item.product_name}
-                        </Link>
+                        {item.product_id ? (
+                          <Link
+                            href={productPath(item.product_id)}
+                            className="block text-lg font-semibold text-slate-900 hover:text-[#ff3f6c]"
+                          >
+                            {item.product_name}
+                          </Link>
+                        ) : (
+                          <p className="block text-lg font-semibold text-slate-900">
+                            {item.product_name}
+                          </p>
+                        )}
                         <p className="mt-1 text-sm text-slate-500">{variantText}</p>
+                        {addonText ? (
+                          <p className="mt-1 text-sm text-slate-500">Extras: {addonText}</p>
+                        ) : null}
                         <div className="mt-4 flex items-center gap-2">
                           <button
                             onClick={() =>
@@ -349,6 +457,33 @@ export default function TemplateCheckoutBagPageClient() {
               );
             })}
           </div>
+
+          <div className="template-checkout-card rounded-md border border-slate-200 bg-white p-4">
+            <p className="text-sm font-semibold uppercase tracking-[0.08em] text-slate-700">
+              Coupon code
+            </p>
+            <div className="mt-3 flex gap-3">
+              <input
+                type="text"
+                value={couponCode}
+                onChange={(event) => setCouponCode(event.target.value.toUpperCase())}
+                placeholder="Enter coupon"
+                className="h-11 flex-1 rounded-md border border-slate-300 px-4 text-sm font-medium text-slate-900 outline-none focus:border-[#ff3f6c]"
+              />
+              <button
+                type="button"
+                onClick={() => void applyCoupon()}
+                className="template-checkout-accent h-11 rounded-md bg-[#ff3f6c] px-5 text-sm font-semibold uppercase tracking-[0.08em] text-white hover:bg-[#e93861]"
+              >
+                Apply
+              </button>
+            </div>
+            {couponMessage ? (
+              <p className={`mt-3 text-sm ${couponMessage.toLowerCase().includes("invalid") || couponMessage.toLowerCase().includes("failed") ? "text-rose-600" : "text-emerald-600"}`}>
+                {couponMessage}
+              </p>
+            ) : null}
+          </div>
         </section>
 
         <aside className="template-checkout-card h-fit rounded-md border border-slate-200 bg-white p-5 lg:sticky lg:top-24">
@@ -360,6 +495,18 @@ export default function TemplateCheckoutBagPageClient() {
               <span>Total MRP</span>
               <span>{formatAmount(subtotal)}</span>
             </div>
+            {offerSummary?.applied_auto_offer ? (
+              <div className="flex items-center justify-between text-emerald-700">
+                <span>{offerSummary.applied_auto_offer.offer_title}</span>
+                <span>-{formatAmount(Number(offerSummary.applied_auto_offer.discount_amount || 0))}</span>
+              </div>
+            ) : null}
+            {offerSummary?.applied_coupon_offer ? (
+              <div className="flex items-center justify-between text-emerald-700">
+                <span>Coupon {offerSummary.applied_coupon_offer.coupon_code || ""}</span>
+                <span>-{formatAmount(Number(offerSummary.applied_coupon_offer.discount_amount || 0))}</span>
+              </div>
+            ) : null}
             <div className="flex items-center justify-between">
               <span>Delivery Fee (Borzo)</span>
               <span>

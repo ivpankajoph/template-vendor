@@ -8,6 +8,7 @@ import { applyTemplatePreviewUpdate } from "@/store/slices/alltemplateslice";
 type TemplatePreviewMessage = {
   type?: string;
   vendorId?: string;
+  page?: string;
   payload?: unknown;
   sectionOrder?: string[];
 };
