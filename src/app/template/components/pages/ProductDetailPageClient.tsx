@@ -2,7 +2,12 @@
 
 import React, { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useParams, usePathname, useRouter, useSearchParams } from "next/navigation";
+import {
+  useParams,
+  usePathname,
+  useRouter,
+  useSearchParams,
+} from "next/navigation";
 import { useSelector } from "react-redux";
 import {
   Minus,
@@ -18,7 +23,10 @@ import {
 } from "lucide-react";
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
-import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
+import {
+  getTemplateAuth,
+  templateApiFetch,
+} from "@/app/template/components/templateAuth";
 import { trackAddToCart } from "@/lib/analytics-events";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import {
@@ -37,9 +45,11 @@ import {
   type PocoFoodWishlistItem,
 } from "@/app/template/components/pocofood/pocofood-wishlist";
 
-type VariantImage = {
-  url?: string;
-} | string;
+type VariantImage =
+  | {
+      url?: string;
+    }
+  | string;
 
 type ProductVariant = {
   _id: string;
@@ -47,6 +57,9 @@ type ProductVariant = {
   variantSku?: string;
   variantAttributes?: Record<string, string>;
   actualPrice?: number;
+  salePrice?: number;
+  sale_price?: number;
+  salePriceV2?: number;
   finalPrice?: number;
   discountPercent?: number;
   stockQuantity?: number;
@@ -83,6 +96,10 @@ type DraftPreviewFormData = {
   brand?: string;
   defaultImages?: DraftPreviewImage[];
   variants?: DraftPreviewVariant[];
+  actualPrice?: number;
+  salePrice?: number;
+  stockQuantity?: number;
+  specifications?: Array<Record<string, string>>;
   faqs?: ProductFaq[];
 };
 
@@ -90,8 +107,46 @@ type TemplateProductPreviewMessage = {
   type?: string;
   sessionId?: string;
   payload?: {
+    savedAt?: number;
+    expiresAt?: number;
     formData?: DraftPreviewFormData;
   };
+};
+
+const PRODUCT_PREVIEW_MESSAGE_TYPE = "template-product-preview-draft";
+
+const readWindowNamePreviewMessage = (
+  previewSessionId: string,
+): TemplateProductPreviewMessage | null => {
+  if (typeof window === "undefined") return null;
+
+  try {
+    const raw = window.name;
+    if (!raw || raw.length < 2) return null;
+
+    const parsed = JSON.parse(raw) as TemplateProductPreviewMessage | null;
+    if (!parsed || parsed.type !== PRODUCT_PREVIEW_MESSAGE_TYPE) return null;
+    if (String(parsed.sessionId || "").trim() !== previewSessionId) return null;
+
+    const expiresAt = Number(parsed.payload?.expiresAt || 0);
+    if (expiresAt && Date.now() > expiresAt) return null;
+
+    return parsed.payload?.formData ? parsed : null;
+  } catch {
+    return null;
+  }
+};
+
+const writeWindowNamePreviewMessage = (
+  message: TemplateProductPreviewMessage,
+) => {
+  if (typeof window === "undefined") return;
+
+  try {
+    window.name = JSON.stringify(message);
+  } catch {
+    // The localStorage cache remains as a fallback if window.name is unavailable.
+  }
 };
 
 type Product = {
@@ -114,7 +169,13 @@ type Product = {
   mainCategoryName?: string;
   productCategory?: { name?: string; title?: string } | string;
   productCategoryName?: string;
-  productSubCategory?: Array<{ name?: string; title?: string } | string> | { name?: string; title?: string } | string;
+  productSubCategory?:
+    | Array<{ name?: string; title?: string } | string>
+    | { name?: string; title?: string }
+    | string;
+  actualPrice?: number;
+  salePrice?: number;
+  stockQuantity?: number;
 };
 
 type ProductTab = "description" | "specifications" | "faqs" | "reviews";
@@ -202,9 +263,12 @@ const toNumber = (value: unknown) => {
   return Number.isFinite(num) ? num : 0;
 };
 
-const formatCurrency = (value: number) => `Rs. ${toNumber(value).toLocaleString()}`;
+const formatCurrency = (value: number) =>
+  `Rs. ${toNumber(value).toLocaleString()}`;
 const API_BASE_URL = String(NEXT_PUBLIC_API_URL || "").replace(/\/+$/, "");
-const API_BASE = API_BASE_URL.endsWith("/v1") ? API_BASE_URL : `${API_BASE_URL}/v1`;
+const API_BASE = API_BASE_URL.endsWith("/v1")
+  ? API_BASE_URL
+  : `${API_BASE_URL}/v1`;
 
 const isNonEmptyString = (value: unknown): value is string =>
   typeof value === "string" && value.trim().length > 0;
@@ -248,7 +312,7 @@ const getUniqueImages = (product: Product | null) => {
   const variantUrls = (product.variants || []).flatMap((variant) =>
     (variant.variantsImageUrls || [])
       .map((image) => getImageUrl(image))
-      .filter((url): url is string => Boolean(url))
+      .filter((url): url is string => Boolean(url)),
   );
 
   return Array.from(new Set([...defaultUrls, ...variantUrls]));
@@ -256,7 +320,11 @@ const getUniqueImages = (product: Product | null) => {
 
 const getPrimaryVariant = (product: Product | null | undefined) => {
   const variants = Array.isArray(product?.variants) ? product.variants : [];
-  return variants.find((variant) => variant?.isActive !== false) || variants[0] || null;
+  return (
+    variants.find((variant) => variant?.isActive !== false) ||
+    variants[0] ||
+    null
+  );
 };
 
 const getFoodPrimaryVariant = (item: FoodMenuItem | null | undefined) => {
@@ -273,27 +341,42 @@ const getFoodPrimaryVariant = (item: FoodMenuItem | null | undefined) => {
 const getFoodFinalPrice = (
   item: FoodMenuItem | null | undefined,
   variantName?: string,
-  selectedAddons: FoodAddonOption[] = []
+  selectedAddons: FoodAddonOption[] = [],
 ) => {
   const variants = Array.isArray(item?.variants) ? item.variants : [];
-  const normalizedName = String(variantName || "").trim().toLowerCase();
+  const normalizedName = String(variantName || "")
+    .trim()
+    .toLowerCase();
   const selectedVariant =
     variants.find(
       (variant) =>
-        String(variant?.name || "").trim().toLowerCase() === normalizedName
+        String(variant?.name || "")
+          .trim()
+          .toLowerCase() === normalizedName,
     ) || getFoodPrimaryVariant(item);
 
   const variantPrice = toNumber(selectedVariant?.price);
   const variantOfferPrice = toNumber(selectedVariant?.offer_price);
   const itemPrice = toNumber(item?.price);
   const itemOfferPrice = toNumber(item?.offer_price);
-  const itemHasTwoPrices = itemPrice > 0 && itemOfferPrice > 0 && itemPrice !== itemOfferPrice;
+  const itemHasTwoPrices =
+    itemPrice > 0 && itemOfferPrice > 0 && itemPrice !== itemOfferPrice;
   const variantHasTwoPrices =
-    variantPrice > 0 && variantOfferPrice > 0 && variantPrice !== variantOfferPrice;
-  const enteredPrice = variantHasTwoPrices || !itemHasTwoPrices ? variantPrice || itemPrice : itemPrice;
+    variantPrice > 0 &&
+    variantOfferPrice > 0 &&
+    variantPrice !== variantOfferPrice;
+  const enteredPrice =
+    variantHasTwoPrices || !itemHasTwoPrices
+      ? variantPrice || itemPrice
+      : itemPrice;
   const enteredOfferPrice =
-    variantHasTwoPrices || !itemHasTwoPrices ? variantOfferPrice || itemOfferPrice : itemOfferPrice;
-  const hasTwoPrices = enteredPrice > 0 && enteredOfferPrice > 0 && enteredPrice !== enteredOfferPrice;
+    variantHasTwoPrices || !itemHasTwoPrices
+      ? variantOfferPrice || itemOfferPrice
+      : itemOfferPrice;
+  const hasTwoPrices =
+    enteredPrice > 0 &&
+    enteredOfferPrice > 0 &&
+    enteredPrice !== enteredOfferPrice;
   const baseFinal = hasTwoPrices
     ? Math.min(enteredPrice, enteredOfferPrice)
     : enteredOfferPrice || enteredPrice;
@@ -313,23 +396,33 @@ const getFoodFinalPrice = (
 
 const getFoodMenuImages = (item: FoodMenuItem | null | undefined) => {
   const primary = String(item?.image_url || "").trim();
-  const gallery = Array.isArray(item?.gallery_images) ? item.gallery_images : [];
+  const gallery = Array.isArray(item?.gallery_images)
+    ? item.gallery_images
+    : [];
   return Array.from(
-    new Set([primary, ...gallery.map((image) => String(image || "").trim())].filter(Boolean))
+    new Set(
+      [primary, ...gallery.map((image) => String(image || "").trim())].filter(
+        Boolean,
+      ),
+    ),
   );
 };
 
 const mapDraftPreviewToProduct = (
   formData: DraftPreviewFormData | null | undefined,
-  fallbackProductId: string
+  fallbackProductId: string,
 ) => {
   const variants = Array.isArray(formData?.variants) ? formData?.variants : [];
-  const defaultImages = Array.isArray(formData?.defaultImages) ? formData.defaultImages : [];
+  const defaultImages = Array.isArray(formData?.defaultImages)
+    ? formData.defaultImages
+    : [];
   const faqs = Array.isArray(formData?.faqs) ? formData.faqs : [];
 
   return {
     _id: fallbackProductId || "preview-product",
-    productName: String(formData?.productName || "Untitled Product").trim() || "Untitled Product",
+    productName:
+      String(formData?.productName || "Untitled Product").trim() ||
+      "Untitled Product",
     shortDescription: String(formData?.shortDescription || "").trim(),
     description: String(formData?.description || "").trim(),
     brand: String(formData?.brand || "").trim(),
@@ -340,25 +433,33 @@ const mapDraftPreviewToProduct = (
       _id: String(variant?._id || `preview-variant-${index + 1}`),
       variantDisplayName: String(variant?.variantDisplayName || "").trim(),
       variantAttributes:
-        variant?.variantAttributes && typeof variant.variantAttributes === "object"
+        variant?.variantAttributes &&
+        typeof variant.variantAttributes === "object"
           ? variant.variantAttributes
           : {},
-      actualPrice: toNumber(variant?.actualPrice),
-      finalPrice: toNumber(variant?.finalPrice),
       stockQuantity: toNumber(variant?.stockQuantity),
       isActive: variant?.isActive !== false,
+      actualPrice: toNumber(variant?.actualPrice),
+      finalPrice: toNumber(variant?.finalPrice),
       variantsImageUrls: Array.isArray(variant?.variantsImageUrls)
-        ? variant.variantsImageUrls.map((image) => ({
+        ? variant.variantsImageUrls.map((image: any) => ({
             url: String(image?.url || "").trim(),
           }))
         : [],
-      variantMetaDescription: String(variant?.variantMetaDescription || "").trim(),
+      variantMetaDescription: String(
+        variant?.variantMetaDescription || "",
+      ).trim(),
     })),
+    actualPrice: toNumber(formData?.actualPrice),
+    salePrice: toNumber(formData?.salePrice),
+    stockQuantity: toNumber(formData?.stockQuantity),
     faqs: faqs.map((faq) => ({
       question: String(faq?.question || "").trim(),
       answer: String(faq?.answer || "").trim(),
     })),
-    specifications: [],
+    specifications: Array.isArray(formData?.specifications)
+      ? formData.specifications
+      : [],
   } as Product;
 };
 
@@ -446,9 +547,11 @@ export default function ProductDetailPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const templateProducts = useSelector(
-    (state: any) => (state?.alltemplatepage?.products || []) as Product[]
+    (state: any) => (state?.alltemplatepage?.products || []) as Product[],
   );
-  const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
+  const templateData = useSelector(
+    (state: any) => state?.alltemplatepage?.data,
+  );
   const [remoteBenefitsConfig, setRemoteBenefitsConfig] = useState<any>(null);
   const retailBenefits = useMemo(
     () =>
@@ -461,16 +564,19 @@ export default function ProductDetailPage() {
           },
         },
       }),
-    [remoteBenefitsConfig, templateData]
+    [remoteBenefitsConfig, templateData],
   );
 
-  const productId = ((params as any).product_id || (params as any).product_slug) as string;
+  const productId = ((params as any).product_id ||
+    (params as any).product_slug) as string;
   const vendorId = params.vendor_id as string;
   const isDraftPreview = searchParams.get("previewDraft") === "1";
-  const previewSessionId = String(searchParams.get("previewSessionId") || "").trim();
+  const previewSessionId = String(
+    searchParams.get("previewSessionId") || "",
+  ).trim();
   const citySlug = getTemplateCityFromPath(pathname || "/", vendorId);
   const fallbackCitySlug = String(
-    templateData?.components?.vendor_profile?.default_city_slug || ""
+    templateData?.components?.vendor_profile?.default_city_slug || "",
   ).trim();
   const effectiveCitySlug =
     citySlug && citySlug !== "all" ? citySlug : fallbackCitySlug || "all";
@@ -499,9 +605,12 @@ export default function ProductDetailPage() {
 
     const loadBenefits = async () => {
       try {
-        const res = await fetch(`${API_BASE}/templates/${vendorId}/social${query}`, {
-          cache: "no-store",
-        });
+        const res = await fetch(
+          `${API_BASE}/templates/${vendorId}/social${query}`,
+          {
+            cache: "no-store",
+          },
+        );
         if (!res.ok) return;
         const json = await res.json().catch(() => null);
         const config = extractProductBenefitsConfig(json?.data || json);
@@ -525,15 +634,22 @@ export default function ProductDetailPage() {
       }
 
       try {
-        const response = await fetch(`${API_BASE}/vendors/${vendorId}/food-storefront`, {
-          cache: "no-store",
-        });
+        const response = await fetch(
+          `${API_BASE}/vendors/${vendorId}/food-storefront`,
+          {
+            cache: "no-store",
+          },
+        );
         const data = await response.json().catch(() => null);
 
         if (!active) return;
 
-        const items = Array.isArray(data?.data?.menu_items) ? data.data.menu_items : [];
-        const offers = Array.isArray(data?.data?.offers) ? data.data.offers : [];
+        const items = Array.isArray(data?.data?.menu_items)
+          ? data.data.menu_items
+          : [];
+        const offers = Array.isArray(data?.data?.offers)
+          ? data.data.offers
+          : [];
         const restaurant =
           data?.data?.restaurant && typeof data.data.restaurant === "object"
             ? data.data.restaurant
@@ -541,7 +657,12 @@ export default function ProductDetailPage() {
         setFoodRestaurant(restaurant);
         setFoodOffers(offers);
         setFoodMenuItems(items);
-        if (!items.some((item: FoodMenuItem) => String(item?._id || "") === String(productId || ""))) {
+        if (
+          !items.some(
+            (item: FoodMenuItem) =>
+              String(item?._id || "") === String(productId || ""),
+          )
+        ) {
           setFoodLoadError("Food item not found.");
         }
       } catch {
@@ -577,7 +698,8 @@ export default function ProductDetailPage() {
     ratingsCount: 0,
   });
   const [foodMenuItems, setFoodMenuItems] = useState<FoodMenuItem[]>([]);
-  const [foodRestaurant, setFoodRestaurant] = useState<FoodRestaurantProfile | null>(null);
+  const [foodRestaurant, setFoodRestaurant] =
+    useState<FoodRestaurantProfile | null>(null);
   const [foodOffers, setFoodOffers] = useState<FoodOffer[]>([]);
   const [foodLoading, setFoodLoading] = useState(false);
   const [foodLoadError, setFoodLoadError] = useState("");
@@ -597,22 +719,22 @@ export default function ProductDetailPage() {
   const pageClass = isWhiteRose
     ? "min-h-screen bg-[#f1f3f6] text-[#172337]"
     : isStudio
-    ? "min-h-screen bg-slate-950 text-slate-100"
-    : isMinimal
-      ? "min-h-screen bg-[#f7f7f5] text-slate-900"
-      : isTrend
-        ? "min-h-screen bg-rose-50/50 text-slate-900"
-        : "min-h-screen bg-gray-50 text-slate-900";
+      ? "min-h-screen bg-slate-950 text-slate-100"
+      : isMinimal
+        ? "min-h-screen bg-[#f7f7f5] text-slate-900"
+        : isTrend
+          ? "min-h-screen bg-rose-50/50 text-slate-900"
+          : "min-h-screen bg-gray-50 text-slate-900";
 
   const panelClass = isWhiteRose
     ? "template-surface-card border border-[#dfe3eb] bg-white rounded-[24px] shadow-[0_12px_24px_rgba(15,23,42,0.05)]"
     : isStudio
-    ? "template-surface-card border border-slate-800 bg-slate-900/70 rounded-md"
-    : isTrend
-      ? "template-surface-card border border-rose-200 bg-white rounded-[1.8rem]"
-    : isMinimal
-      ? "template-surface-card border border-slate-200 bg-white rounded-xl"
-      : "template-surface-card border border-slate-200 bg-white rounded-3xl";
+      ? "template-surface-card border border-slate-800 bg-slate-900/70 rounded-md"
+      : isTrend
+        ? "template-surface-card border border-rose-200 bg-white rounded-[1.8rem]"
+        : isMinimal
+          ? "template-surface-card border border-slate-200 bg-white rounded-xl"
+          : "template-surface-card border border-slate-200 bg-white rounded-3xl";
   const accentTextClass = isWhiteRose
     ? "text-[#2874f0]"
     : isTrend
@@ -633,13 +755,21 @@ export default function ProductDetailPage() {
     : isTrend
       ? "bg-rose-50 text-rose-700"
       : "bg-slate-100 text-slate-700";
-  const accentButtonClass = isWhiteRose ? "bg-[#2874f0]" : isTrend ? "bg-rose-500" : "bg-indigo-500";
+  const accentButtonClass = isWhiteRose
+    ? "bg-[#2874f0]"
+    : isTrend
+      ? "bg-rose-500"
+      : "bg-indigo-500";
   const subtleTextClass = isWhiteRose
     ? "text-[#5f6c7b]"
     : isStudio
       ? "text-slate-300"
       : "text-slate-600";
-  const softPanelClass = isWhiteRose ? "bg-[#f8fafc]" : isTrend ? "bg-rose-50" : "bg-slate-50";
+  const softPanelClass = isWhiteRose
+    ? "bg-[#f8fafc]"
+    : isTrend
+      ? "bg-rose-50"
+      : "bg-slate-50";
   const enquiryTriggerClass =
     variantTheme.key === "mquiq"
       ? "fixed bottom-16 right-6 z-[60] h-12 rounded-full border border-[#e7c565] bg-[#f4b400] px-4 text-sm font-semibold text-[#1f2937] shadow-[0_18px_45px_rgba(244,180,0,0.32)] transition hover:-translate-y-0.5 hover:bg-[#f6bf1f] md:right-8"
@@ -676,7 +806,9 @@ export default function ProductDetailPage() {
           effectiveCitySlug && effectiveCitySlug !== "all"
             ? `?city=${encodeURIComponent(effectiveCitySlug)}`
             : "";
-        const response = await fetch(`${NEXT_PUBLIC_API_URL}/products/${productId}${cityQuery}`);
+        const response = await fetch(
+          `${NEXT_PUBLIC_API_URL}/products/${productId}${cityQuery}`,
+        );
         const data = await response.json().catch(() => null);
 
         if (!active) return;
@@ -687,7 +819,7 @@ export default function ProductDetailPage() {
           setLoadError(
             typeof data?.message === "string" && data.message.trim()
               ? data.message.trim()
-              : notFoundMessage
+              : notFoundMessage,
           );
           return;
         }
@@ -716,28 +848,88 @@ export default function ProductDetailPage() {
     if (!previewSessionId) {
       setLoading(false);
       setProduct(null);
-      setLoadError("Preview data was not found. Please reopen the product preview.");
+      setLoadError(
+        "Preview data was not found. Please reopen the product preview.",
+      );
       return;
     }
 
     setLoading(true);
     setLoadError("");
+    let receivedDraft = false;
 
-    const timeoutId = window.setTimeout(() => {
-      setLoading(false);
-      setProduct(null);
-      setLoadError("Preview data expired. Please reopen the product preview.");
-    }, 12000);
+    // 1. Try to load from cache immediately for fast refresh
+    const cacheKey = `preview_cache_${previewSessionId}`;
+    try {
+      const windowNameMessage = readWindowNamePreviewMessage(previewSessionId);
+      const cached = windowNameMessage
+        ? JSON.stringify(windowNameMessage.payload)
+        : localStorage.getItem(cacheKey);
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (parsed && parsed.formData) {
+          receivedDraft = true;
+          setProduct(mapDraftPreviewToProduct(parsed.formData, productId));
+          setLoading(false);
+          setLoadError("");
+        }
+      }
+    } catch (e) {
+      console.warn("Failed to load preview cache", e);
+    }
+
+    const signalReady = () => {
+      if (typeof window === "undefined" || !window.opener) return;
+      window.opener.postMessage(
+        { type: "preview-window-ready", sessionId: previewSessionId },
+        "*",
+      );
+    };
+
+    // Signal more than once so refreshes do not get stuck if the admin tab is
+    // still rendering when the preview page first loads.
+    signalReady();
+    let readyAttempts = 0;
+    const readyIntervalId = window.setInterval(() => {
+      readyAttempts += 1;
+      signalReady();
+      if (readyAttempts >= 12) {
+        window.clearInterval(readyIntervalId);
+      }
+    }, 700);
+
+    let timeoutId: number | null = null;
+    const startTimeout = () => {
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      timeoutId = window.setTimeout(() => {
+        if (receivedDraft) return;
+        setLoading(false);
+        setProduct(null);
+        setLoadError(
+          "Waiting for the latest product draft. Keep the product form open and click Preview again if this does not update.",
+        );
+      }, 2500);
+    };
+
+    startTimeout();
 
     const handleMessage = (event: MessageEvent) => {
       const data = event.data as TemplateProductPreviewMessage | null;
-      if (!data || data.type !== "template-product-preview-draft") return;
+      if (!data || data.type !== PRODUCT_PREVIEW_MESSAGE_TYPE) return;
       if (String(data.sessionId || "").trim() !== previewSessionId) return;
 
       const nextFormData = data.payload?.formData;
       if (!nextFormData || typeof nextFormData !== "object") return;
 
-      window.clearTimeout(timeoutId);
+      // Update cache
+      try {
+        localStorage.setItem(cacheKey, JSON.stringify(data.payload));
+      } catch (e) {}
+      writeWindowNamePreviewMessage(data);
+
+      window.clearInterval(readyIntervalId);
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      receivedDraft = true;
       setProduct(mapDraftPreviewToProduct(nextFormData, productId));
       setLoadError("");
       setLoading(false);
@@ -745,7 +937,8 @@ export default function ProductDetailPage() {
 
     window.addEventListener("message", handleMessage);
     return () => {
-      window.clearTimeout(timeoutId);
+      if (timeoutId !== null) window.clearTimeout(timeoutId);
+      window.clearInterval(readyIntervalId);
       window.removeEventListener("message", handleMessage);
     };
   }, [isDraftPreview, isPocoFood, previewSessionId, productId]);
@@ -783,9 +976,11 @@ export default function ProductDetailPage() {
   const allImageUrls = useMemo(() => getUniqueImages(product), [product]);
   const selectedVariantLeadImage = useMemo(() => {
     if (!selectedVariant) return "";
-    return (selectedVariant.variantsImageUrls || [])
-      .map((image) => getImageUrl(image))
-      .find((url) => Boolean(url)) || "";
+    return (
+      (selectedVariant.variantsImageUrls || [])
+        .map((image) => getImageUrl(image))
+        .find((url) => Boolean(url)) || ""
+    );
   }, [selectedVariant]);
 
   useEffect(() => {
@@ -795,7 +990,11 @@ export default function ProductDetailPage() {
     }
 
     const firstActive = variants.find((item) => item.isActive) || variants[0];
-    setSelectedVariantId((current) => current || firstActive?._id || "");
+    setSelectedVariantId((current) =>
+      current && variants.some((item) => item._id === current)
+        ? current
+        : firstActive?._id || "",
+    );
   }, [variants]);
 
   useEffect(() => {
@@ -810,12 +1009,16 @@ export default function ProductDetailPage() {
     }
 
     setSelectedImage((current) =>
-      current && allImageUrls.includes(current) ? current : allImageUrls[0]
+      current && allImageUrls.includes(current) ? current : allImageUrls[0],
     );
   }, [selectedVariantId, selectedVariantLeadImage, allImageUrls]);
 
-  const basePrice = toNumber(selectedVariant?.finalPrice);
-  const actualPrice = toNumber(selectedVariant?.actualPrice);
+  const basePrice = selectedVariant
+    ? toNumber(selectedVariant?.finalPrice)
+    : toNumber(product?.salePrice);
+  const actualPrice = selectedVariant
+    ? toNumber(selectedVariant?.actualPrice)
+    : toNumber(product?.actualPrice);
   const discountPercent =
     toNumber(selectedVariant?.discountPercent) > 0
       ? toNumber(selectedVariant?.discountPercent)
@@ -823,18 +1026,29 @@ export default function ProductDetailPage() {
         ? Math.round(((actualPrice - basePrice) / actualPrice) * 100)
         : 0;
 
-  const stockQuantity = toNumber(selectedVariant?.stockQuantity);
+  const stockQuantity = selectedVariant
+    ? toNumber(selectedVariant?.stockQuantity)
+    : toNumber(product?.stockQuantity);
   const selectedVariantLabel = selectedVariant
     ? getVariantLabel(selectedVariant)
     : "";
-  const productTitle = selectedVariantLabel || product?.productName || "Untitled Product";
+  const productTitle =
+    product?.productName || selectedVariantLabel || "Untitled Product";
+
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (!isDraftPreview || !productTitle) return;
+    document.title = `Product | ${productTitle}`;
+  }, [isDraftPreview, productTitle]);
 
   const productDescription =
     product?.description ||
     selectedVariant?.variantMetaDescription ||
     product?.shortDescription ||
     "No description available.";
-  const productShortDescription = String(product?.shortDescription || "").trim();
+  const productShortDescription = String(
+    product?.shortDescription || "",
+  ).trim();
 
   const detailedSpecs = useMemo(() => {
     const list: Array<[string, string]> = [];
@@ -858,7 +1072,7 @@ export default function ProductDetailPage() {
     if (!product?._id) return [] as Product[];
 
     const currentCategorySet = new Set(
-      collectProductCategoryLabels(product).map((label) => label.toLowerCase())
+      collectProductCategoryLabels(product).map((label) => label.toLowerCase()),
     );
 
     const candidates = templateProducts
@@ -900,57 +1114,90 @@ export default function ProductDetailPage() {
   const foodProduct = useMemo(
     () =>
       foodMenuItems.find(
-        (item) => String(item?._id || "").trim() === String(productId || "").trim()
+        (item) =>
+          String(item?._id || "").trim() === String(productId || "").trim(),
       ) || null,
-    [foodMenuItems, productId]
+    [foodMenuItems, productId],
   );
   const selectedFoodVariant = useMemo(() => {
     if (!foodProduct) return null;
-    const variants = Array.isArray(foodProduct.variants) ? foodProduct.variants : [];
+    const variants = Array.isArray(foodProduct.variants)
+      ? foodProduct.variants
+      : [];
     return (
       variants.find(
         (variant) =>
-          String(variant?.name || "").trim().toLowerCase() ===
-          String(selectedFoodVariantName || "").trim().toLowerCase()
+          String(variant?.name || "")
+            .trim()
+            .toLowerCase() ===
+          String(selectedFoodVariantName || "")
+            .trim()
+            .toLowerCase(),
       ) || getFoodPrimaryVariant(foodProduct)
     );
   }, [foodProduct, selectedFoodVariantName]);
   const selectedFoodAddonRecords = useMemo(() => {
     const addons = Array.isArray(foodProduct?.addons) ? foodProduct.addons : [];
     return addons.filter((addon) =>
-      selectedFoodAddons.includes(String(addon?.name || "").trim())
+      selectedFoodAddons.includes(String(addon?.name || "").trim()),
     );
   }, [foodProduct, selectedFoodAddons]);
   const foodPricing = useMemo(
-    () => getFoodFinalPrice(foodProduct, selectedFoodVariant?.name, selectedFoodAddonRecords),
-    [foodProduct, selectedFoodAddonRecords, selectedFoodVariant?.name]
+    () =>
+      getFoodFinalPrice(
+        foodProduct,
+        selectedFoodVariant?.name,
+        selectedFoodAddonRecords,
+      ),
+    [foodProduct, selectedFoodAddonRecords, selectedFoodVariant?.name],
   );
-  const foodImageUrls = useMemo(() => getFoodMenuImages(foodProduct), [foodProduct]);
+  const foodImageUrls = useMemo(
+    () => getFoodMenuImages(foodProduct),
+    [foodProduct],
+  );
   const relatedFoodProducts = useMemo(() => {
     if (!foodProduct?._id) return [] as FoodMenuItem[];
-    const category = String(foodProduct?.category || "").trim().toLowerCase();
-    const items = foodMenuItems.filter((item) => String(item?._id || "") !== String(foodProduct._id));
+    const category = String(foodProduct?.category || "")
+      .trim()
+      .toLowerCase();
+    const items = foodMenuItems.filter(
+      (item) => String(item?._id || "") !== String(foodProduct._id),
+    );
     const sameCategory = items.filter(
-      (item) => String(item?.category || "").trim().toLowerCase() === category
+      (item) =>
+        String(item?.category || "")
+          .trim()
+          .toLowerCase() === category,
     );
     return (sameCategory.length ? sameCategory : items).slice(0, 4);
   }, [foodMenuItems, foodProduct]);
   const foodOfferBadge = useMemo(() => {
     const offer = foodOffers[0];
     if (!offer) return "";
-    if (toNumber(offer.discount_percent) > 0) return `${toNumber(offer.discount_percent)}% OFF`;
-    if (toNumber(offer.flat_discount) > 0) return `Save Rs. ${toNumber(offer.flat_discount)}`;
+    if (toNumber(offer.discount_percent) > 0)
+      return `${toNumber(offer.discount_percent)}% OFF`;
+    if (toNumber(offer.flat_discount) > 0)
+      return `Save Rs. ${toNumber(offer.flat_discount)}`;
     if (offer.free_item_name) return `${offer.free_item_name} Free`;
     if (offer.offer_title) return String(offer.offer_title).trim();
     return "";
   }, [foodOffers]);
   const foodEstimatedDelivery = useMemo(() => {
-    const prep = toNumber(foodRestaurant?.average_preparation_time || foodProduct?.prep_time_minutes);
+    const prep = toNumber(
+      foodRestaurant?.average_preparation_time ||
+        foodProduct?.prep_time_minutes,
+    );
     const min = Math.max(prep + 10, 20);
     const max = Math.max(min + 10, 30);
     return `${min}-${max} mins`;
-  }, [foodProduct?.prep_time_minutes, foodRestaurant?.average_preparation_time]);
-  const foodSavings = Math.max(0, toNumber(foodPricing.actualPrice) - toNumber(foodPricing.finalPrice));
+  }, [
+    foodProduct?.prep_time_minutes,
+    foodRestaurant?.average_preparation_time,
+  ]);
+  const foodSavings = Math.max(
+    0,
+    toNumber(foodPricing.actualPrice) - toNumber(foodPricing.finalPrice),
+  );
 
   useEffect(() => {
     if (!foodProduct) {
@@ -972,7 +1219,9 @@ export default function ProductDetailPage() {
     if (!isPocoFood || typeof window === "undefined") return;
 
     const syncWishlist = () => {
-      setFoodWishlistIds(readPocoFoodWishlist(vendorId).map((item) => item.product_id));
+      setFoodWishlistIds(
+        readPocoFoodWishlist(vendorId).map((item) => item.product_id),
+      );
     };
 
     syncWishlist();
@@ -989,7 +1238,9 @@ export default function ProductDetailPage() {
     if (!foodProduct?._id) return;
     const nextProductId = String(foodProduct._id);
     const currentItems = readPocoFoodWishlist(vendorId);
-    const exists = currentItems.some((item) => item.product_id === nextProductId);
+    const exists = currentItems.some(
+      (item) => item.product_id === nextProductId,
+    );
     const href = buildTemplateScopedPath({
       vendorId,
       pathname: pathname || "/",
@@ -1002,7 +1253,8 @@ export default function ProductDetailPage() {
             product_id: nextProductId,
             product_name: String(foodProduct.item_name || "Food item"),
             category: String(foodProduct.category || ""),
-            image_url: selectedFoodImage || getFoodMenuImages(foodProduct)[0] || "",
+            image_url:
+              selectedFoodImage || getFoodMenuImages(foodProduct)[0] || "",
             price: foodPricing.finalPrice,
             href,
             added_at: new Date().toISOString(),
@@ -1019,7 +1271,7 @@ export default function ProductDetailPage() {
     setSelectedFoodAddons((current) =>
       current.includes(addonName)
         ? current.filter((item) => item !== addonName)
-        : [...current, addonName]
+        : [...current, addonName],
     );
   };
 
@@ -1028,7 +1280,9 @@ export default function ProductDetailPage() {
 
     const auth = getTemplateAuth(vendorId);
     if (!auth) {
-      router.push(`${loginPath}?next=${encodeURIComponent(pathname || productPath)}`);
+      router.push(
+        `${loginPath}?next=${encodeURIComponent(pathname || productPath)}`,
+      );
       return;
     }
 
@@ -1041,7 +1295,8 @@ export default function ProductDetailPage() {
           item_type: "food",
           food_menu_item_id: foodProduct._id,
           quantity,
-          variant_name: String(selectedFoodVariant?.name || "").trim() || undefined,
+          variant_name:
+            String(selectedFoodVariant?.name || "").trim() || undefined,
           selected_addons: selectedFoodAddonRecords.map((addon) => ({
             name: String(addon?.name || "").trim(),
             price: toNumber(addon?.price),
@@ -1254,22 +1509,34 @@ export default function ProductDetailPage() {
     if (!foodProduct) {
       return (
         <div className="flex min-h-screen items-center justify-center">
-          <div className="text-gray-500">{foodLoadError || "Food item not found."}</div>
+          <div className="text-gray-500">
+            {foodLoadError || "Food item not found."}
+          </div>
         </div>
       );
     }
 
-    const isFoodWishlisted = foodWishlistIds.includes(String(foodProduct._id || ""));
+    const isFoodWishlisted = foodWishlistIds.includes(
+      String(foodProduct._id || ""),
+    );
 
     return (
       <div className="min-h-screen bg-[#faf7f1] pb-24 text-[#1f1720] lg:pb-0">
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8b6d58]">
-            <Link href={buildTemplateScopedPath({ vendorId, pathname: pathname || "/", suffix: "menu" })}>
+            <Link
+              href={buildTemplateScopedPath({
+                vendorId,
+                pathname: pathname || "/",
+                suffix: "menu",
+              })}
+            >
               Menu
             </Link>
             <span>/</span>
-            <span className="text-[#c06f22]">{foodProduct.category || "Food item"}</span>
+            <span className="text-[#c06f22]">
+              {foodProduct.category || "Food item"}
+            </span>
           </div>
 
           <div className="grid items-start gap-6 lg:grid-cols-[minmax(0,0.92fr)_420px] xl:grid-cols-[minmax(0,0.9fr)_440px]">
@@ -1288,7 +1555,9 @@ export default function ProductDetailPage() {
                     className="relative z-[1] h-full w-full object-cover"
                   />
                 ) : (
-                  <div className="text-sm uppercase tracking-[0.28em] text-[#b39a87]">No Image</div>
+                  <div className="text-sm uppercase tracking-[0.28em] text-[#b39a87]">
+                    No Image
+                  </div>
                 )}
               </div>
 
@@ -1321,18 +1590,26 @@ export default function ProductDetailPage() {
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
                       Estimated delivery
                     </p>
-                    <p className="mt-2 text-2xl font-extrabold text-[#1f1720]">{foodEstimatedDelivery}</p>
-                    <p className="mt-1 text-sm leading-6 text-[#7b685b]">Prep plus nearby rider dispatch included.</p>
+                    <p className="mt-2 text-2xl font-extrabold text-[#1f1720]">
+                      {foodEstimatedDelivery}
+                    </p>
+                    <p className="mt-1 text-sm leading-6 text-[#7b685b]">
+                      Prep plus nearby rider dispatch included.
+                    </p>
                   </div>
                   <div className="rounded-2xl border border-[#f0e3d3] bg-[#fffaf2] p-4">
                     <p className="text-[11px] font-semibold uppercase tracking-[0.22em] text-[#9b7d68]">
                       Your savings
                     </p>
                     <p className="mt-2 text-2xl font-extrabold text-[#1f1720]">
-                      {foodSavings > 0 ? formatCurrency(foodSavings) : "Fresh price"}
+                      {foodSavings > 0
+                        ? formatCurrency(foodSavings)
+                        : "Fresh price"}
                     </p>
                     <p className="mt-1 text-sm leading-6 text-[#7b685b]">
-                      {foodSavings > 0 ? "Discount already included in this dish." : "No active discount on this dish."}
+                      {foodSavings > 0
+                        ? "Discount already included in this dish."
+                        : "No active discount on this dish."}
                     </p>
                   </div>
                 </div>
@@ -1344,10 +1621,14 @@ export default function ProductDetailPage() {
                         Restaurant
                       </p>
                       <h3 className="mt-1 text-xl font-bold text-[#1f1720]">
-                        {String(foodRestaurant?.restaurant_name || "Your restaurant").trim()}
+                        {String(
+                          foodRestaurant?.restaurant_name || "Your restaurant",
+                        ).trim()}
                       </h3>
                       <p className="mt-1 text-sm text-[#7b685b]">
-                        Call {String(foodRestaurant?.mobile || "").trim() || "for live order support"}
+                        Call{" "}
+                        {String(foodRestaurant?.mobile || "").trim() ||
+                          "for live order support"}
                       </p>
                     </div>
                     <div className="flex flex-wrap gap-2 text-sm">
@@ -1377,10 +1658,15 @@ export default function ProductDetailPage() {
                     </p>
                     <div className="mt-2 flex flex-wrap gap-2">
                       <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
-                        Min {formatCurrency(toNumber(foodRestaurant?.minimum_order_amount) || foodPricing.finalPrice)}
+                        Min{" "}
+                        {formatCurrency(
+                          toNumber(foodRestaurant?.minimum_order_amount) ||
+                            foodPricing.finalPrice,
+                        )}
                       </span>
                       <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
-                        {toNumber(foodRestaurant?.delivery_radius_km) || 5} km radius
+                        {toNumber(foodRestaurant?.delivery_radius_km) || 5} km
+                        radius
                       </span>
                       <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-xs font-medium text-[#8f5b31]">
                         Easy checkout
@@ -1401,22 +1687,31 @@ export default function ProductDetailPage() {
 
               <div className="mt-3 flex flex-wrap gap-2 text-sm">
                 <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-[#8f5b31]">
-                  {foodProduct.food_type === "veg" ? "Veg" : foodProduct.food_type === "non_veg" ? "Non-veg" : "Food"}
+                  {foodProduct.food_type === "veg"
+                    ? "Veg"
+                    : foodProduct.food_type === "non_veg"
+                      ? "Non-veg"
+                      : "Food"}
                 </span>
                 <span className="rounded-full bg-[#f8efe3] px-3 py-1 text-[#735c4b]">
                   Prep {toNumber(foodProduct.prep_time_minutes) || 15} mins
                 </span>
                 <span className="rounded-full bg-[#f8efe3] px-3 py-1 text-[#735c4b]">
-                  {foodProduct.is_available === false ? "Currently unavailable" : "Available now"}
+                  {foodProduct.is_available === false
+                    ? "Currently unavailable"
+                    : "Available now"}
                 </span>
               </div>
 
               <p className="mt-4 text-sm leading-7 text-[#5f534e]">
-                {String(foodProduct.description || "").trim() || "Freshly prepared menu item from your restaurant."}
+                {String(foodProduct.description || "").trim() ||
+                  "Freshly prepared menu item from your restaurant."}
               </p>
 
               <div className="mt-5 flex items-end gap-3 border-b border-[#f0e3d3] pb-5">
-                <p className="text-3xl font-extrabold text-[#1f1720]">{formatCurrency(foodPricing.finalPrice)}</p>
+                <p className="text-3xl font-extrabold text-[#1f1720]">
+                  {formatCurrency(foodPricing.finalPrice)}
+                </p>
                 {foodPricing.actualPrice > foodPricing.finalPrice ? (
                   <p className="pb-1 text-lg text-[#ab9482] line-through">
                     {formatCurrency(foodPricing.actualPrice)}
@@ -1424,17 +1719,26 @@ export default function ProductDetailPage() {
                 ) : null}
               </div>
 
-              {Array.isArray(foodProduct.variants) && foodProduct.variants.length > 0 ? (
+              {Array.isArray(foodProduct.variants) &&
+              foodProduct.variants.length > 0 ? (
                 <div className="mt-6">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#907a69]">
                     Choose variant
                   </h2>
                   <div className="mt-3 grid gap-3 sm:grid-cols-2">
                     {foodProduct.variants.map((variant, index) => {
-                      const name = String(variant?.name || `Variant ${index + 1}`).trim();
+                      const name = String(
+                        variant?.name || `Variant ${index + 1}`,
+                      ).trim();
                       const isSelected =
-                        name.toLowerCase() === String(selectedFoodVariant?.name || "").trim().toLowerCase();
-                      const variantPricing = getFoodFinalPrice(foodProduct, name);
+                        name.toLowerCase() ===
+                        String(selectedFoodVariant?.name || "")
+                          .trim()
+                          .toLowerCase();
+                      const variantPricing = getFoodFinalPrice(
+                        foodProduct,
+                        name,
+                      );
 
                       return (
                         <button
@@ -1450,7 +1754,8 @@ export default function ProductDetailPage() {
                           <p className="font-semibold text-[#1f1720]">{name}</p>
                           <p className="mt-1 text-sm text-[#7b685b]">
                             {formatCurrency(variantPricing.finalPrice)}
-                            {variantPricing.actualPrice > variantPricing.finalPrice ? (
+                            {variantPricing.actualPrice >
+                            variantPricing.finalPrice ? (
                               <span className="ml-2 text-[#ab9482] line-through">
                                 {formatCurrency(variantPricing.actualPrice)}
                               </span>
@@ -1463,14 +1768,17 @@ export default function ProductDetailPage() {
                 </div>
               ) : null}
 
-              {Array.isArray(foodProduct.addons) && foodProduct.addons.length > 0 ? (
+              {Array.isArray(foodProduct.addons) &&
+              foodProduct.addons.length > 0 ? (
                 <div className="mt-6">
                   <h2 className="text-sm font-semibold uppercase tracking-[0.2em] text-[#907a69]">
                     Add extras
                   </h2>
                   <div className="mt-3 max-h-64 space-y-2 overflow-y-auto pr-1">
                     {foodProduct.addons.map((addon, index) => {
-                      const addonName = String(addon?.name || `Addon ${index + 1}`).trim();
+                      const addonName = String(
+                        addon?.name || `Addon ${index + 1}`,
+                      ).trim();
                       const checked = selectedFoodAddons.includes(addonName);
                       return (
                         <label
@@ -1478,9 +1786,13 @@ export default function ProductDetailPage() {
                           className="flex cursor-pointer items-center justify-between rounded-2xl border border-[#eadfce] bg-[#fffdf9] px-4 py-3"
                         >
                           <div>
-                            <p className="font-medium text-[#1f1720]">{addonName}</p>
+                            <p className="font-medium text-[#1f1720]">
+                              {addonName}
+                            </p>
                             <p className="text-sm text-[#7b685b]">
-                              {addon?.is_free ? "Free" : formatCurrency(toNumber(addon?.price))}
+                              {addon?.is_free
+                                ? "Free"
+                                : formatCurrency(toNumber(addon?.price))}
                             </p>
                           </div>
                           <input
@@ -1499,26 +1811,32 @@ export default function ProductDetailPage() {
               <div className="mt-6 flex flex-col gap-3">
                 <div className="flex items-center justify-between gap-3">
                   <div className="inline-flex h-12 items-center rounded-full border border-[#eadfce] bg-[#fffdf9]">
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((current) => Math.max(1, current - 1))}
-                    className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
-                    aria-label="Decrease quantity"
-                  >
-                    <Minus size={18} />
-                  </button>
-                  <span className="min-w-[42px] text-center text-lg font-extrabold">{quantity}</span>
-                  <button
-                    type="button"
-                    onClick={() => setQuantity((current) => current + 1)}
-                    className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
-                    aria-label="Increase quantity"
-                  >
-                    <Plus size={18} />
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQuantity((current) => Math.max(1, current - 1))
+                      }
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
+                      aria-label="Decrease quantity"
+                    >
+                      <Minus size={18} />
+                    </button>
+                    <span className="min-w-[42px] text-center text-lg font-extrabold">
+                      {quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((current) => current + 1)}
+                      className="flex h-12 w-12 items-center justify-center rounded-full text-[#1f1720]"
+                      aria-label="Increase quantity"
+                    >
+                      <Plus size={18} />
+                    </button>
                   </div>
                   <div className="text-right">
-                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b7d68]">Total</p>
+                    <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-[#9b7d68]">
+                      Total
+                    </p>
                     <p className="text-2xl font-extrabold text-[#1f1720]">
                       {formatCurrency(foodPricing.finalPrice * quantity)}
                     </p>
@@ -1531,7 +1849,11 @@ export default function ProductDetailPage() {
                   onClick={handleAddFoodToCart}
                   className="inline-flex w-full items-center justify-center rounded-full bg-[#f5b638] px-6 py-4 text-sm font-extrabold uppercase tracking-[0.12em] text-[#1f1720] transition hover:bg-[#efad24] disabled:cursor-not-allowed disabled:bg-slate-300"
                 >
-                  {adding ? "Adding..." : foodProduct.is_available === false ? "Unavailable" : "Add to cart"}
+                  {adding
+                    ? "Adding..."
+                    : foodProduct.is_available === false
+                      ? "Unavailable"
+                      : "Add to cart"}
                 </button>
                 <button
                   type="button"
@@ -1542,12 +1864,16 @@ export default function ProductDetailPage() {
                       : "border-[#eadfce] bg-white text-[#1f1720] hover:border-[#d94b2b] hover:text-[#d94b2b]"
                   }`}
                 >
-                  <Heart className={`h-4 w-4 ${isFoodWishlisted ? "fill-current" : ""}`} />
+                  <Heart
+                    className={`h-4 w-4 ${isFoodWishlisted ? "fill-current" : ""}`}
+                  />
                   {isFoodWishlisted ? "Saved" : "Wishlist"}
                 </button>
               </div>
 
-              {message ? <p className="mt-4 text-sm text-[#7b685b]">{message}</p> : null}
+              {message ? (
+                <p className="mt-4 text-sm text-[#7b685b]">{message}</p>
+              ) : null}
             </div>
           </div>
 
@@ -1564,7 +1890,10 @@ export default function ProductDetailPage() {
             {relatedFoodProducts.length > 0 ? (
               <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
                 {relatedFoodProducts.map((item, index) => {
-                  const pricing = getFoodFinalPrice(item, getFoodPrimaryVariant(item)?.name);
+                  const pricing = getFoodFinalPrice(
+                    item,
+                    getFoodPrimaryVariant(item)?.name,
+                  );
                   const relatedPath = buildTemplateScopedPath({
                     vendorId,
                     pathname: pathname || "/",
@@ -1598,7 +1927,9 @@ export default function ProductDetailPage() {
                         <h3 className="line-clamp-2 text-lg font-semibold text-[#1f1720]">
                           {item.item_name || "Untitled item"}
                         </h3>
-                        <p className="text-lg font-bold text-[#1f1720]">{formatCurrency(pricing.finalPrice)}</p>
+                        <p className="text-lg font-bold text-[#1f1720]">
+                          {formatCurrency(pricing.finalPrice)}
+                        </p>
                       </div>
                     </Link>
                   );
@@ -1618,7 +1949,8 @@ export default function ProductDetailPage() {
                   {foodProduct.item_name || "Food item"}
                 </p>
                 <p className="text-xs font-semibold text-[#6f5b4b]">
-                  {quantity} qty - {formatCurrency(foodPricing.finalPrice * quantity)}
+                  {quantity} qty -{" "}
+                  {formatCurrency(foodPricing.finalPrice * quantity)}
                 </p>
               </div>
 
@@ -1666,7 +1998,9 @@ export default function ProductDetailPage() {
       : productRatingsCount;
 
   return (
-    <div className={`${pageClass} template-page-shell template-product-detail-page`}>
+    <div
+      className={`${pageClass} template-page-shell template-product-detail-page`}
+    >
       <div className="mx-auto max-w-7xl px-6 py-12">
         <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
           <div className="self-start lg:sticky lg:top-8">
@@ -1704,7 +2038,9 @@ export default function ProductDetailPage() {
                 )}
               </div>
 
-              <div className={`order-1 flex-1 overflow-hidden rounded-3xl p-4 `}>
+              <div
+                className={`order-1 flex-1 overflow-hidden rounded-3xl p-4 `}
+              >
                 <div
                   className={`template-product-card relative h-[420px] overflow-hidden rounded-2xl sm:h-[520px] ${
                     softPanelClass
@@ -1752,15 +2088,17 @@ export default function ProductDetailPage() {
                     : "border-amber-200 bg-amber-50 text-amber-900"
                 }`}
               >
-                Preview only. This product is shown temporarily on the storefront template and is
-                not live until the vendor saves it.
+                Preview only. This product is shown temporarily on the
+                storefront template and is not live until the vendor saves it.
               </div>
             ) : null}
             <div>
               <h1 className="text-4xl font-extrabold lg:text-5xl">
                 {productTitle}
               </h1>
-              {product?.productName && selectedVariantLabel && selectedVariantLabel !== product.productName ? (
+              {product?.productName &&
+              selectedVariantLabel &&
+              selectedVariantLabel !== product.productName ? (
                 <p className={`mt-2 text-base font-medium ${subtleTextClass}`}>
                   {product.productName}
                 </p>
@@ -1800,9 +2138,7 @@ export default function ProductDetailPage() {
               {productShortDescription ? (
                 <RichTextContent
                   text={productShortDescription}
-                  className={`mt-3 text-sm leading-relaxed ${
-                    subtleTextClass
-                  }`}
+                  className={`mt-3 text-sm leading-relaxed ${subtleTextClass}`}
                 />
               ) : null}
             </div>
@@ -1810,13 +2146,29 @@ export default function ProductDetailPage() {
             <div className={`rounded-2xl p-5 ${panelClass}`}>
               <div className="mb-4 flex items-start justify-between gap-4">
                 <div>
-                  <p className={isStudio ? "text-slate-400 text-sm" : isWhiteRose ? "text-[#5f6c7b] text-sm" : "text-slate-500 text-sm"}>Item Price</p>
+                  <p
+                    className={
+                      isStudio
+                        ? "text-slate-400 text-sm"
+                        : isWhiteRose
+                          ? "text-[#5f6c7b] text-sm"
+                          : "text-slate-500 text-sm"
+                    }
+                  >
+                    Item Price
+                  </p>
                   <div className="mt-1 flex items-baseline gap-3">
                     <p className={`text-4xl font-bold ${accentTextClass}`}>
                       {formatCurrency(basePrice)}
                     </p>
                     {actualPrice > basePrice && (
-                      <p className={isStudio ? "text-slate-400 line-through" : "text-slate-500 line-through"}>
+                      <p
+                        className={
+                          isStudio
+                            ? "text-slate-400 line-through"
+                            : "text-slate-500 line-through"
+                        }
+                      >
                         {formatCurrency(actualPrice)}
                       </p>
                     )}
@@ -1830,79 +2182,85 @@ export default function ProductDetailPage() {
               </div>
 
               {retailBenefits.enabled && retailBenefits.items.length ? (
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {retailBenefits.items.map((benefit) => (
-                  <div
-                    key={benefit.text}
-                    className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isStudio ? "bg-slate-800 text-slate-200" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-blue-50 text-blue-900"}`}
-                  >
-                    <benefit.icon className="h-4 w-4 text-blue-500" />
-                    <span>{benefit.text}</span>
-                  </div>
-                ))}
-              </div>
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+                  {retailBenefits.items.map((benefit) => (
+                    <div
+                      key={benefit.text}
+                      className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm ${isStudio ? "bg-slate-800 text-slate-200" : isWhiteRose ? "bg-[#eef4ff] text-[#174ea6]" : "bg-blue-50 text-blue-900"}`}
+                    >
+                      <benefit.icon className="h-4 w-4 text-blue-500" />
+                      <span>{benefit.text}</span>
+                    </div>
+                  ))}
+                </div>
               ) : null}
             </div>
 
             <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
-              <div>
-                <p className="mb-3 text-sm font-semibold">Select Variant</p>
-                <div className="flex flex-wrap gap-3">
-                  {variants.map((item, index) => {
-                    const variantImage = (item?.variantsImageUrls || [])
-                      .map((image) => getImageUrl(image))
-                      .find((url) => Boolean(url));
-                    const active = selectedVariant?._id === item._id;
-                    const inStock = toNumber(item.stockQuantity) > 0;
-                    return (
-                      <button
-                        key={item._id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedVariantId(item._id);
-                          if (variantImage) {
-                            setSelectedImage(variantImage);
-                          }
-                        }}
-                        className={`template-product-card relative flex min-w-[180px] items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition ${
-                          active
-                            ? accentActiveVariantClass
-                            : isStudio
-                              ? "border-slate-700 bg-slate-900"
-                              : accentIdleVariantClass
-                        } ${!inStock ? "opacity-60" : ""}`}
-                      >
-                        {variantImage ? (
-                          <img
-                            src={variantImage}
-                            alt={getVariantLabel(item)}
-                            className="h-10 w-10 rounded-lg bg-white object-contain"
-                          />
-                        ) : (
-                          <div className="h-10 w-10 rounded-lg bg-slate-200" />
-                        )}
+              {variants.length > 0 && (
+                <div>
+                  <p className="mb-3 text-sm font-semibold">Select Variant</p>
+                  <div className="flex flex-wrap gap-3">
+                    {variants.map((item, index) => {
+                      const variantImage = (item?.variantsImageUrls || [])
+                        .map((image) => getImageUrl(image))
+                        .find((url) => Boolean(url));
+                      const active = selectedVariant?._id === item._id;
+                      const inStock = toNumber(item.stockQuantity) > 0;
+                      return (
+                        <button
+                          key={item._id}
+                          type="button"
+                          onClick={() => {
+                            setSelectedVariantId(item._id);
+                            if (variantImage) {
+                              setSelectedImage(variantImage);
+                            }
+                          }}
+                          className={`template-product-card relative flex min-w-[180px] items-center gap-3 rounded-xl border-2 px-3 py-2 text-left transition ${
+                            active
+                              ? accentActiveVariantClass
+                              : isStudio
+                                ? "border-slate-700 bg-slate-900"
+                                : accentIdleVariantClass
+                          } ${!inStock ? "opacity-60" : ""}`}
+                        >
+                          {variantImage ? (
+                            <img
+                              src={variantImage}
+                              alt={getVariantLabel(item)}
+                              className="h-10 w-10 rounded-lg bg-white object-contain"
+                            />
+                          ) : (
+                            <div className="h-10 w-10 rounded-lg bg-slate-200" />
+                          )}
 
-                        <div>
-                          <p className="text-sm font-semibold">
-                            {getVariantLabel(item)}
-                          </p>
-                          {!inStock && <p className="text-xs text-red-500">Out of stock</p>}
-                        </div>
+                          <div>
+                            <p className="text-sm font-semibold">
+                              {getVariantLabel(item)}
+                            </p>
+                            {!inStock && (
+                              <p className="text-xs text-red-500">
+                                Out of stock
+                              </p>
+                            )}
+                          </div>
 
-                        {active && (
-                          <span
-                            className={`absolute -right-1 -top-1 rounded-full p-1 text-white ${
-                              accentButtonClass
-                            }`}
-                          >
-                            <Check className="h-3 w-3" />
-                          </span>
-                        )}
-                      </button>
-                    );
-                  })}
+                          {active && (
+                            <span
+                              className={`absolute -right-1 -top-1 rounded-full p-1 text-white ${
+                                accentButtonClass
+                              }`}
+                            >
+                              <Check className="h-3 w-3" />
+                            </span>
+                          )}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
-              </div>
+              )}
 
               <div>
                 <p className="mb-3 text-sm font-semibold">Quantity</p>
@@ -1974,7 +2332,12 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleAddToCart}
-                  disabled={adding || !selectedVariant || stockQuantity <= 0 || isDraftPreview}
+                  disabled={
+                    adding ||
+                    !selectedVariant ||
+                    stockQuantity <= 0 ||
+                    isDraftPreview
+                  }
                   className="h-12 w-full rounded-lg font-semibold text-white transition template-accent-bg template-accent-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
                   {adding ? "Adding..." : "Add to cart"}
@@ -1982,7 +2345,12 @@ export default function ProductDetailPage() {
                 <button
                   type="button"
                   onClick={handleBuyNow}
-                  disabled={adding || !selectedVariant || stockQuantity <= 0 || isDraftPreview}
+                  disabled={
+                    adding ||
+                    !selectedVariant ||
+                    stockQuantity <= 0 ||
+                    isDraftPreview
+                  }
                   className={`h-12 w-full rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     isStudio
                       ? "border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
@@ -1997,13 +2365,21 @@ export default function ProductDetailPage() {
                 </button>
               </div>
 
-              {message && <p className={`mt-3 text-sm ${isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}>{message}</p>}
+              {message && (
+                <p
+                  className={`mt-3 text-sm ${isWhiteRose ? "text-[#5f6c7b]" : "text-slate-500"}`}
+                >
+                  {message}
+                </p>
+              )}
             </div>
           </div>
         </div>
 
         <div className="mt-12">
-          <div className={`border-b ${isStudio ? "border-slate-800" : "border-slate-200"}`}>
+          <div
+            className={`border-b ${isStudio ? "border-slate-800" : "border-slate-200"}`}
+          >
             <div className="flex gap-6">
               <button
                 type="button"
@@ -2080,43 +2456,47 @@ export default function ProductDetailPage() {
 
             {activeTab === "specifications" && (
               <div className="space-y-4">
-                <div className={`rounded-2xl p-5 ${panelClass}`}>
-                  <h3 className="mb-4 text-lg font-semibold">Product Specifications</h3>
-                  <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                    {summarySpecs.map(([label, value]) => (
-                      <div
-                        key={`${label}-${value}`}
-                        className={`rounded-lg px-3 py-2 ${isStudio ? "bg-slate-800" : "bg-slate-50"}`}
-                      >
-                        <p className={isStudio ? "text-xs text-slate-400" : "text-xs text-slate-500"}>{label}</p>
-                        <p className="font-semibold">{value}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {detailedSpecs.length > 0 && (
+                {detailedSpecs.length > 0 ? (
                   <div className={`rounded-2xl p-5 ${panelClass}`}>
-                    <h3 className="mb-4 text-lg font-semibold">Detailed Specifications</h3>
+                    <h3 className="mb-4 text-lg font-semibold">
+                      Detailed Specifications
+                    </h3>
                     <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {detailedSpecs.map(([label, value], index) => (
                         <div
                           key={`${label}-${value}-${index}`}
                           className={`rounded-lg px-3 py-2 ${isStudio ? "bg-slate-800" : "bg-slate-50"}`}
                         >
-                          <p className={isStudio ? "text-xs text-slate-400" : "text-xs text-slate-500"}>{label}</p>
+                          <p
+                            className={
+                              isStudio
+                                ? "text-xs text-slate-400"
+                                : "text-xs text-slate-500"
+                            }
+                          >
+                            {label}
+                          </p>
                           <p className="font-semibold">{value}</p>
                         </div>
                       ))}
                     </div>
                   </div>
+                ) : (
+                  <div className={`rounded-2xl p-5 ${panelClass}`}>
+                    <p
+                      className={isStudio ? "text-slate-400" : "text-slate-500"}
+                    >
+                      No specifications available for this product.
+                    </p>
+                  </div>
                 )}
               </div>
             )}
-
             {activeTab === "faqs" && (
               <div className={`rounded-2xl p-5 ${panelClass}`}>
-                <h3 className="mb-4 text-lg font-semibold">Frequently Asked Questions</h3>
+                <h3 className="mb-4 text-lg font-semibold">
+                  Frequently Asked Questions
+                </h3>
                 {hasFaqs ? (
                   <div className="space-y-3">
                     {product.faqs?.map((faq, index) => (
@@ -2124,15 +2504,21 @@ export default function ProductDetailPage() {
                         key={`${faq.question || "faq"}-${index}`}
                         className={`rounded-lg px-4 py-3 ${isStudio ? "bg-slate-800" : "bg-slate-50"}`}
                       >
-                        <p className="font-semibold">{faq.question || "Question"}</p>
-                        <p className={`mt-1 text-sm ${isStudio ? "text-slate-300" : "text-slate-600"}`}>
+                        <p className="font-semibold">
+                          {faq.question || "Question"}
+                        </p>
+                        <p
+                          className={`mt-1 text-sm ${isStudio ? "text-slate-300" : "text-slate-600"}`}
+                        >
                           {faq.answer || "Answer not available."}
                         </p>
                       </div>
                     ))}
                   </div>
                 ) : (
-                  <p className={isStudio ? "text-slate-400" : "text-slate-500"}>No FAQs available for this product yet.</p>
+                  <p className={isStudio ? "text-slate-400" : "text-slate-500"}>
+                    No FAQs available for this product yet.
+                  </p>
                 )}
               </div>
             )}
@@ -2141,8 +2527,8 @@ export default function ProductDetailPage() {
               (isDraftPreview ? (
                 <div className={`rounded-2xl p-5 ${panelClass}`}>
                   <p className={isStudio ? "text-slate-300" : "text-slate-600"}>
-                    Reviews are unavailable in draft preview. Save the product to view the live
-                    storefront review section.
+                    Reviews are unavailable in draft preview. Save the product
+                    to view the live storefront review section.
                   </p>
                 </div>
               ) : (
@@ -2160,7 +2546,9 @@ export default function ProductDetailPage() {
         <div className="mt-8">
           <div className="mb-5 flex items-end justify-between gap-4">
             <div>
-              <p className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}>
+              <p
+                className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}
+              >
                 Similar picks
               </p>
               <h2 className="text-2xl font-bold">Related Products</h2>
@@ -2175,7 +2563,8 @@ export default function ProductDetailPage() {
                 const actualPrice = toNumber(variant?.actualPrice);
                 const displayPrice = finalPrice > 0 ? finalPrice : actualPrice;
                 const imageUrl = getProductLeadImage(item);
-                const productCategoryLabel = collectProductCategoryLabels(item)[0] || "Category";
+                const productCategoryLabel =
+                  collectProductCategoryLabels(item)[0] || "Category";
                 const relatedPath = buildTemplateProductPath({
                   vendorId,
                   pathname: pathname || "/",
@@ -2196,7 +2585,9 @@ export default function ProductDetailPage() {
                           : "border-slate-200 bg-white hover:border-slate-300"
                     }`}
                   >
-                    <div className={`h-44 overflow-hidden ${isStudio ? "bg-slate-950" : "bg-slate-50"}`}>
+                    <div
+                      className={`h-44 overflow-hidden ${isStudio ? "bg-slate-950" : "bg-slate-50"}`}
+                    >
                       {imageUrl ? (
                         <img
                           src={imageUrl}
@@ -2212,18 +2603,24 @@ export default function ProductDetailPage() {
                     </div>
 
                     <div className="space-y-2 p-3">
-                      <p className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}>
+                      <p
+                        className={`text-xs uppercase tracking-[0.2em] ${isStudio ? "text-slate-400" : "text-slate-500"}`}
+                      >
                         {productCategoryLabel}
                       </p>
                       <h3 className="line-clamp-2 text-sm font-semibold">
                         {item.productName || "Untitled Product"}
                       </h3>
                       <div className="flex items-end gap-2">
-                        <p className={`text-lg font-bold ${isTrend ? "text-rose-600" : "text-indigo-600"}`}>
+                        <p
+                          className={`text-lg font-bold ${isTrend ? "text-rose-600" : "text-indigo-600"}`}
+                        >
                           {formatCurrency(displayPrice)}
                         </p>
                         {actualPrice > finalPrice && finalPrice > 0 && (
-                          <p className="text-xs text-slate-400 line-through">{formatCurrency(actualPrice)}</p>
+                          <p className="text-xs text-slate-400 line-through">
+                            {formatCurrency(actualPrice)}
+                          </p>
                         )}
                       </div>
                     </div>
@@ -2232,7 +2629,9 @@ export default function ProductDetailPage() {
               })}
             </div>
           ) : (
-            <div className={`rounded-2xl border p-5 text-sm ${isStudio ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200 bg-white text-slate-600"}`}>
+            <div
+              className={`rounded-2xl border p-5 text-sm ${isStudio ? "border-slate-800 bg-slate-900 text-slate-300" : "border-slate-200 bg-white text-slate-600"}`}
+            >
               No related products available right now.
             </div>
           )}
