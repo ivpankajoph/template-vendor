@@ -104,8 +104,9 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
   const requestKey = getRequestKey(vendorId, citySlug, websiteId);
   const preferredEndpoint = templateEndpointPreference.get(requestKey);
   const normalizedCity = normalizeCitySlug(citySlug);
-  const websiteQuery = normalizeWebsiteId(websiteId)
-    ? `&website_id=${encodeURIComponent(normalizeWebsiteId(websiteId))}`
+  const normalizedWebsiteId = normalizeWebsiteId(websiteId);
+  const websiteQuery = normalizedWebsiteId
+    ? `&website_id=${encodeURIComponent(normalizedWebsiteId)}`
     : "";
   const previewUrl = `${BASE_URL}/templates/${vendorId}/preview?city=${encodeURIComponent(
     normalizedCity
@@ -139,6 +140,9 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
   };
 
   const ensureProductsFallback = async (templateResponse: any) => {
+    const hasProductsField =
+      Array.isArray(templateResponse?.data?.products) ||
+      Array.isArray(templateResponse?.products);
     const currentProducts = Array.isArray(templateResponse?.data?.products)
       ? templateResponse.data.products
       : Array.isArray(templateResponse?.products)
@@ -146,6 +150,8 @@ const fetchTemplatePayload = async (vendorId: string, citySlug?: string, website
         : [];
 
     if (currentProducts.length > 0) return templateResponse;
+    if (hasProductsField) return templateResponse;
+    if (normalizedWebsiteId) return templateResponse;
 
     const fallbackProducts = await fetchVendorCatalogProducts();
     if (!fallbackProducts.length) return templateResponse;
