@@ -4,6 +4,7 @@ const KNOWN_TEMPLATE_SEGMENTS = new Set([
   "all-products",
   "blog",
   "cart",
+  "combo",
   "category",
   "checkout",
   "contact",

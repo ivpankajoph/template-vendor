@@ -59,7 +59,7 @@ export function PocoFoodNavbar() {
   const navItems = [
     { label: getHeaderText('navHomeLabel', 'Home'), href: toTemplatePath(''), emphasis: false },
     { label: getHeaderText('navMenuLabel', 'Menu'), href: toTemplatePath('all-products'), emphasis: true },
-    { label: getHeaderText('navComboLabel', 'Combo'), href: `${toTemplatePath('')}#offers`, emphasis: true, icon: Sparkles },
+    { label: getHeaderText('navComboLabel', 'Combo'), href: toTemplatePath('combo'), emphasis: true, icon: Sparkles },
     { label: getHeaderText('navBlogLabel', 'Blog'), href: toTemplatePath('blog'), emphasis: false },
     { label: getHeaderText('navContactLabel', 'Contact'), href: toTemplatePath('contact'), emphasis: false },
   ]

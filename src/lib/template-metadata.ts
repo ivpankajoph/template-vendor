@@ -25,6 +25,7 @@ type TemplateMetadataPage =
   | "category-detail"
   | "custom-page"
   | "cart"
+  | "combo"
   | "checkout"
   | "orders"
   | "profile"
@@ -458,6 +459,8 @@ const buildTemplatePath = (options: BuildTemplateMetadataOptions) => {
       return `${base}/page/${encodeURIComponent(options.slug || "")}`;
     case "cart":
       return `${base}/cart`;
+    case "combo":
+      return `${base}/combo`;
     case "checkout":
       return `${base}/checkout`;
     case "orders":
@@ -666,6 +669,10 @@ export async function buildTemplateMetadata(
     cart: {
       title: `Cart | ${storeName}`,
       description: `Review products in your cart from ${storeName}.`,
+    },
+    combo: {
+      title: `Combo Offers | ${storeName}`,
+      description: `Explore live combo offers and food deals from ${storeName}.`,
     },
     checkout: {
       title: `Checkout | ${storeName}`,

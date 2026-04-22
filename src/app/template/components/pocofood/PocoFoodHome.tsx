@@ -107,6 +107,7 @@ type FeaturedDishCard = {
   slug: string
   title: string
   category: string
+  foodType?: string
   image: string
   price: number
   oldPrice: number
@@ -120,6 +121,23 @@ type FeaturedDishCard = {
   selectedVariantName?: string
   availableAddons?: FoodAddonOption[]
   availableVariants?: FoodVariantOption[]
+}
+
+function FoodTypeMark({ type }: { type?: string }) {
+  const normalized = String(type || 'veg').toLowerCase().replace(/[\s-]+/g, '_')
+  const isNonVeg = normalized === 'non_veg' || normalized === 'nonveg'
+
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border bg-white ${
+        isNonVeg ? 'border-[#d93025]' : 'border-[#229a45]'
+      }`}
+      title={isNonVeg ? 'Non veg' : 'Veg'}
+      aria-label={isNonVeg ? 'Non veg' : 'Veg'}
+    >
+      <span className={`h-2 w-2 rounded-full ${isNonVeg ? 'bg-[#d93025]' : 'bg-[#229a45]'}`} />
+    </span>
+  )
 }
 
 type TestimonialCard = {
@@ -568,8 +586,8 @@ export function PocoFoodHome() {
       accent: words[words.length - 1],
     }
   }, [heroTitle])
-  const productsHeading = configuredText(home?.products_heading, 'Popular dishes')
-  const productsSubtitle = configuredText(
+  const productsHeading = configuredDisplayText(home?.products_heading, 'Popular dishes')
+  const productsSubtitle = configuredDisplayText(
     home?.products_subtitle,
     'Scroll through pizzas, burgers, drinks, and restaurant bestsellers.'
   )
@@ -698,6 +716,7 @@ export function PocoFoodHome() {
         slug: '',
         title: item?.item_name || `Dish ${index + 1}`,
         category: item?.category || 'Chef pick',
+        foodType: item?.food_type || 'veg',
         image: getFoodMenuImage(item, MENU_FALLBACKS[index % MENU_FALLBACKS.length]),
         price: toNumber(item?.offer_price) || toNumber(item?.price) || 299,
         oldPrice: toNumber(item?.price),
@@ -758,6 +777,10 @@ export function PocoFoodHome() {
   )
   const visibleFoodOffers = foodOffers.filter((offer) => offer?.is_active !== false)
   const primaryVisibleOffer = visibleFoodOffers[0] || promoOffer
+  const promoOfferComboItems = primaryVisibleOffer
+    ? getComboOfferItems(primaryVisibleOffer, foodMenuItems)
+    : []
+  const hasPromoOfferComboItems = promoOfferComboItems.length > 0
   const dynamicOfferBackgroundImage = getFoodOfferImage(primaryVisibleOffer, foodMenuItems, heroImage)
   const promoOfferBackgroundImage = configuredImage(
     home?.offer_section_background_image,
@@ -827,6 +850,7 @@ export function PocoFoodHome() {
           slug: '',
           title: 'Veggie Lover',
           category: 'Pizza',
+          foodType: 'veg',
           image: '/pocofood-categories/pizza.png',
           price: 299,
           oldPrice: 0,
@@ -846,6 +870,7 @@ export function PocoFoodHome() {
           slug: '',
           title: 'Plain Tea',
           category: 'Hot Drinks',
+          foodType: 'veg',
           image: '/pocofood-categories/drinks.png',
           price: 199,
           oldPrice: 0,
@@ -865,6 +890,7 @@ export function PocoFoodHome() {
           slug: '',
           title: 'Pepperoni Calzone',
           category: 'Pizza',
+          foodType: 'non_veg',
           image: '/pocofood-categories/pizza.png',
           price: 349,
           oldPrice: 399,
@@ -959,6 +985,7 @@ export function PocoFoodHome() {
           slug: '',
           title: item?.item_name || `Dish ${index + 1}`,
           category: item?.category || 'Chef pick',
+          foodType: item?.food_type || 'veg',
           image: getFoodMenuImage(item, MENU_FALLBACKS[index % MENU_FALLBACKS.length]),
           price,
           oldPrice,
@@ -2001,25 +2028,35 @@ export function PocoFoodHome() {
         </div>
       </section>
 
-      <section id='food-menu' className='bg-white py-14' data-template-section='products'>
+      <section id='food-menu' className='bg-white py-10 sm:py-12 lg:py-14' data-template-section='products'>
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
-          <div className='text-center'>
+          <div className='mx-auto max-w-[860px] text-center'>
+            <p className='text-xs font-black uppercase tracking-[0.22em] text-[#d94b2b]'>
+              Menu highlights
+            </p>
             <h2
-              className='template-section-title text-[38px] font-extrabold tracking-[-0.05em] text-[#171717] sm:text-[52px]'
+              className='template-section-title mt-2 text-[34px] font-extrabold leading-none tracking-[-0.05em] text-[#171717] sm:text-[44px] lg:text-[52px]'
               data-template-path='components.home_page.products_heading'
               data-template-section='products'
             >
               {productsHeading}
             </h2>
+            <p
+              className='mx-auto mt-4 max-w-[760px] text-sm font-semibold leading-6 text-[#686868] sm:text-base sm:leading-8'
+              data-template-path='components.home_page.products_subtitle'
+              data-template-section='products'
+            >
+              {productsSubtitle}
+            </p>
           </div>
 
-          <div className='mt-8 flex flex-wrap justify-center gap-3'>
+          <div className='-mx-4 mt-7 flex snap-x snap-mandatory gap-3 overflow-x-auto px-4 pb-2 [-ms-overflow-style:none] [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:justify-center sm:overflow-visible sm:px-0 sm:pb-0 [&::-webkit-scrollbar]:hidden'>
             {categoryTabs.map((item) => (
               <button
                 key={item.key}
                 type='button'
                 onClick={() => setActiveCategory(item.key)}
-                className={`min-w-[160px] rounded-full border px-8 py-4 text-sm font-extrabold uppercase transition ${
+                className={`min-w-[148px] shrink-0 snap-start rounded-full border px-6 py-3.5 text-sm font-extrabold uppercase transition sm:min-w-[160px] sm:px-8 sm:py-4 ${
                   activeCategory === item.key
                     ? 'border-[#ffc222] bg-[#ffc222] text-[#171717]'
                     : 'border-[#efe7ca] bg-white text-[#171717] hover:border-[#ffcf4d]'
@@ -2030,17 +2067,7 @@ export function PocoFoodHome() {
             ))}
           </div>
 
-          <div className='mt-6 text-center'>
-            <p
-              className='mx-auto max-w-[760px] text-base leading-8 text-[#686868]'
-              data-template-path='components.home_page.products_subtitle'
-              data-template-section='products'
-            >
-              {productsSubtitle}
-            </p>
-          </div>
-
-          <div className='mt-10 grid gap-6 sm:grid-cols-2 xl:grid-cols-4'>
+          <div className='mt-8 grid gap-6 sm:grid-cols-2 lg:mt-10 xl:grid-cols-4'>
             {featuredProducts.length ? (
               featuredProducts.map((product, index) => {
                 const isWishlisted = wishlistIds.includes(String(product._id || ""))
@@ -2082,9 +2109,12 @@ export function PocoFoodHome() {
                     </div>
                   </Link>
 
-                  <p className='mt-5 text-[13px] font-bold uppercase tracking-[0.12em] text-[#d94b2b]'>
-                    {product.category}
-                  </p>
+                  <div className='mt-5 flex items-center gap-2'>
+                    <FoodTypeMark type={product.foodType} />
+                    <p className='text-[13px] font-bold uppercase tracking-[0.12em] text-[#d94b2b]'>
+                      {product.category}
+                    </p>
+                  </div>
                   <Link
                     href={product.href}
                     className='mt-2 block text-[30px] font-extrabold leading-[1] tracking-[-0.04em] text-[#171717]'
@@ -2152,15 +2182,39 @@ export function PocoFoodHome() {
       >
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='relative overflow-hidden rounded-[30px] border border-white/8 shadow-[0_30px_80px_rgba(0,0,0,0.28)]'>
-            <img
-              src={promoOfferBackgroundImage}
-              alt='Offer banner'
-              className='absolute inset-0 h-full w-full object-cover object-center'
-              data-template-path='components.home_page.offer_section_background_image'
-            />
+            {hasPromoOfferComboItems ? (
+              <div
+                className='absolute inset-0 flex items-center justify-center overflow-hidden bg-[#f7f2df]'
+                data-template-path='components.home_page.offer_section_background_image'
+              >
+                <div className='absolute inset-0 bg-[radial-gradient(circle_at_38%_52%,rgba(255,194,34,0.28),transparent_30%),linear-gradient(90deg,rgba(255,255,255,0.42),rgba(255,255,255,0.2))]' />
+                <div className='relative flex h-full w-full items-center justify-center gap-0 px-[12%] py-5 sm:py-8 lg:px-[18%]'>
+                  {promoOfferComboItems.slice(0, 3).map((item, itemIndex) => (
+                    <div
+                      key={`${item.key}-offer-background`}
+                      className='flex h-full min-w-0 flex-1 items-center justify-center'
+                      style={{ marginLeft: itemIndex ? '-4%' : 0 }}
+                    >
+                      <img
+                        src={item.image}
+                        alt={item.name}
+                        className='h-[78%] w-full object-contain drop-shadow-[0_24px_34px_rgba(0,0,0,0.18)] sm:h-[84%] lg:h-[88%]'
+                      />
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : (
+              <img
+                src={promoOfferBackgroundImage}
+                alt='Offer banner'
+                className='absolute inset-0 h-full w-full object-cover object-center'
+                data-template-path='components.home_page.offer_section_background_image'
+              />
+            )}
             <div
               className='absolute inset-0 bg-[#121212]'
-              style={{ opacity: offerSectionOverlayOpacity }}
+              style={{ opacity: hasPromoOfferComboItems ? Math.max(offerSectionOverlayOpacity, 0.42) : offerSectionOverlayOpacity }}
               data-template-path='components.home_page.offer_section_overlay_opacity'
             />
             <div className='absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,194,34,0.12),transparent_18%),radial-gradient(circle_at_left_bottom,rgba(255,255,255,0.08),transparent_24%)]' />
@@ -2255,9 +2309,12 @@ export function PocoFoodHome() {
                     <img src={product.image} alt={product.title} className='h-[84px] w-[84px] object-contain' />
                   </div>
                   <div className='min-w-0 flex-1'>
-                    <p className='text-[15px] text-[#8a8a8a]'>
-                      {product.category}
-                    </p>
+                    <div className='flex items-center gap-2'>
+                      <FoodTypeMark type={product.foodType} />
+                      <p className='text-[15px] text-[#8a8a8a]'>
+                        {product.category}
+                      </p>
+                    </div>
                     <p className='mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.03em] text-[#171717]'>
                       {product.title}
                     </p>
