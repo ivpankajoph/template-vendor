@@ -117,7 +117,8 @@ export const buildTemplateScopedPath = ({
   }
 
   const resolvedCitySlug = normalizedCityOverride || context.citySlug || "all";
-  const cityPart = resolvedCitySlug ? `/${resolvedCitySlug}` : "/all";
+  const cityPart =
+    resolvedCitySlug && resolvedCitySlug !== "all" ? `/${resolvedCitySlug}` : "";
   const websitePart = context.websiteSlug
     ? `/website/${encodeURIComponent(context.websiteSlug)}`
     : "";

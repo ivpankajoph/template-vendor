@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono, Manrope, Sora } from "next/font/google";
+import { Geist, Geist_Mono, Manrope, Sora, Plus_Jakarta_Sans } from "next/font/google";
 import { headers } from "next/headers";
 // @ts-ignore - CSS global import has no type declarations
 import "./globals.css";
@@ -34,6 +34,11 @@ const manrope = Manrope({
 
 const sora = Sora({
   variable: "--font-sora",
+  subsets: ["latin"],
+});
+
+const plusJakartaSans = Plus_Jakarta_Sans({
+  variable: "--font-plus-jakarta",
   subsets: ["latin"],
 });
 
@@ -147,7 +152,7 @@ export default async function RootLayout({
       <body
         data-template-vendor={templateVendorId}
         data-template-website={templateWebsiteId}
-        className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${sora.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${manrope.variable} ${sora.variable} ${plusJakartaSans.variable} antialiased`}
       >
         <VendorProvider>
           <GoogleAnalytics />

@@ -12,7 +12,13 @@ import { toastError, toastSuccess } from "@/lib/toast";
 import { useTemplateVariant } from "@/app/template/components/useTemplateVariant";
 import { getTemplateAuth, templateApiFetch } from "@/app/template/components/templateAuth";
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
-import { buildTemplateProductPath, buildTemplateScopedPath } from "@/lib/template-route";
+import {
+  buildTemplateProductPath,
+  buildTemplateScopedPath,
+  getTemplateCityFromPath,
+  getTemplateWebsiteFromPath,
+} from "@/lib/template-route";
+import { fetchTemplateProducts, type TemplateProductFacet } from "@/lib/template-products-api";
 import { WhiteRoseProductCard } from "@/app/template/components/whiterose/WhiteRoseProductCard";
 import { whiteRoseGetCategoryDetails } from "@/app/template/components/whiterose/whiterose-utils";
 
@@ -256,7 +262,7 @@ function FoodTypeMark({ type }: { type?: string }) {
 
 export default function AllProducts() {
   const variant = useTemplateVariant();
-  const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
+  const initialProducts = useSelector((state: any) => state?.alltemplatepage?.products || []);
   const templateData = useSelector((state: any) => state?.alltemplatepage?.data);
   const isPocoFood = variant.key === "pocofood";
   const templateCitySlug = String(
@@ -266,6 +272,8 @@ export default function AllProducts() {
   const pathname = usePathname();
   const vendor_id = params.vendor_id as string;
   const vendorId = String(vendor_id || "");
+  const routeCitySlug = getTemplateCityFromPath(pathname || "/", vendorId);
+  const routeWebsiteId = getTemplateWebsiteFromPath(pathname || "/", vendorId);
   const toTemplatePath = (suffix = "") =>
     buildTemplateScopedPath({
       vendorId,
@@ -287,6 +295,14 @@ export default function AllProducts() {
   const [foodMenuItems, setFoodMenuItems] = useState<FoodMenuItem[]>([]);
   const [foodOffers, setFoodOffers] = useState<FoodOffer[]>([]);
   const [addingById, setAddingById] = useState<Record<string, boolean>>({});
+  const [apiProducts, setApiProducts] = useState<any[]>([]);
+  const [productFacets, setProductFacets] = useState<{
+    categories: TemplateProductFacet[];
+    brands: TemplateProductFacet[];
+  }>({ categories: [], brands: [] });
+  const [productLoading, setProductLoading] = useState(false);
+  const [productError, setProductError] = useState("");
+  const [hasLoadedProductQuery, setHasLoadedProductQuery] = useState(false);
   
   // New Filter states
   const [selectedBrands, setSelectedBrands] = useState<string[]>([]);
@@ -294,6 +310,8 @@ export default function AllProducts() {
   const [minRating, setMinRating] = useState<number>(0);
   const [minDiscount, setMinDiscount] = useState<number>(0);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [sortBy, setSortBy] = useState("newest");
+  const products = hasLoadedProductQuery ? apiProducts : initialProducts;
 
   // Sync state with URL params
   useEffect(() => {
@@ -304,6 +322,7 @@ export default function AllProducts() {
     const rating = searchParams.get("rating");
     const discount = searchParams.get("discount");
     const brandsParam = searchParams.get("brands");
+    const sort = searchParams.get("sort");
 
     if (search !== null) setSearchTerm(search);
     if (category !== null) setSelectedCategory(category);
@@ -315,6 +334,7 @@ export default function AllProducts() {
     }
     if (rating !== null) setMinRating(toNumber(rating));
     if (discount !== null) setMinDiscount(toNumber(discount));
+    if (sort !== null) setSortBy(sort || "newest");
     if (brandsParam !== null) {
       setSelectedBrands(brandsParam.split(",").filter(Boolean));
     }
@@ -332,6 +352,71 @@ export default function AllProducts() {
     });
     router.replace(`${pathname}?${params.toString()}`, { scroll: false });
   };
+
+  useEffect(() => {
+    if (!vendorId || isPocoFood) {
+      setApiProducts([]);
+      setHasLoadedProductQuery(false);
+      return;
+    }
+
+    let cancelled = false;
+    setProductLoading(true);
+    setProductError("");
+
+    const timer = window.setTimeout(async () => {
+      try {
+        const response = await fetchTemplateProducts({
+          vendorId,
+          websiteId: routeWebsiteId,
+          city: routeCitySlug || "all",
+          search: searchTerm,
+          category: selectedCategory,
+          brands: selectedBrands,
+          minPrice: priceRange.min,
+          maxPrice: priceRange.max,
+          rating: minRating,
+          discount: minDiscount,
+          sort: sortBy,
+          page: 1,
+          limit: 60,
+        });
+
+        if (cancelled) return;
+        setApiProducts(response.products);
+        setProductFacets({
+          categories: response.facets?.categories || [],
+          brands: response.facets?.brands || [],
+        });
+        setHasLoadedProductQuery(true);
+      } catch (error: any) {
+        if (cancelled) return;
+        setApiProducts([]);
+        setProductError(error?.message || "Failed to load products");
+        setHasLoadedProductQuery(true);
+      } finally {
+        if (!cancelled) setProductLoading(false);
+      }
+    }, 250);
+
+    return () => {
+      cancelled = true;
+      window.clearTimeout(timer);
+    };
+  }, [
+    isPocoFood,
+    minDiscount,
+    minRating,
+    priceRange.max,
+    priceRange.min,
+    routeCitySlug,
+    routeWebsiteId,
+    searchTerm,
+    selectedBrands,
+    selectedCategory,
+    sortBy,
+    vendorId,
+  ]);
 
 
 
@@ -422,19 +507,34 @@ export default function AllProducts() {
       return ["All", ...Array.from(list).sort((a, b) => a.localeCompare(b))];
     }
     const list = new Set<string>();
+    productFacets.categories.forEach((category) => {
+      const label = normalizeCategoryLabel(category.label);
+      if (label) list.add(label);
+    });
+    initialProducts.forEach((product: any) => {
+      const category = getProductCategoryDetails(product, categoryMap);
+      if (category.label) list.add(category.label);
+    });
     normalizedProducts.forEach(({ category }) => {
       if (category.label) list.add(category.label);
     });
     return ["All", ...Array.from(list).sort((a, b) => a.localeCompare(b))];
-  }, [foodMenuItems, isPocoFood, normalizedProducts]);
+  }, [categoryMap, foodMenuItems, initialProducts, isPocoFood, normalizedProducts, productFacets.categories]);
 
   const brands = useMemo(() => {
     const list = new Set<string>();
+    productFacets.brands.forEach((brand) => {
+      const label = normalizeText(brand.label);
+      if (label) list.add(label);
+    });
+    initialProducts.forEach((product: any) => {
+      if (product.brand) list.add(product.brand);
+    });
     normalizedProducts.forEach(({ product }) => {
       if (product.brand) list.add(product.brand);
     });
     return Array.from(list).sort((a, b) => a.localeCompare(b));
-  }, [normalizedProducts]);
+  }, [initialProducts, normalizedProducts, productFacets.brands]);
 
 
   const isStudio = variant.key === "studio";
@@ -451,13 +551,13 @@ export default function AllProducts() {
     : isMinimal
       ? "min-h-screen bg-[#f7f7f5] text-slate-900"
       : isTrend
-        ? "min-h-screen bg-rose-50/50 text-slate-900"
+        ? "min-h-screen bg-[#f8f7f4] font-sans text-slate-950"
         : "min-h-screen bg-slate-50";
 
   const searchClass = isStudio
     ? "border border-slate-700 bg-slate-900 text-slate-100 placeholder:text-slate-400"
     : isTrend
-      ? "border border-rose-200 bg-white"
+      ? "border border-slate-200 bg-white text-slate-950 placeholder:text-slate-400 shadow-sm"
     : isMinimal
       ? "border border-slate-300 bg-white"
       : "border border-slate-300 bg-white";
@@ -477,7 +577,7 @@ export default function AllProducts() {
   const cardClass = isStudio
     ? "bg-slate-900 border border-slate-800 hover:border-sky-400/40 rounded-md"
     : isTrend
-      ? "bg-white border border-rose-100 hover:border-rose-300 rounded-[1.7rem]"
+      ? "overflow-hidden rounded-2xl border border-slate-200 bg-white hover:border-emerald-300"
     : isMquiq
       ? "bg-white border border-slate-200 hover:border-indigo-300 rounded-[1.35rem]"
     : isMinimal
@@ -489,7 +589,7 @@ export default function AllProducts() {
   const heroClass = isStudio
     ? "mb-7 rounded-md border border-slate-800 bg-slate-900/80 p-6"
     : isTrend
-      ? "mb-7 rounded-[2rem] border border-rose-200 bg-gradient-to-r from-rose-100 via-white to-pink-100 p-6"
+      ? "mb-6 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm"
       : isMinimal
         ? "mb-8 rounded-2xl border border-slate-200 bg-white p-7"
         : "mb-7 rounded-3xl border border-slate-200 bg-gradient-to-r from-indigo-50 via-white to-cyan-50 p-6";
@@ -629,11 +729,22 @@ export default function AllProducts() {
 
   const filteredProducts = normalizedProducts.filter(({ product, category }) => {
     const name = normalizeText(product?.productName).toLowerCase();
+    const brand = normalizeText(product?.brand).toLowerCase();
     const categoryLabel = category.label.toLowerCase();
+    const description = normalizeText(product?.description).toLowerCase();
+    const shortDescription = normalizeText(product?.shortDescription).toLowerCase();
+    const sku = normalizeText(product?.baseSku).toLowerCase();
     const term = searchTerm.toLowerCase();
     const pricing = getProductPricing(product);
 
-    const matchesSearch = name.includes(term) || categoryLabel.includes(term);
+    const matchesSearch =
+      !term ||
+      name.includes(term) ||
+      brand.includes(term) ||
+      categoryLabel.includes(term) ||
+      description.includes(term) ||
+      shortDescription.includes(term) ||
+      sku.includes(term);
     const matchesCategory =
       selectedCategory === "All" || category.label === selectedCategory;
     
@@ -993,10 +1104,22 @@ export default function AllProducts() {
     <div className={`${pageClass} template-page-shell template-products-page py-10 lg:py-14`}>
       <div className="max-w-7xl mx-auto px-6">
         <div className={`${heroClass} template-page-hero`}>
-          <h2 className={`template-section-title text-3xl lg:text-4xl font-bold text-left ${heroTitleClass}`}>All Products</h2>
-          <p className={`mt-2 text-sm ${heroSubtextClass}`}>
-            Explore {visibleProductCount} {visibleProductWord} and add items to cart directly from this page.
-          </p>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-[0.18em] text-emerald-700">
+                Product catalog
+              </p>
+              <h2 className={`mt-2 text-3xl font-semibold tracking-normal lg:text-4xl ${heroTitleClass}`}>
+                All Products
+              </h2>
+              <p className={`mt-2 text-sm leading-6 ${heroSubtextClass}`}>
+                Explore {visibleProductCount} {visibleProductWord} with live search, filters, ratings, and price sorting.
+              </p>
+            </div>
+            <div className="rounded-xl border border-emerald-100 bg-emerald-50 px-4 py-3 text-sm font-semibold text-emerald-800">
+              {productLoading ? "Updating catalog..." : `${visibleProductCount} visible`}
+            </div>
+          </div>
         </div>
 
         {/* Mobile Filter Toggle */}
@@ -1023,7 +1146,7 @@ export default function AllProducts() {
                   onClick={() => setIsSidebarOpen(false)}
                 />
               )}
-              <aside className={`fixed inset-y-0 left-0 z-[101] w-72 transform bg-white p-6 transition-transform duration-300 lg:static lg:block lg:w-64 lg:translate-x-0 lg:bg-transparent lg:p-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
+              <aside className={`fixed inset-y-0 left-0 z-[101] w-80 transform bg-white p-5 transition-transform duration-300 lg:static lg:block lg:w-64 lg:translate-x-0 lg:bg-transparent lg:p-0 ${isSidebarOpen ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="flex items-center justify-between mb-6 lg:hidden">
                   <h3 className="text-lg font-bold">Filters</h3>
                   <button onClick={() => setIsSidebarOpen(false)}>
@@ -1031,16 +1154,16 @@ export default function AllProducts() {
                   </button>
                 </div>
 
-                <div className="space-y-8 sticky top-24">
+                <div className="sticky top-24 space-y-6 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                   {/* Category Filter */}
                   <div className="border-b border-slate-200 pb-6">
-                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Categories</h4>
+                    <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Categories</h4>
                     <div className="space-y-2.5">
                       {categories.map((cat) => (
                         <button
                           key={cat}
                           onClick={() => setSelectedCategory(cat)}
-                          className={`flex w-full items-center justify-between text-[14px] font-bold transition-colors ${selectedCategory === cat ? 'text-pink-600' : 'text-slate-600 hover:text-pink-500'}`}
+                          className={`flex w-full items-center justify-between rounded-lg px-2 py-1.5 text-sm font-semibold transition-colors ${selectedCategory === cat ? 'bg-emerald-50 text-emerald-700' : 'text-slate-600 hover:bg-slate-50 hover:text-emerald-700'}`}
                         >
                           <span>{cat}</span>
                           {selectedCategory === cat && <ChevronRight size={14} />}
@@ -1051,25 +1174,25 @@ export default function AllProducts() {
 
                   {/* Rating Filter */}
                   <div className="border-b border-slate-200 pb-6">
-                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Customer Ratings</h4>
+                    <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Customer Ratings</h4>
                     <div className="space-y-3">
                       {[4, 3, 2, 1].map((star) => (
                         <label key={star} className="flex cursor-pointer items-center gap-3 group">
                           <input 
                             type="radio" 
                             name="rating" 
-                            className="h-4 w-4 border-slate-300 text-pink-600 focus:ring-pink-500" 
+                            className="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500" 
                             checked={minRating === star}
                             onChange={() => setMinRating(star)}
                           />
                           <div className="flex items-center gap-1">
-                            <span className="text-[14px] font-bold text-slate-700">{star}★ & above</span>
+                            <span className="text-sm font-semibold text-slate-700">{star} star & above</span>
                           </div>
                         </label>
                       ))}
                       <button 
                          onClick={() => setMinRating(0)}
-                         className="text-[11px] font-black uppercase tracking-tight text-pink-600 hover:text-pink-700"
+                         className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 hover:text-emerald-800"
                       >
                         Reset Rating
                       </button>
@@ -1079,20 +1202,20 @@ export default function AllProducts() {
                   {/* Brand Filter */}
                   {brands.length > 0 && (
                     <div className="border-b border-slate-200 pb-6">
-                      <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Brand</h4>
+                      <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Brand</h4>
                       <div className="max-h-48 space-y-2.5 overflow-y-auto pr-2 no-scrollbar">
                         {brands.map((brand) => (
                           <label key={brand} className="flex cursor-pointer items-center gap-3">
                             <input 
                               type="checkbox" 
-                              className="h-4 w-4 rounded border-slate-300 text-pink-600 focus:ring-pink-500" 
+                              className="h-4 w-4 rounded border-slate-300 text-emerald-600 focus:ring-emerald-500" 
                               checked={selectedBrands.includes(brand)}
                               onChange={(e) => {
                                 if (e.target.checked) setSelectedBrands([...selectedBrands, brand]);
                                 else setSelectedBrands(selectedBrands.filter(b => b !== brand));
                               }}
                             />
-                            <span className="text-[14px] font-bold text-slate-700">{brand}</span>
+                            <span className="text-sm font-semibold text-slate-700">{brand}</span>
                           </label>
                         ))}
                       </div>
@@ -1101,25 +1224,25 @@ export default function AllProducts() {
 
                   {/* Price Filter */}
                   <div className="border-b border-slate-200 pb-6">
-                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Price Range</h4>
+                    <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Price Range</h4>
                     <div className="space-y-4">
                       <div className="grid grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">Min</span>
+                          <span className="text-[10px] font-semibold uppercase text-slate-400">Min</span>
                           <input 
                             type="number" 
                             value={priceRange.min}
                             onChange={(e) => setPriceRange({ ...priceRange, min: toNumber(e.target.value) })}
-                            className="w-full rounded-md border border-slate-200 p-2 text-xs font-bold focus:border-pink-500 outline-none"
+                            className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold outline-none focus:border-emerald-500"
                           />
                         </div>
                         <div className="space-y-1">
-                          <span className="text-[10px] font-black text-slate-400 uppercase">Max</span>
+                          <span className="text-[10px] font-semibold uppercase text-slate-400">Max</span>
                           <input 
                             type="number" 
                             value={priceRange.max}
                             onChange={(e) => setPriceRange({ ...priceRange, max: toNumber(e.target.value) })}
-                            className="w-full rounded-md border border-slate-200 p-2 text-xs font-bold focus:border-pink-500 outline-none"
+                            className="w-full rounded-lg border border-slate-200 p-2 text-xs font-semibold outline-none focus:border-emerald-500"
                           />
                         </div>
                       </div>
@@ -1128,23 +1251,23 @@ export default function AllProducts() {
 
                   {/* Discount Filter */}
                   <div>
-                    <h4 className="mb-4 text-xs font-black uppercase tracking-widest text-slate-400">Discount</h4>
+                    <h4 className="mb-4 text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Discount</h4>
                     <div className="space-y-2.5">
                       {[50, 40, 30, 20, 10].map((disc) => (
                         <label key={disc} className="flex cursor-pointer items-center gap-3">
                           <input 
                             type="radio" 
                             name="discount" 
-                            className="h-4 w-4 border-slate-300 text-pink-600 focus:ring-pink-500" 
+                            className="h-4 w-4 border-slate-300 text-emerald-600 focus:ring-emerald-500" 
                             checked={minDiscount === disc}
                             onChange={() => setMinDiscount(disc)}
                           />
-                          <span className="text-[14px] font-bold text-slate-700">{disc}% and above</span>
+                          <span className="text-sm font-semibold text-slate-700">{disc}% and above</span>
                         </label>
                       ))}
                       <button 
                          onClick={() => setMinDiscount(0)}
-                         className="text-[11px] font-black uppercase tracking-tight text-pink-600 hover:text-pink-700"
+                         className="text-[11px] font-semibold uppercase tracking-[0.14em] text-emerald-700 hover:text-emerald-800"
                       >
                         Reset Discount
                       </button>
@@ -1157,20 +1280,51 @@ export default function AllProducts() {
 
           <div className="flex-1">
             <div
-              className={`mb-8 flex flex-col gap-4 lg:flex-row lg:items-center ${
+              className={`mb-6 rounded-2xl border border-slate-200 bg-white p-3 shadow-sm flex flex-col gap-3 lg:flex-row lg:items-center ${
                 singleProductLayout ? "lg:justify-center" : "lg:justify-between"
               }`}
             >
               <div className={`relative w-full ${singleProductLayout ? "lg:max-w-md" : "lg:w-1/2"}`}>
                 <input
                   type="text"
-                  placeholder="Search products..."
-                  className={`w-full rounded-xl pl-11 pr-4 py-2.5 template-focus-accent ${searchClass}`}
+                  placeholder="Search products, categories, or brand"
+                  className={`w-full rounded-xl py-3 pl-11 pr-4 text-sm outline-none template-focus-accent ${searchClass}`}
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
-                <Search className="absolute left-3.5 top-3 text-slate-400" size={18} />
+                <Search className="absolute left-3.5 top-3.5 text-slate-400" size={18} />
               </div>
+
+              {isTrend ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={sortBy}
+                    onChange={(event) => setSortBy(event.target.value)}
+                    className="h-11 rounded-xl border border-slate-200 bg-white px-3 text-sm font-semibold text-slate-700 outline-none transition focus:border-emerald-400"
+                  >
+                    <option value="newest">Newest</option>
+                    <option value="price-low">Price: low to high</option>
+                    <option value="price-high">Price: high to low</option>
+                    <option value="rating">Top rated</option>
+                    <option value="discount">Best discount</option>
+                  </select>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSearchTerm("");
+                      setSelectedCategory("All");
+                      setSelectedBrands([]);
+                      setPriceRange({ min: 0, max: 100000 });
+                      setMinRating(0);
+                      setMinDiscount(0);
+                      setSortBy("newest");
+                    }}
+                    className="h-11 rounded-xl border border-slate-200 px-3 text-sm font-semibold text-slate-600 transition hover:border-emerald-300 hover:text-emerald-700"
+                  >
+                    Clear
+                  </button>
+                </div>
+              ) : null}
 
               {!isTrend && (
                 <div className={`flex flex-wrap gap-2 ${singleProductLayout ? "lg:justify-center" : ""}`}>
@@ -1191,8 +1345,14 @@ export default function AllProducts() {
               )}
             </div>
 
+            {productError ? (
+              <div className="mb-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-800">
+                {productError}
+              </div>
+            ) : null}
+
             {filteredProducts.length > 0 ? (
-              <div className={productsLayoutClass}>
+              <div className={`${productsLayoutClass} ${productLoading ? "opacity-60" : ""}`}>
                 {filteredProducts.map(({ product, category }) => {
                   const pricing = getProductPricing(product);
                   const rating = Math.max(0, Math.min(5, toNumber(product?.rating || 4.2)));
@@ -1207,7 +1367,9 @@ export default function AllProducts() {
                     ? "h-44 sm:h-48"
                     : isMquiq
                       ? "h-56 sm:h-60"
-                      : "h-64 sm:h-72";
+                      : isTrend
+                        ? "h-52 sm:h-56"
+                        : "h-64 sm:h-72";
 
                   return (
                     <div
@@ -1224,13 +1386,13 @@ export default function AllProducts() {
                         })}
                         className="block"
                       >
-                        <div className="relative overflow-hidden rounded-t-2xl border-b border-slate-100 bg-gradient-to-b from-slate-50 to-white">
+                        <div className="relative overflow-hidden border-b border-slate-100 bg-slate-50">
                           <div className={imageHeightClass}>
                             {productImageUrl ? (
                               <img
                                 src={productImageUrl}
                                 alt={product.productName || "Product image"}
-                                className="h-full w-full bg-white object-contain p-3 transition-transform duration-500 group-hover:scale-[1.03]"
+                                className="h-full w-full object-contain p-4 transition-transform duration-500 group-hover:scale-[1.03]"
                                 loading="lazy"
                               />
                             ) : (
@@ -1241,7 +1403,7 @@ export default function AllProducts() {
                           </div>
 
                           {pricing.discountPercent > 0 ? (
-                            <span className="absolute left-3 top-3 rounded-full bg-rose-500 px-2.5 py-1 text-xs font-semibold text-white">
+                            <span className="absolute left-3 top-3 rounded-full bg-emerald-600 px-2.5 py-1 text-xs font-semibold text-white">
                               {pricing.discountPercent}% OFF
                             </span>
                           ) : null}
@@ -1294,7 +1456,7 @@ export default function AllProducts() {
                             onClick={() => handleAddToCart(product)}
                             className={`template-primary-button inline-flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm font-medium text-white transition disabled:cursor-not-allowed disabled:bg-slate-400 ${
                               isTrend
-                                ? "bg-gradient-to-r from-pink-500 to-rose-500 hover:from-pink-600 hover:to-rose-600"
+                                ? "bg-emerald-700 hover:bg-emerald-800"
                                 : "bg-slate-900 hover:bg-slate-800"
                             }`}
                           >
@@ -1314,7 +1476,7 @@ export default function AllProducts() {
                               isStudio
                                 ? "border-slate-700 text-slate-200 hover:bg-slate-800"
                                 : isTrend
-                                  ? "border-rose-200 text-rose-600 hover:bg-rose-50"
+                                  ? "border-slate-200 text-slate-700 hover:border-emerald-200 hover:bg-emerald-50 hover:text-emerald-700"
                                 : "border-slate-300 text-slate-700 hover:bg-slate-100"
                             }`}
                           >
@@ -1332,7 +1494,7 @@ export default function AllProducts() {
                   isStudio
                     ? "border-slate-700 bg-slate-900"
                     : isTrend
-                      ? "border-rose-200 bg-white"
+                      ? "border-slate-200 bg-white"
                       : "border-slate-300 bg-white"
                 }`}
               >

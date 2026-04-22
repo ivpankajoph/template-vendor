@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
@@ -23,7 +23,12 @@ import {
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 
 import { configuredText } from '../template-content'
-import { buildTemplateProductPath, buildTemplateScopedPath } from '@/lib/template-route'
+import {
+  buildTemplateProductPath,
+  buildTemplateScopedPath,
+  getTemplateWebsiteFromPath,
+} from '@/lib/template-route'
+import { fetchTemplateProducts } from '@/lib/template-products-api'
 
 type TemplateProduct = {
   _id?: string
@@ -184,9 +189,14 @@ export function OragzeHome() {
   ).trim()
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
-  const products = useSelector(
+  const fallbackProducts = useSelector(
     (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
   )
+  const routeWebsiteId = getTemplateWebsiteFromPath(pathname || '/', vendorId)
+  const [apiProducts, setApiProducts] = useState<TemplateProduct[]>([])
+  const [hasLoadedProducts, setHasLoadedProducts] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(false)
+  const products = hasLoadedProducts ? apiProducts : fallbackProducts
 
   const home = template?.components?.home_page || {}
   const toTemplatePath = (suffix = '') =>
@@ -197,19 +207,56 @@ export function OragzeHome() {
   const allProductsPath = toTemplatePath('all-products')
   const loginPath = toTemplatePath('login')
 
-  const heroTitle = configuredText(home?.header_text, 'Organic Foods at your Doorsteps')
+  const heroTitle = configuredText(home?.header_text, 'The Nature of Premium Organics')
   const heroSubtitle = configuredText(
     home?.header_text_small,
-    'Dignissim massa diam elementum. Trusted freshness, delivered daily.'
+    'Experience curated freshness and artisanal quality essentials, delivered with care to your lifestyle.'
   )
-  const heroButtonPrimary = configuredText(home?.button_header, 'START SHOPPING')
-  const heroButtonSecondary = configuredText(home?.button_secondary, 'JOIN NOW')
+  const heroButtonPrimary = configuredText(home?.button_header, 'SHOP COLLECTIONS')
+  const heroButtonSecondary = configuredText(home?.button_secondary, 'EXPLORE MORE')
   const productsHeading = configuredText(home?.products_heading, 'Featured products')
   const productsSubtitle = configuredText(
     home?.products_subtitle,
     'Shop curated organic picks and seasonal essentials.'
   )
   const heroImage = typeof home?.backgroundImage === 'string' ? home.backgroundImage.trim() : ''
+
+  useEffect(() => {
+    if (!vendorId) {
+      setApiProducts([])
+      setHasLoadedProducts(false)
+      return
+    }
+
+    let cancelled = false
+    setProductsLoading(true)
+
+    fetchTemplateProducts({
+      vendorId,
+      websiteId: routeWebsiteId,
+      city: 'all',
+      page: 1,
+      limit: 24,
+      sort: 'newest',
+    })
+      .then((response) => {
+        if (cancelled) return
+        setApiProducts(response.products || [])
+        setHasLoadedProducts(true)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setApiProducts([])
+        setHasLoadedProducts(false)
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [routeWebsiteId, vendorId])
 
   const featuredProducts = useMemo(() => {
     return products.slice(0, 8).map((product: TemplateProduct, index: number) => {
@@ -324,26 +371,34 @@ export function OragzeHome() {
           <div className='relative overflow-hidden rounded-[20px] bg-gradient-to-r from-[#ffd391] to-[#ffbda8] shadow-sm'>
             <div className='flex flex-col md:flex-row items-center justify-between'>
               <div className='p-8 md:p-12 lg:pl-16 lg:w-3/5 space-y-5'>
-                 <h1
-                   className='text-[34px] font-extrabold leading-[1.1] tracking-tight text-red-700 md:text-[52px]'
-                   data-template-path='components.home_page.header_text'
-                   data-template-section='hero'
-                 >
-                   {heroTitle}
-                 </h1>
-                 <p
-                   className='text-[17px] font-semibold text-amber-900/80 md:text-[20px]'
-                   data-template-path='components.home_page.header_text_small'
-                   data-template-section='hero'
-                 >
-                   {heroSubtitle}
-                 </p>
-                 <Link
-                   href={vendorId ? allProductsPath : '#'}
-                   className='inline-block mt-4 rounded-md bg-white px-8 py-3.5 text-[17px] font-bold tracking-wide text-red-600 shadow-lg transition-transform hover:-translate-y-1 hover:scale-105 duration-300'
-                 >
-                   {heroButtonPrimary}
-                 </Link>
+                  <h1
+                    className='text-[38px] font-extrabold leading-[1.1] tracking-tight text-[#1a2e1c] md:text-[58px] font-heading'
+                    data-template-path='components.home_page.header_text'
+                    data-template-section='hero'
+                  >
+                    {heroTitle}
+                  </h1>
+                  <p
+                    className='text-[18px] font-medium text-[#4a3a2a] md:text-[22px] max-w-xl'
+                    data-template-path='components.home_page.header_text_small'
+                    data-template-section='hero'
+                  >
+                    {heroSubtitle}
+                  </p>
+                  <div className="flex flex-wrap gap-4 mt-6">
+                    <Link
+                      href={vendorId ? allProductsPath : '#'}
+                      className='inline-block rounded-full bg-[#1a2e1c] px-8 py-3.5 text-[16px] font-bold tracking-wide text-white shadow-lg transition-all hover:bg-[#2a452d] hover:-translate-y-1'
+                    >
+                      {heroButtonPrimary}
+                    </Link>
+                    <Link
+                      href={vendorId ? toTemplatePath('about') : '#'}
+                      className='inline-block rounded-full border-2 border-[#1a2e1c] px-8 py-3 text-[16px] font-bold tracking-wide text-[#1a2e1c] transition-all hover:bg-[#1a2e1c] hover:text-white'
+                    >
+                      {heroButtonSecondary}
+                    </Link>
+                  </div>
               </div>
               <div className='h-[250px] w-full md:h-[420px] md:w-2/5'>
                 {heroImage ? (
@@ -630,9 +685,11 @@ export function OragzeHome() {
             </div>
           ) : (
             <div className='rounded-2xl border border-dashed border-slate-300 bg-white px-6 py-12 text-center shadow-sm'>
-              <h3 className='text-[22px] font-semibold text-slate-900'>You do not have any products yet.</h3>
+              <h3 className='text-[22px] font-semibold text-slate-900'>
+                {productsLoading ? 'Loading products...' : 'No products found for this website.'}
+              </h3>
               <p className='mx-auto mt-3 max-w-2xl text-sm text-slate-600 md:text-base'>
-                Add products from your vendor dashboard and they will appear here instead of demo items.
+                Products selected for this website will appear here.
               </p>
             </div>
           )}
@@ -691,8 +748,6 @@ export function OragzeHome() {
           </div>
         </div>
       </section>
-
-
 
     </div>
   )

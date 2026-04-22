@@ -168,7 +168,7 @@ const buildTemplatePathWithContext = ({
   const normalizedCity = normalizeSlug(citySlug) || "all";
   const normalizedWebsite = normalizeWebsiteIdentifier(websiteIdentifier);
   const normalizedRest = String(rest || "").replace(/^\/+/, "");
-  const cityPart = `/${normalizedCity}`;
+  const cityPart = normalizedCity && normalizedCity !== "all" ? `/${normalizedCity}` : "";
   const websitePart = normalizedWebsite
     ? `/website/${encodeURIComponent(normalizedWebsite)}`
     : "";

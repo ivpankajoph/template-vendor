@@ -212,8 +212,8 @@
   --template-surface-muted: #f1f2ef;
   --template-border: #d8dccf;
   --template-radius: 8px;
-  --template-heading-font: "Poppins", "DM Sans", sans-serif;
-  --template-body-font: "Poppins", "DM Sans", sans-serif;
+  --template-heading-font: var(--font-sora), "Sora", sans-serif;
+  --template-body-font: var(--font-plus-jakarta), "Plus Jakarta Sans", sans-serif;
 }
 
 .template-variant-whiterose {

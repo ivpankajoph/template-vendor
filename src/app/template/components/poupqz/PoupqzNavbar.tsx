@@ -2,12 +2,26 @@
 
 /* eslint-disable @next/next/no-img-element */
 import Link from 'next/link'
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
-import { Menu, ShoppingBag, UserCircle2, X } from 'lucide-react'
+import { ChevronDown, Menu, ShoppingBag, UserCircle2, X } from 'lucide-react'
 import { clearTemplateAuth, getTemplateAuth, templateApiFetch } from '../templateAuth'
-import { buildStorefrontScopedPath } from '@/lib/template-route'
+import {
+  buildStorefrontScopedPath,
+  buildTemplateProductPath,
+  getTemplateCityFromPath,
+  getTemplateWebsiteFromPath,
+} from '@/lib/template-route'
+import { fetchTemplateProducts } from '@/lib/template-products-api'
+
+type NavbarProduct = {
+  _id?: string
+  id?: string
+  slug?: string
+  productName?: string
+  name?: string
+}
 
 export function PoupqzNavbar() {
   const params = useParams()
@@ -24,8 +38,15 @@ export function PoupqzNavbar() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [cartCount, setCartCount] = useState(0)
   const [isLoggedIn, setIsLoggedIn] = useState(false)
+  const [websiteProducts, setWebsiteProducts] = useState<NavbarProduct[]>([])
+  const [productsLoading, setProductsLoading] = useState(false)
 
   const template = useSelector((state: any) => state?.alltemplatepage?.data)
+  const fallbackProducts = useSelector(
+    (state: any) => (state?.alltemplatepage?.products || []) as NavbarProduct[]
+  )
+  const routeCitySlug = getTemplateCityFromPath(pathname || '/', vendorId)
+  const routeWebsiteId = getTemplateWebsiteFromPath(pathname || '/', vendorId)
 
   // simple nav items, no dropdowns
   const homeHref = toStorefrontPath('')
@@ -35,6 +56,26 @@ export function PoupqzNavbar() {
   const cartHref = toStorefrontPath('cart')
   const profileHref = toStorefrontPath('profile')
   const loginHref = toStorefrontPath('login')
+  const productSource = websiteProducts.length ? websiteProducts : fallbackProducts
+  const productLinks = useMemo(() => {
+    const seen = new Set<string>()
+    return productSource
+      .map((product) => {
+        const id = String(product?._id || product?.id || '').trim()
+        const label = String(product?.productName || product?.name || '').trim()
+        if (!id || !label) return null
+        const key = `${id}-${label.toLowerCase()}`
+        if (seen.has(key)) return null
+        seen.add(key)
+        return {
+          id,
+          slug: String(product?.slug || '').trim(),
+          label,
+        }
+      })
+      .filter(Boolean)
+      .slice(0, 18) as Array<{ id: string; slug: string; label: string }>
+  }, [productSource])
 
   const logo =
     template?.components?.logo ||
@@ -99,6 +140,38 @@ export function PoupqzNavbar() {
     }
   }, [vendorId, pathname])
 
+  useEffect(() => {
+    if (!vendorId) {
+      setWebsiteProducts([])
+      return
+    }
+
+    let cancelled = false
+    setProductsLoading(true)
+
+    fetchTemplateProducts({
+      vendorId,
+      websiteId: routeWebsiteId,
+      city: 'all',
+      page: 1,
+      limit: 80,
+      sort: 'newest',
+    })
+      .then((response) => {
+        if (!cancelled) setWebsiteProducts(response.products || [])
+      })
+      .catch(() => {
+        if (!cancelled) setWebsiteProducts([])
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [routeCitySlug, routeWebsiteId, vendorId])
+
   const isHome = pathname === homeHref || pathname === '/'
 
   return (
@@ -112,6 +185,81 @@ export function PoupqzNavbar() {
           {[
             { label: 'Home', href: homeHref, active: isHome },
             { label: 'Catalog', href: productsHref, active: pathname === productsHref },
+          ].map((item) => (
+            <Link
+              key={item.label}
+              href={item.href}
+              className={`relative text-[15px] font-bold uppercase tracking-widest transition-colors ${item.active ? 'text-[#0c4a6e]' : 'text-slate-500 hover:text-[#0c4a6e]'
+                }`}
+            >
+              {item.label}
+              {item.active && (
+                <span className='absolute -bottom-2 left-0 h-0.5 w-full bg-[#0c4a6e]' />
+              )}
+            </Link>
+          ))}
+
+          <div className='group relative'>
+            <button
+              type='button'
+              className={`relative inline-flex items-center gap-2 text-[15px] font-bold uppercase tracking-widest transition-colors ${
+                pathname === productsHref ? 'text-[#0c4a6e]' : 'text-slate-500 hover:text-[#0c4a6e]'
+              }`}
+            >
+              Products
+              <ChevronDown className='h-4 w-4 transition-transform group-hover:rotate-180' />
+              {pathname === productsHref && (
+                <span className='absolute -bottom-2 left-0 h-0.5 w-full bg-[#0c4a6e]' />
+              )}
+            </button>
+
+            <div className='pointer-events-none absolute left-1/2 top-full z-50 w-[420px] -translate-x-1/2 pt-4 opacity-0 transition duration-150 group-hover:pointer-events-auto group-hover:opacity-100'>
+              <div className='max-h-[520px] overflow-y-auto rounded-2xl border border-slate-200 bg-white p-5 shadow-[0_26px_70px_rgba(15,23,42,0.22)]'>
+                <div className='flex items-center justify-between gap-3 border-b border-slate-100 pb-3'>
+                  <div>
+                    <p className='text-xs font-black uppercase tracking-widest text-slate-400'>
+                      Website products
+                    </p>
+                    <p className='mt-1 text-lg font-black text-[#0c4a6e]'>
+                      Products
+                    </p>
+                  </div>
+                  <Link
+                    href={productsHref}
+                    className='rounded-full border border-slate-200 px-3 py-1.5 text-xs font-bold uppercase tracking-wider text-slate-600 transition hover:border-[#0c4a6e] hover:text-[#0c4a6e]'
+                  >
+                    All
+                  </Link>
+                </div>
+
+                <div className='mt-3 space-y-1.5'>
+                  {productLinks.length > 0 ? (
+                    productLinks.map((product) => (
+                      <Link
+                        key={product.id}
+                        href={buildTemplateProductPath({
+                          vendorId,
+                          pathname: pathname || undefined,
+                          productId: product.id,
+                          productSlug: product.slug,
+                          citySlug: routeCitySlug,
+                        })}
+                        className='block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-sky-50 hover:text-[#0c4a6e]'
+                      >
+                        <span className='line-clamp-2'>{product.label}</span>
+                      </Link>
+                    ))
+                  ) : (
+                    <p className='rounded-xl bg-slate-50 px-3 py-3 text-sm font-semibold text-slate-500'>
+                      {productsLoading ? 'Loading products...' : 'No products added yet.'}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {[
             { label: 'Our Story', href: aboutHref, active: pathname === aboutHref },
             { label: 'Support', href: contactHref, active: pathname === contactHref },
           ].map((item) => (
@@ -173,7 +321,7 @@ export function PoupqzNavbar() {
           <div className='flex flex-col gap-1 p-6'>
             {[
               { label: 'Home', href: homeHref },
-              { label: 'Products', href: productsHref },
+              { label: 'Catalog', href: productsHref },
               { label: 'About Us', href: aboutHref },
               { label: 'Our Contact', href: contactHref },
               { label: 'My Cart', href: cartHref },
@@ -187,6 +335,40 @@ export function PoupqzNavbar() {
                 {item.label}
               </Link>
             ))}
+
+            <div className='rounded-2xl border border-slate-100 bg-slate-50 p-2'>
+              <Link
+                href={productsHref}
+                className='block rounded-xl px-3 py-2 text-sm font-black uppercase tracking-widest text-[#0c4a6e]'
+                onClick={() => setMobileMenuOpen(false)}
+              >
+                Products
+              </Link>
+              <div className='max-h-56 overflow-y-auto'>
+                {productLinks.length > 0 ? (
+                  productLinks.slice(0, 12).map((product) => (
+                    <Link
+                      key={product.id}
+                      href={buildTemplateProductPath({
+                        vendorId,
+                        pathname: pathname || undefined,
+                        productId: product.id,
+                        productSlug: product.slug,
+                        citySlug: routeCitySlug,
+                      })}
+                      className='block rounded-xl px-3 py-2 text-sm font-semibold text-slate-700 transition hover:bg-white'
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      {product.label}
+                    </Link>
+                  ))
+                ) : (
+                  <p className='px-3 py-2 text-sm font-semibold text-slate-500'>
+                    {productsLoading ? 'Loading products...' : 'No products added yet.'}
+                  </p>
+                )}
+              </div>
+            </div>
 
             <div className="my-4 h-px bg-slate-100" />
 

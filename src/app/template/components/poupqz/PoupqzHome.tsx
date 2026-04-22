@@ -6,7 +6,6 @@ import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   ChevronDown,
-  ChevronUp,
   Factory,
   HandCoins,
   Headset,
@@ -23,10 +22,15 @@ import {
   Medal,
 } from 'lucide-react'
 import { getRichTextPreview } from '@/lib/rich-text'
-import { buildStorefrontScopedPath, buildTemplateProductPath } from '@/lib/template-route'
+import {
+  buildStorefrontScopedPath,
+  buildTemplateProductPath,
+  getTemplateWebsiteFromPath,
+} from '@/lib/template-route'
 import { getTemplateAuth, templateApiFetch } from '../templateAuth'
 import type { ComponentType } from 'react'
 import { configuredArray, configuredText } from '../template-content'
+import { fetchTemplateProducts } from '@/lib/template-products-api'
 
 type TemplateProduct = {
   _id?: string
@@ -281,8 +285,15 @@ export function PoupqzHome() {
     template?.components?.vendor_profile?.default_city_slug || ''
   ).trim()
 
-  // Use products already loaded into Redux store by TemplateDataLoader
-  const products = useSelector((state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[])
+  // Use the reusable storefront product API so the home section matches navbar/all-products behavior.
+  const fallbackProducts = useSelector(
+    (state: any) => (state?.alltemplatepage?.products || []) as TemplateProduct[]
+  )
+  const routeWebsiteId = getTemplateWebsiteFromPath(pathname || '/', vendorId)
+  const [apiProducts, setApiProducts] = useState<TemplateProduct[]>([])
+  const [hasLoadedProducts, setHasLoadedProducts] = useState(false)
+  const [productsLoading, setProductsLoading] = useState(false)
+  const products = hasLoadedProducts ? apiProducts : fallbackProducts
 
   const home = template?.components?.home_page || {}
   const descriptionData = home?.description || {}
@@ -295,6 +306,43 @@ export function PoupqzHome() {
   const [openFaqIndex, setOpenFaqIndex] = useState<number>(-1)
   const [addingId, setAddingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState('')
+
+  useEffect(() => {
+    if (!vendorId) {
+      setApiProducts([])
+      setHasLoadedProducts(false)
+      return
+    }
+
+    let cancelled = false
+    setProductsLoading(true)
+
+    fetchTemplateProducts({
+      vendorId,
+      websiteId: routeWebsiteId,
+      city: 'all',
+      page: 1,
+      limit: 12,
+      sort: 'newest',
+    })
+      .then((response) => {
+        if (cancelled) return
+        setApiProducts(response.products || [])
+        setHasLoadedProducts(true)
+      })
+      .catch(() => {
+        if (cancelled) return
+        setApiProducts([])
+        setHasLoadedProducts(false)
+      })
+      .finally(() => {
+        if (!cancelled) setProductsLoading(false)
+      })
+
+    return () => {
+      cancelled = true
+    }
+  }, [routeWebsiteId, vendorId])
 
   const featuredTitle = configuredText(home?.products_heading, 'Our Featured Products')
   const featuredDescription = configuredText(
@@ -717,7 +765,7 @@ export function PoupqzHome() {
                 <Warehouse className='h-8 w-8' />
               </div>
               <p className='mt-6 text-sm font-bold uppercase tracking-widest text-slate-500'>
-                No products found. Add products from your vendor dashboard.
+                {productsLoading ? 'Loading products...' : 'No products found for this website.'}
               </p>
             </div>
           )}
