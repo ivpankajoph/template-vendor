@@ -282,23 +282,23 @@ export function OragzeNavbar() {
 
   return (
     <header className='sticky top-0 z-50 border-b border-[#d8dccf] bg-[#f7f7f3] shadow-sm'>
-      <div className='mx-auto flex w-full max-w-[1320px] flex-col gap-3 px-4 py-3 md:px-6 xl:px-8'>
-        <div className='flex flex-wrap items-center gap-3'>
+      <div className='mx-auto flex w-full max-w-[1440px] flex-col gap-3 px-4 py-3 md:px-6 xl:px-8'>
+        <div className='flex items-center gap-4 lg:flex-nowrap'>
           <Link href={homeHref} className='flex shrink-0 items-center gap-2 group transition-all'>
             <div className='flex h-10 w-10 items-center justify-center rounded-lg bg-[#69b64a] text-white transition-transform group-hover:rotate-12'>
               <Leaf className='h-6 w-6' />
             </div>
-            <span className='max-w-[260px] truncate text-[26px] font-extrabold tracking-tight text-[#1a2e1c] font-heading sm:max-w-[360px]'>
+            <span className='max-w-[230px] truncate text-[24px] font-extrabold tracking-tight text-[#1a2e1c] font-heading sm:max-w-[320px] xl:max-w-[360px]'>
               {businessName}
             </span>
           </Link>
 
-          <nav className='order-last hidden w-full flex-wrap items-center justify-center gap-x-5 gap-y-2 lg:flex'>
+          <nav className='hidden min-w-0 flex-1 items-center justify-center gap-x-4 gap-y-2 overflow-visible lg:flex xl:gap-x-5'>
             {pageLinks.slice(0, 6).map((item) => (
               <Link
                 key={`${item.label}-${item.href}`}
                 href={item.href}
-                className='text-[15px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase'
+                className='whitespace-nowrap text-[13px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase xl:text-[14px]'
               >
                 {item.label}
               </Link>
@@ -307,7 +307,7 @@ export function OragzeNavbar() {
             <div className='group relative'>
               <button
                 type='button'
-                className='inline-flex items-center gap-1.5 whitespace-nowrap text-[15px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase'
+                className='inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase xl:text-[14px]'
               >
                 Categories
                 <ChevronDown className='h-4 w-4 transition group-hover:rotate-180' />
@@ -342,7 +342,7 @@ export function OragzeNavbar() {
             <div className='group relative'>
               <button
                 type='button'
-                className='inline-flex items-center gap-1.5 whitespace-nowrap text-[15px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase'
+                className='inline-flex items-center gap-1.5 whitespace-nowrap text-[13px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase xl:text-[14px]'
               >
                 Products
                 <ChevronDown className='h-4 w-4 transition group-hover:rotate-180' />
@@ -389,14 +389,14 @@ export function OragzeNavbar() {
               <Link
                 key={`${item.label}-${item.href}`}
                 href={item.href}
-                className='text-[15px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase'
+                className='whitespace-nowrap text-[13px] font-bold tracking-wide text-slate-700 transition hover:text-[#69b64a] font-heading uppercase xl:text-[14px]'
               >
                 {item.label}
               </Link>
             ))}
           </nav>
 
-          <div className='hidden items-center gap-4 border-l border-slate-200 pl-5 lg:flex'>
+          <div className='hidden shrink-0 items-center gap-4 border-l border-slate-200 pl-5 lg:flex'>
             <div className='group relative'>
               <button
                 type='button'

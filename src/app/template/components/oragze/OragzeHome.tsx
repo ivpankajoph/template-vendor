@@ -344,26 +344,28 @@ export function OragzeHome() {
       <section id='hero' className='bg-white border-b border-slate-200' data-template-section='hero'>
         <div className='mx-auto max-w-[1320px] px-4 py-8 md:px-8'>
           
-          {categories.length > 0 ? (
-            <div className='mb-10 flex gap-4 md:gap-7 overflow-x-auto pb-4 no-scrollbar items-start'>
-              {categories.map((cat, idx) => (
-                <Link
-                  key={`${cat.id}-${idx}`}
-                  href={vendorId ? toTemplatePath(`category/${toSlug(cat.name)}`) : '#'}
-                  className='group flex flex-col items-center min-w-[70px] md:min-w-[90px] shrink-0'
-                >
-                  <div className='h-[70px] w-[70px] overflow-hidden rounded-full border border-pink-100 bg-white shadow-sm md:h-[90px] md:w-[90px] p-0.5 transition-transform duration-300 group-hover:scale-105 group-hover:shadow-md group-hover:border-pink-300'>
-                     <img
-                       src={cat.image}
-                       alt={cat.name}
-                       className='h-full w-full object-cover rounded-full group-hover:scale-110 transition-transform duration-500'
-                     />
-                  </div>
-                  <span className='mt-3 text-center text-[12px] font-semibold text-slate-700 md:text-[14px] leading-tight group-hover:text-pink-600 transition-colors px-1 max-w-full'>
-                    {cat.name}
-                  </span>
-                </Link>
-              ))}
+          {categories.length >= 4 ? (
+            <div className='mb-10 overflow-x-auto pb-4 no-scrollbar'>
+              <div className='mx-auto flex w-max min-w-full items-start justify-center gap-4 md:gap-7'>
+                {categories.map((cat, idx) => (
+                  <Link
+                    key={`${cat.id}-${idx}`}
+                    href={vendorId ? toTemplatePath(`category/${toSlug(cat.name)}`) : '#'}
+                    className='group flex min-w-[70px] shrink-0 flex-col items-center md:min-w-[90px]'
+                  >
+                    <div className='h-[70px] w-[70px] overflow-hidden rounded-full border border-pink-100 bg-white p-0.5 shadow-sm transition-transform duration-300 group-hover:scale-105 group-hover:border-pink-300 group-hover:shadow-md md:h-[90px] md:w-[90px]'>
+                       <img
+                         src={cat.image}
+                         alt={cat.name}
+                         className='h-full w-full rounded-full object-cover transition-transform duration-500 group-hover:scale-110'
+                       />
+                    </div>
+                    <span className='mt-3 max-w-full px-1 text-center text-[12px] font-semibold leading-tight text-slate-700 transition-colors group-hover:text-pink-600 md:text-[14px]'>
+                      {cat.name}
+                    </span>
+                  </Link>
+                ))}
+              </div>
             </div>
           ) : null}
 
