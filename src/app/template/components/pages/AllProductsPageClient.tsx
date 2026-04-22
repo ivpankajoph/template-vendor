@@ -237,6 +237,23 @@ const getFoodOfferFinePrint = (offer?: FoodOffer | null) => {
   return parts.join(" • ") || "Available on eligible food orders.";
 };
 
+function FoodTypeMark({ type }: { type?: string }) {
+  const normalized = String(type || "veg").toLowerCase().replace(/[\s-]+/g, "_");
+  const isNonVeg = normalized === "non_veg" || normalized === "nonveg";
+
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border bg-white ${
+        isNonVeg ? "border-[#d93025]" : "border-[#229a45]"
+      }`}
+      title={isNonVeg ? "Non veg" : "Veg"}
+      aria-label={isNonVeg ? "Non veg" : "Veg"}
+    >
+      <span className={`h-2 w-2 rounded-full ${isNonVeg ? "bg-[#d93025]" : "bg-[#229a45]"}`} />
+    </span>
+  );
+}
+
 export default function AllProducts() {
   const variant = useTemplateVariant();
   const products = useSelector((state: any) => state?.alltemplatepage?.products || []);
@@ -758,24 +775,17 @@ export default function AllProducts() {
                   pathname: pathname || "/",
                   suffix: `product/${item._id}`,
                 });
-                const foodType =
-                  item?.food_type === "veg"
-                    ? "Veg"
-                    : item?.food_type === "non_veg"
-                      ? "Non-veg"
-                      : "Food";
-
                 return (
                   <div
                     key={item._id}
                     className="overflow-hidden rounded-[1.75rem] border border-[#eadfce] bg-white shadow-[0_18px_40px_rgba(83,45,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(83,45,27,0.1)]"
                   >
-                    <Link href={foodProductPath} className="relative block h-64 overflow-hidden bg-[#fff8ef]">
+                    <Link href={foodProductPath} className="relative block h-64 overflow-hidden bg-[#fff8ef] p-4">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
                           alt={item?.item_name || "Food item"}
-                          className="h-full w-full object-cover"
+                          className="h-full w-full object-contain"
                           loading="lazy"
                         />
                       ) : (
@@ -788,14 +798,9 @@ export default function AllProducts() {
                         <span className="rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#5d4c40] shadow-sm">
                           {normalizeCategoryLabel(item?.category) || "Menu"}
                         </span>
-                        <span
-                          className={`rounded-full px-3 py-1 text-xs font-semibold shadow-sm ${
-                            item?.food_type === "veg"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-rose-100 text-rose-700"
-                          }`}
-                        >
-                          {foodType}
+                        <span className="inline-flex items-center gap-2 rounded-full bg-white/95 px-3 py-1 text-xs font-semibold text-[#5d4c40] shadow-sm">
+                          <FoodTypeMark type={item?.food_type} />
+                          {item?.food_type === "non_veg" ? "Non veg" : "Veg"}
                         </span>
                       </div>
 

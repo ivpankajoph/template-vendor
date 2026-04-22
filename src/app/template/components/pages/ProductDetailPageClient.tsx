@@ -319,6 +319,23 @@ const getFoodMenuImages = (item: FoodMenuItem | null | undefined) => {
   );
 };
 
+function FoodTypeMark({ type }: { type?: string }) {
+  const normalized = String(type || "veg").toLowerCase().replace(/[\s-]+/g, "_");
+  const isNonVeg = normalized === "non_veg" || normalized === "nonveg";
+
+  return (
+    <span
+      className={`inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-[2px] border bg-white ${
+        isNonVeg ? "border-[#d93025]" : "border-[#229a45]"
+      }`}
+      title={isNonVeg ? "Non veg" : "Veg"}
+      aria-label={isNonVeg ? "Non veg" : "Veg"}
+    >
+      <span className={`h-2 w-2 rounded-full ${isNonVeg ? "bg-[#d93025]" : "bg-[#229a45]"}`} />
+    </span>
+  );
+}
+
 const mapDraftPreviewToProduct = (
   formData: DraftPreviewFormData | null | undefined,
   fallbackProductId: string
@@ -1285,7 +1302,7 @@ export default function ProductDetailPage() {
                   <img
                     src={selectedFoodImage}
                     alt={foodProduct.item_name || "Food item"}
-                    className="relative z-[1] h-full w-full object-cover"
+                    className="relative z-[1] h-full w-full object-contain p-4 sm:p-6"
                   />
                 ) : (
                   <div className="text-sm uppercase tracking-[0.28em] text-[#b39a87]">No Image</div>
@@ -1308,7 +1325,7 @@ export default function ProductDetailPage() {
                       <img
                         src={image}
                         alt={`${foodProduct.item_name || "Food item"} ${index + 1}`}
-                        className="h-full w-full object-cover"
+                        className="h-full w-full object-contain bg-[#fffaf2] p-2"
                       />
                     </button>
                   ))}
@@ -1400,8 +1417,9 @@ export default function ProductDetailPage() {
               </h1>
 
               <div className="mt-3 flex flex-wrap gap-2 text-sm">
-                <span className="rounded-full bg-[#fff3e2] px-3 py-1 text-[#8f5b31]">
-                  {foodProduct.food_type === "veg" ? "Veg" : foodProduct.food_type === "non_veg" ? "Non-veg" : "Food"}
+                <span className="inline-flex items-center gap-2 rounded-full bg-[#fff3e2] px-3 py-1 text-[#8f5b31]">
+                  <FoodTypeMark type={foodProduct.food_type} />
+                  {foodProduct.food_type === "non_veg" ? "Non veg" : "Veg"}
                 </span>
                 <span className="rounded-full bg-[#f8efe3] px-3 py-1 text-[#735c4b]">
                   Prep {toNumber(foodProduct.prep_time_minutes) || 15} mins
@@ -1577,12 +1595,12 @@ export default function ProductDetailPage() {
                       href={relatedPath}
                       className="overflow-hidden rounded-[1.6rem] border border-[#eadfce] bg-white shadow-[0_14px_32px_rgba(83,45,27,0.05)] transition hover:-translate-y-1 hover:shadow-[0_18px_38px_rgba(83,45,27,0.08)]"
                     >
-                      <div className="h-52 overflow-hidden bg-[#fff8ef]">
+                      <div className="h-52 overflow-hidden bg-[#fff8ef] p-4">
                         {getFoodMenuImages(item)[0] ? (
                           <img
                             src={getFoodMenuImages(item)[0]}
                             alt={item.item_name || "Food item"}
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-contain"
                             loading="lazy"
                           />
                         ) : (
@@ -1606,7 +1624,7 @@ export default function ProductDetailPage() {
               </div>
             ) : (
               <div className="rounded-[1.6rem] border border-dashed border-[#eadfce] bg-white p-6 text-sm text-[#7b685b]">
-                Is category me aur food items abhi available nahi hain.
+                No other food items are available in this category yet.
               </div>
             )}
           </div>
