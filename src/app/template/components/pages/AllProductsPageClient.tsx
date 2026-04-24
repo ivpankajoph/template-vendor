@@ -199,10 +199,12 @@ const getFoodPrimaryVariant = (item: FoodMenuItem) => {
 
 const getFoodPricing = (item: FoodMenuItem) => {
   const variant = getFoodPrimaryVariant(item);
-  const actualPrice = toNumber(variant?.price ?? item?.price);
-  const finalPrice = toNumber(
-    variant?.offer_price ?? item?.offer_price ?? variant?.price ?? item?.price
-  );
+  const itemPrice = toNumber(item?.price);
+  const itemOfferPrice = toNumber(item?.offer_price);
+  const variantPrice = toNumber(variant?.price);
+  const variantOfferPrice = toNumber(variant?.offer_price);
+  const actualPrice = itemPrice || variantPrice;
+  const finalPrice = itemOfferPrice || itemPrice || variantOfferPrice || variantPrice;
   let discountPercent = 0;
 
   if (actualPrice > finalPrice && actualPrice > 0) {

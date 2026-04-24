@@ -354,25 +354,29 @@ const getFoodFinalPrice = (
           .trim()
           .toLowerCase() === normalizedName,
     ) || getFoodPrimaryVariant(item);
+  const primaryVariant = getFoodPrimaryVariant(item);
+  const isPrimaryVariant =
+    String(selectedVariant?.name || "")
+      .trim()
+      .toLowerCase() ===
+    String(primaryVariant?.name || "")
+      .trim()
+      .toLowerCase();
 
   const variantPrice = toNumber(selectedVariant?.price);
   const variantOfferPrice = toNumber(selectedVariant?.offer_price);
   const itemPrice = toNumber(item?.price);
   const itemOfferPrice = toNumber(item?.offer_price);
-  const itemHasTwoPrices =
-    itemPrice > 0 && itemOfferPrice > 0 && itemPrice !== itemOfferPrice;
   const variantHasTwoPrices =
     variantPrice > 0 &&
     variantOfferPrice > 0 &&
     variantPrice !== variantOfferPrice;
   const enteredPrice =
-    variantHasTwoPrices || !itemHasTwoPrices
-      ? variantPrice || itemPrice
-      : itemPrice;
+    isPrimaryVariant || !variantPrice ? itemPrice || variantPrice : variantPrice || itemPrice;
   const enteredOfferPrice =
-    variantHasTwoPrices || !itemHasTwoPrices
-      ? variantOfferPrice || itemOfferPrice
-      : itemOfferPrice;
+    isPrimaryVariant || !variantHasTwoPrices
+      ? itemOfferPrice || itemPrice || variantOfferPrice || variantPrice
+      : variantOfferPrice || variantPrice || itemOfferPrice || itemPrice;
   const hasTwoPrices =
     enteredPrice > 0 &&
     enteredOfferPrice > 0 &&

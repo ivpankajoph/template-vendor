@@ -15,11 +15,15 @@ import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
+  calculateDeliveryGst,
+  calculateFoodGst,
   clearTemplateCheckoutSession,
+  FREE_DELIVERY_MINIMUM_AMOUNT,
   formatAmount,
   getTemplateCheckoutAddressId,
   getTemplateCheckoutCouponCode,
   getTemplateCheckoutPaymentMethod,
+  qualifiesForFreeDelivery,
   saveTemplateCheckoutAddressId,
   saveTemplateCheckoutPaymentMethod,
 } from "./template-checkout-utils";
@@ -111,6 +115,15 @@ export default function TemplateCheckoutPaymentPageClient() {
   const [successMessage, setSuccessMessage] = useState("");
   const [orderCompleted, setOrderCompleted] = useState(false);
   const [latestOrder, setLatestOrder] = useState<TemplateOrderSummary | null>(null);
+  const subtotal = Number(cart?.subtotal || 0);
+  const orderItems = cart?.items || [];
+  const totalDiscount = Number(offerSummary?.total_discount || 0);
+  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
+  const hasFreeDelivery = qualifiesForFreeDelivery(subtotal);
+  const effectiveShippingFee = hasFreeDelivery ? 0 : shippingFee;
+  const foodGst = calculateFoodGst(discountedSubtotal);
+  const deliveryGst = calculateDeliveryGst(effectiveShippingFee);
+  const totalAmount = discountedSubtotal + effectiveShippingFee + foodGst + deliveryGst;
 
   const loadData = async () => {
     try {
@@ -161,6 +174,11 @@ export default function TemplateCheckoutPaymentPageClient() {
 
   const fetchShippingQuote = async (addressId: string, method: "razorpay" | "cod") => {
     if (!addressId) return;
+    if (hasFreeDelivery) {
+      setShippingFee(0);
+      setShippingError("");
+      return;
+    }
     try {
       setShippingLoading(true);
       setShippingError("");
@@ -189,7 +207,7 @@ export default function TemplateCheckoutPaymentPageClient() {
   useEffect(() => {
     if (!selectedAddressId) return;
     fetchShippingQuote(selectedAddressId, paymentMethod);
-  }, [selectedAddressId, paymentMethod]);
+  }, [selectedAddressId, paymentMethod, subtotal]);
 
   useEffect(() => {
     if (!authToken || !cart?.items?.length) {
@@ -218,12 +236,6 @@ export default function TemplateCheckoutPaymentPageClient() {
     () => addresses.find((item) => item._id === selectedAddressId),
     [addresses, selectedAddressId],
   );
-
-  const subtotal = Number(cart?.subtotal || 0);
-  const orderItems = cart?.items || [];
-  const totalDiscount = Number(offerSummary?.total_discount || 0);
-  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
-  const totalAmount = discountedSubtotal + shippingFee;
 
   const handleRazorpayPayment = async (order: any, payment: any) => {
     const loaded = await loadRazorpayScript();
@@ -304,7 +316,10 @@ export default function TemplateCheckoutPaymentPageClient() {
       const orderPayload: Record<string, unknown> = {
         address_id: selectedAddressId,
         payment_method: paymentMethod,
-        shipping_fee: shippingFee,
+        shipping_fee: hasFreeDelivery ? 0 : shippingFee,
+        tax_amount: foodGst + deliveryGst,
+        food_gst: foodGst,
+        delivery_gst: deliveryGst,
         notes: "",
         delivery_provider: "borzo",
       };
@@ -645,11 +660,28 @@ export default function TemplateCheckoutPaymentPageClient() {
             ) : null}
             <div className="flex items-center justify-between">
               <span>Delivery Fee (Borzo)</span>
-              <span>
-                {shippingLoading ? "Calculating..." : formatAmount(shippingFee)}
+              <span className={hasFreeDelivery ? "font-semibold text-emerald-700" : ""}>
+                {hasFreeDelivery
+                  ? "Free"
+                  : shippingLoading
+                    ? "Calculating..."
+                    : formatAmount(shippingFee)}
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span>Taxes & charges</span>
+              <span>{formatAmount(foodGst + deliveryGst)}</span>
+            </div>
           </div>
+          {hasFreeDelivery ? (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Free delivery applied on orders above {formatAmount(FREE_DELIVERY_MINIMUM_AMOUNT)}.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              Add {formatAmount(Math.max(FREE_DELIVERY_MINIMUM_AMOUNT - subtotal, 0))} more for free delivery.
+            </p>
+          )}
           {shippingError ? (
             <p className="mt-2 text-xs text-rose-600">{shippingError}</p>
           ) : null}

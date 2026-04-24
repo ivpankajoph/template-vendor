@@ -12,10 +12,14 @@ import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
+  calculateDeliveryGst,
+  calculateFoodGst,
+  FREE_DELIVERY_MINIMUM_AMOUNT,
   formatAmount,
   getTemplateCheckoutAddressId,
   getTemplateCheckoutPaymentMethod,
   INDIAN_STATES,
+  qualifiesForFreeDelivery,
   saveTemplateCheckoutAddressId,
 } from "./template-checkout-utils";
 
@@ -105,6 +109,12 @@ export default function TemplateCheckoutAddressPageClient() {
   const [savingAddress, setSavingAddress] = useState(false);
 
   const [error, setError] = useState("");
+  const subtotal = Number(cart?.subtotal || 0);
+  const hasFreeDelivery = qualifiesForFreeDelivery(subtotal);
+  const effectiveShippingFee = hasFreeDelivery ? 0 : shippingFee;
+  const foodGst = calculateFoodGst(subtotal);
+  const deliveryGst = calculateDeliveryGst(effectiveShippingFee);
+  const totalAmount = subtotal + effectiveShippingFee + foodGst + deliveryGst;
 
   const loadData = async () => {
     try {
@@ -144,6 +154,11 @@ export default function TemplateCheckoutAddressPageClient() {
 
   const fetchShippingQuote = async (addressId: string) => {
     if (!addressId) return;
+    if (hasFreeDelivery) {
+      setShippingFee(0);
+      setShippingError("");
+      return;
+    }
     try {
       setShippingLoading(true);
       setShippingError("");
@@ -173,15 +188,13 @@ export default function TemplateCheckoutAddressPageClient() {
   useEffect(() => {
     if (!selectedAddressId) return;
     fetchShippingQuote(selectedAddressId);
-  }, [selectedAddressId]);
+  }, [selectedAddressId, subtotal]);
 
   const selectedAddress = useMemo(
     () => addresses.find((item) => item._id === selectedAddressId),
     [addresses, selectedAddressId],
   );
 
-  const subtotal = Number(cart?.subtotal || 0);
-  const totalAmount = subtotal + shippingFee;
   const estimateDate = getEstimateDate();
 
   const onFormChange = (
@@ -604,11 +617,28 @@ export default function TemplateCheckoutAddressPageClient() {
             </div>
             <div className="flex items-center justify-between">
               <span>Delivery Fee (Borzo)</span>
-              <span>
-                {shippingLoading ? "Calculating..." : formatAmount(shippingFee)}
+              <span className={hasFreeDelivery ? "font-semibold text-emerald-700" : ""}>
+                {hasFreeDelivery
+                  ? "Free"
+                  : shippingLoading
+                    ? "Calculating..."
+                    : formatAmount(shippingFee)}
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span>Taxes & charges</span>
+              <span>{formatAmount(foodGst + deliveryGst)}</span>
+            </div>
           </div>
+          {hasFreeDelivery ? (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Free delivery applied on orders above {formatAmount(FREE_DELIVERY_MINIMUM_AMOUNT)}.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              Add {formatAmount(Math.max(FREE_DELIVERY_MINIMUM_AMOUNT - subtotal, 0))} more for free delivery.
+            </p>
+          )}
           {shippingError ? (
             <p className="mt-2 text-xs text-rose-600">{shippingError}</p>
           ) : null}
