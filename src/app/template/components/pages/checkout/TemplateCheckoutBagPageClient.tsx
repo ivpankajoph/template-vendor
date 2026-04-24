@@ -16,10 +16,14 @@ import { buildTemplateScopedPath } from "@/lib/template-route";
 
 import TemplateCheckoutShell from "./template-checkout-shell";
 import {
+  calculateDeliveryGst,
+  calculateFoodGst,
+  FREE_DELIVERY_MINIMUM_AMOUNT,
   formatAmount,
   getTemplateCheckoutAddressId,
   getTemplateCheckoutCouponCode,
   getTemplateCheckoutPaymentMethod,
+  qualifiesForFreeDelivery,
   saveTemplateCheckoutAddressId,
   saveTemplateCheckoutCouponCode,
 } from "./template-checkout-utils";
@@ -111,6 +115,15 @@ export default function TemplateCheckoutBagPageClient() {
   const [couponCode, setCouponCode] = useState("");
   const [couponMessage, setCouponMessage] = useState("");
   const [offerSummary, setOfferSummary] = useState<OfferSummary | null>(null);
+  const bagItems = cart?.items || [];
+  const subtotal = Number(cart?.subtotal || 0);
+  const totalDiscount = Number(offerSummary?.total_discount || 0);
+  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
+  const hasFreeDelivery = qualifiesForFreeDelivery(subtotal);
+  const effectiveShippingFee = hasFreeDelivery ? 0 : shippingFee;
+  const foodGst = calculateFoodGst(discountedSubtotal);
+  const deliveryGst = calculateDeliveryGst(effectiveShippingFee);
+  const totalAmount = discountedSubtotal + effectiveShippingFee + foodGst + deliveryGst;
 
   const loadData = async () => {
     try {
@@ -193,6 +206,11 @@ export default function TemplateCheckoutBagPageClient() {
       setShippingFee(0);
       return;
     }
+    if (hasFreeDelivery) {
+      setShippingFee(0);
+      setShippingError("");
+      return;
+    }
     try {
       setShippingLoading(true);
       setShippingError("");
@@ -222,7 +240,7 @@ export default function TemplateCheckoutBagPageClient() {
   useEffect(() => {
     if (!selectedAddressId) return;
     fetchShippingQuote(selectedAddressId);
-  }, [selectedAddressId]);
+  }, [selectedAddressId, subtotal]);
 
   const selectedAddress = useMemo(
     () => addresses.find((item) => item._id === selectedAddressId),
@@ -279,12 +297,6 @@ export default function TemplateCheckoutBagPageClient() {
       </TemplateCheckoutShell>
     );
   }
-
-  const bagItems = cart?.items || [];
-  const subtotal = Number(cart?.subtotal || 0);
-  const totalDiscount = Number(offerSummary?.total_discount || 0);
-  const discountedSubtotal = Math.max(subtotal - totalDiscount, 0);
-  const totalAmount = discountedSubtotal + shippingFee;
 
   const applyCoupon = async () => {
     try {
@@ -509,11 +521,28 @@ export default function TemplateCheckoutBagPageClient() {
             ) : null}
             <div className="flex items-center justify-between">
               <span>Delivery Fee (Borzo)</span>
-              <span>
-                {shippingLoading ? "Calculating..." : formatAmount(shippingFee)}
+              <span className={hasFreeDelivery ? "font-semibold text-emerald-700" : ""}>
+                {hasFreeDelivery
+                  ? "Free"
+                  : shippingLoading
+                    ? "Calculating..."
+                    : formatAmount(shippingFee)}
               </span>
             </div>
+            <div className="flex items-center justify-between">
+              <span>Taxes & charges</span>
+              <span>{formatAmount(foodGst + deliveryGst)}</span>
+            </div>
           </div>
+          {hasFreeDelivery ? (
+            <p className="mt-2 text-xs font-medium text-emerald-700">
+              Free delivery applied on orders above {formatAmount(FREE_DELIVERY_MINIMUM_AMOUNT)}.
+            </p>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              Add {formatAmount(Math.max(FREE_DELIVERY_MINIMUM_AMOUNT - subtotal, 0))} more for free delivery.
+            </p>
+          )}
           {shippingError ? (
             <p className="mt-2 text-xs text-rose-600">{shippingError}</p>
           ) : null}

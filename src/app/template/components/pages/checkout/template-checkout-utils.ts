@@ -13,9 +13,24 @@ const getCouponKey = (vendorId: string) =>
 const canUseStorage = () => typeof window !== "undefined";
 
 export const INDIAN_STATES: string[] = MASTER_INDIAN_STATES;
+export const FREE_DELIVERY_MINIMUM_AMOUNT = 500;
+export const FOOD_GST_RATE = 0.05;
+export const DELIVERY_GST_RATE = 0.18;
 
 export const formatAmount = (amount: number) =>
   `Rs. ${Number(amount || 0).toFixed(2)}`;
+
+export const roundCurrency = (amount: number) =>
+  Math.round(Number(amount || 0) * 100) / 100;
+
+export const qualifiesForFreeDelivery = (amount: number) =>
+  Number(amount || 0) >= FREE_DELIVERY_MINIMUM_AMOUNT;
+
+export const calculateFoodGst = (amount: number) =>
+  roundCurrency(Math.max(Number(amount || 0), 0) * FOOD_GST_RATE);
+
+export const calculateDeliveryGst = (amount: number) =>
+  roundCurrency(Math.max(Number(amount || 0), 0) * DELIVERY_GST_RATE);
 
 export const saveTemplateCheckoutAddressId = (
   vendorId: string,

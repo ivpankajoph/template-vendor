@@ -115,6 +115,7 @@ type FeaturedDishCard = {
   variantId: string
   href: string
   isFoodCatalogItem: boolean
+  isAvailable?: boolean
   description: string
   rating: number
   foodMenuItemId?: string
@@ -255,6 +256,15 @@ const getFoodVariantPrice = (
     null
 
   if (!matchedVariant) return fallbackPrice
+  const primaryVariant =
+    variants.find((item) => item?.is_default && item?.is_available !== false) ||
+    variants.find((item) => item?.is_available !== false) ||
+    variants[0] ||
+    null
+  const isPrimaryVariant =
+    String(matchedVariant?.name || '').trim().toLowerCase() ===
+    String(primaryVariant?.name || '').trim().toLowerCase()
+  if (isPrimaryVariant && fallbackPrice > 0) return fallbackPrice
   return toNumber(matchedVariant.offer_price) || toNumber(matchedVariant.price) || fallbackPrice
 }
 
@@ -561,13 +571,40 @@ export function PocoFoodHome() {
   const heroButtonSecondary = configuredText(home?.button_secondary, 'See menu')
   const heroDetail = configuredText(home?.hero_detail, '')
   const heroStyle = home?.hero_style || {}
+  const theme = template?.components?.theme || {}
+  const themeAccentColor = configuredText(theme?.accentColor, '#ffc222')
+  const themeDangerColor = configuredText(theme?.footerBottomBackground, '#d94b2b')
+  const themeHeaderTextColor = configuredText(theme?.headerTextColor, '#171717')
+  const themeHeadingColor = configuredText(theme?.headingColor, themeHeaderTextColor)
+  const themeSurfaceColor = configuredText(theme?.surfaceColor, '#ffffff')
+  const themeBorderColor = configuredText(theme?.borderColor, '#eadfb7')
+  const themeBodyTextColor = configuredText(theme?.textColor, '#686868')
+  const themeMutedTextColor = configuredText(theme?.textColor, '#7c7c7c')
+  const themeSoftSurfaceColor = hexToRgba(themeAccentColor, 0.12, 'rgba(255,194,34,0.12)')
+  const themeSoftSurfaceStrong = hexToRgba(themeAccentColor, 0.18, 'rgba(255,194,34,0.18)')
+  const themeAccentGlow = hexToRgba(themeAccentColor, 0.24, 'rgba(255,194,34,0.24)')
+  const themeDangerGlow = hexToRgba(themeDangerColor, 0.2, 'rgba(217,75,43,0.2)')
+  const themeCardBorderColor = hexToRgba(themeBorderColor, 0.95, 'rgba(234,223,183,0.95)')
+  const themeMutedBorderColor = hexToRgba(themeBorderColor, 0.72, 'rgba(234,223,183,0.72)')
+  const themeSubtleBorderColor = hexToRgba(themeBorderColor, 0.48, 'rgba(234,223,183,0.48)')
+  const themeDisabledSurfaceColor = hexToRgba(themeBorderColor, 0.9, 'rgba(234,223,183,0.9)')
+  const themeDisabledTextColor = hexToRgba(themeHeaderTextColor, 0.48, 'rgba(23,23,23,0.48)')
+  const themeSurfaceTintColor = hexToRgba(themeSurfaceColor, 0.96, 'rgba(255,255,255,0.96)')
+  const themeMutedSurfaceColor = hexToRgba(themeAccentColor, 0.08, 'rgba(255,194,34,0.08)')
+  const themeDarkSurfaceColor = hexToRgba(themeHeaderTextColor, 0.96, 'rgba(23,23,23,0.96)')
+  const themeDarkOverlayColor = hexToRgba(themeHeaderTextColor, 0.74, 'rgba(23,23,23,0.74)')
   const heroTitleColor = configuredText(heroStyle?.titleColor, '#ffffff')
   const heroAccentColor = configuredText(heroStyle?.overlayAccentColor, '#ffc222')
   const heroSubtitleColor = configuredText(heroStyle?.subtitleColor, '#ff8c42')
-  const heroPrimaryButtonColor = configuredText(heroStyle?.primaryButtonColor, '#ffc222')
-  const heroSecondaryButtonColor = configuredText(heroStyle?.secondaryButtonColor, '#d94b2b')
+  const heroPrimaryButtonColor = configuredText(heroStyle?.primaryButtonColor, themeAccentColor)
+  const heroSecondaryButtonColor = configuredText(heroStyle?.secondaryButtonColor, themeDangerColor)
+  const heroPrimaryButtonTextColor = configuredText(heroStyle?.primaryButtonTextColor, themeHeaderTextColor)
+  const heroSecondaryButtonTextColor = configuredText(heroStyle?.secondaryButtonTextColor, '#ffffff')
+  const heroBackgroundColor = configuredText(heroStyle?.backgroundColor, '#151418')
   const heroTitleSize = toNumber(heroStyle?.titleSize)
   const heroSubtitleSize = toNumber(heroStyle?.subtitleSize)
+  const heroBannerZoom = Math.min(160, Math.max(80, toNumber(heroStyle?.bannerZoom) || 100))
+  const heroBannerPosition = Math.min(100, Math.max(0, toNumber(heroStyle?.bannerPosition) || 50))
   const heroImage = configuredImage(home?.backgroundImage, foodRestaurant?.cover_image_url || HERO_FALLBACK)
   const heroBackdropImages = useMemo(() => {
     const configuredImage = typeof heroImage === 'string' ? heroImage.trim() : ''
@@ -587,6 +624,9 @@ export function PocoFoodHome() {
     }
   }, [heroTitle])
   const productsHeading = configuredDisplayText(home?.products_heading, 'Popular dishes')
+  const productsStyle = home?.products_style || {}
+  const productsBackgroundColor = configuredDisplayText(productsStyle?.backgroundColor, '#ffffff')
+  const productsButtonColor = configuredDisplayText(productsStyle?.buttonColor, themeAccentColor)
   const productsSubtitle = configuredDisplayText(
     home?.products_subtitle,
     'Scroll through pizzas, burgers, drinks, and restaurant bestsellers.'
@@ -594,6 +634,8 @@ export function PocoFoodHome() {
   const recipeSectionHeading = configuredText(home?.recipe_section_heading, 'Top recipes')
   const servicesConfig = home?.benefits || {}
   const advantageConfig = home?.advantage || {}
+  const servicesBackgroundColor = configuredDisplayText(servicesConfig?.backgroundColor, '#ffffff')
+  const advantageBackgroundColor = configuredDisplayText(advantageConfig?.backgroundColor, '#ffffff')
   const advantageKicker = configuredDisplayText(advantageConfig?.kicker, 'Always Quality')
   const advantageHeading = configuredDisplayText(
     advantageConfig?.heading,
@@ -618,8 +660,9 @@ export function PocoFoodHome() {
     'Crisp ingredients.\nBetter taste.'
   )
   const advantagePremiumLabel = configuredDisplayText(advantageConfig?.premiumLabel, 'Premium Picks')
-  const advantageAccentColor = configuredDisplayText(advantageConfig?.accentColor, '#d94b2b')
+  const advantageAccentColor = configuredDisplayText(advantageConfig?.accentColor, themeDangerColor)
   const advantageGlowColor = configuredDisplayText(advantageConfig?.glowColor, '#7d9920')
+  const advantageImageSize = Math.min(360, Math.max(120, toNumber(advantageConfig?.imageSize) || 240))
   const advantageMainImage = configuredImage(advantageConfig?.image, '/pocofood-categories/chicken.png')
   const advantageVisualCardImage = configuredImage(
     advantageConfig?.visualCardImage,
@@ -724,6 +767,7 @@ export function PocoFoodHome() {
         variantId: '',
         href: foodProductPath(String(item?._id || '')),
         isFoodCatalogItem: true,
+        isAvailable: item?.is_available !== false,
         foodMenuItemId: String(item?._id || ''),
         selectedVariantName:
           item?.variants?.find((variant) => variant?.is_default && variant?.is_available !== false)?.name ||
@@ -993,6 +1037,7 @@ export function PocoFoodHome() {
           variantId: '',
           href: foodProductPath(String(item?._id || '')),
           isFoodCatalogItem: true,
+          isAvailable: item?.is_available !== false,
           foodMenuItemId: String(item?._id || ''),
           selectedVariantName: String(primaryVariant?.name || ''),
           availableAddons: Array.isArray(item?.addons) ? item.addons : [],
@@ -1084,25 +1129,25 @@ export function PocoFoodHome() {
     {
       title: 'Accept Card',
       text: 'Easy card payment support for smooth and fast checkout experience.',
-      iconWrap: 'bg-[#ff8a7c]',
+      iconWrap: hexToRgba(themeDangerColor, 0.66, 'rgba(255,138,124,0.66)'),
       icon: <CreditCard className='h-10 w-10 text-white' strokeWidth={2.2} />,
     },
     {
       title: 'Online Booking',
       text: 'Order ahead from the menu and reserve your favorites in seconds.',
-      iconWrap: 'bg-[#6db4d8]',
+      iconWrap: hexToRgba(themeAccentColor, 0.62, 'rgba(109,180,216,0.62)'),
       icon: <CalendarCheck2 className='h-10 w-10 text-white' strokeWidth={2.2} />,
     },
     {
       title: 'Home Delivery',
       text: 'Hot meals delivered quickly with a restaurant-style doorstep experience.',
-      iconWrap: 'bg-[#6d8f90]',
+      iconWrap: hexToRgba(themeHeaderTextColor, 0.6, 'rgba(109,143,144,0.6)'),
       icon: <Bike className='h-10 w-10 text-white' strokeWidth={2.2} />,
     },
     {
       title: 'Best Location',
       text: addressText || 'Convenient outlet locations for pickup, dine-in, and delivery.',
-      iconWrap: 'bg-[#f4bf2a]',
+      iconWrap: hexToRgba(themeAccentColor, 0.84, 'rgba(244,191,42,0.84)'),
       icon: <Store className='h-10 w-10 text-white' strokeWidth={2.2} />,
     },
   ]
@@ -1177,6 +1222,11 @@ export function PocoFoodHome() {
     setAddingId(product._id)
     try {
       if (product.isFoodCatalogItem) {
+        if (product.isAvailable === false) {
+          setActionMessage('This food item is currently out of stock.')
+          return
+        }
+
         if (product.availableVariants?.length || product.availableAddons?.length) {
           openFoodCustomization(product)
           return
@@ -1316,15 +1366,23 @@ export function PocoFoodHome() {
   }
 
   return (
-    <div className='template-home template-home-pocofood text-[#171717]'>
+    <div className='template-home template-home-pocofood' style={{ color: themeHeaderTextColor }}>
       <div className='fixed inset-x-0 top-[84px] z-[45] px-3 lg:hidden'>
         <form
           onSubmit={handleHeroSearchSubmit}
           className='relative mx-auto max-w-[520px]'
         >
-          <div className='flex min-h-[54px] overflow-hidden rounded-[16px] border border-[#eadfb7] bg-white shadow-[0_14px_34px_rgba(23,23,23,0.18)] transition focus-within:border-[#ffc222] focus-within:ring-4 focus-within:ring-[#ffc222]/25'>
+          <div
+            className='flex min-h-[54px] overflow-hidden rounded-[16px] border shadow-[0_14px_34px_rgba(23,23,23,0.18)] transition focus-within:ring-4'
+            style={{
+              borderColor: themeBorderColor,
+              backgroundColor: themeSurfaceColor,
+              color: themeHeaderTextColor,
+              boxShadow: `0 14px 34px rgba(23,23,23,0.18)`,
+            }}
+          >
             <div className='relative flex flex-1 items-center'>
-              <Search className='absolute left-4 h-5 w-5 text-[#d94b2b]' />
+              <Search className='absolute left-4 h-5 w-5' style={{ color: themeDangerColor }} />
               <input
                 type='text'
                       value={heroSearchText}
@@ -1334,7 +1392,8 @@ export function PocoFoodHome() {
                   setHeroSearchOpen(Boolean(value.trim()))
                       }}
                       placeholder='Search food items...'
-                      className='hero-search-input h-full w-full bg-white py-3 pl-12 pr-9 text-sm font-semibold text-[#171717] outline-none placeholder:text-[#7a7a7a]'
+                      className='hero-search-input h-full w-full py-3 pl-12 pr-9 text-sm font-semibold outline-none'
+                      style={{ backgroundColor: themeSurfaceColor, color: themeHeaderTextColor }}
                       aria-label='Search food items'
                     />
               {heroSearchText ? (
@@ -1344,7 +1403,8 @@ export function PocoFoodHome() {
                     setHeroSearchText('')
                     setHeroSearchOpen(false)
                   }}
-                  className='absolute right-1.5 flex h-8 w-8 items-center justify-center rounded-full text-[#7a7a7a] transition hover:bg-[#f4efe1] hover:text-[#d94b2b]'
+                  className='absolute right-1.5 flex h-8 w-8 items-center justify-center rounded-full transition'
+                  style={{ color: themeBodyTextColor }}
                   aria-label='Clear search'
                 >
                   <X className='h-4 w-4' />
@@ -1353,7 +1413,8 @@ export function PocoFoodHome() {
             </div>
             <button
               type='submit'
-              className='flex w-[56px] shrink-0 items-center justify-center bg-[#ffc222] text-[#171717] transition hover:bg-[#ffae00]'
+              className='flex w-[56px] shrink-0 items-center justify-center transition'
+              style={{ backgroundColor: themeAccentColor, color: themeHeaderTextColor }}
               aria-label='Search'
             >
               <Search className='h-6 w-6' strokeWidth={2.4} />
@@ -1361,10 +1422,13 @@ export function PocoFoodHome() {
           </div>
 
           {heroSearchOpen && heroSearchText.trim() ? (
-            <div className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[16px] border border-[#eadfb7] bg-white text-[#171717] shadow-[0_24px_70px_rgba(0,0,0,0.28)]'>
+            <div
+              className='absolute left-0 right-0 top-[calc(100%+8px)] z-50 overflow-hidden rounded-[16px] border shadow-[0_24px_70px_rgba(0,0,0,0.28)]'
+              style={{ borderColor: themeBorderColor, backgroundColor: themeSurfaceColor, color: themeHeaderTextColor }}
+            >
               {heroSearchResults.length ? (
                 <>
-                  <div className='px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.14em] text-[#9a7b38]'>
+                  <div className='px-4 py-3 text-[11px] font-extrabold uppercase tracking-[0.14em]' style={{ color: themeAccentColor }}>
                     Matching dishes
                   </div>
                   <div className='max-h-[280px] overflow-y-auto'>
@@ -1376,9 +1440,10 @@ export function PocoFoodHome() {
                           setHeroSearchOpen(false)
                           setHeroSearchText('')
                         }}
-                        className='flex items-center gap-3 border-t border-[#f1ead6] px-3 py-3 transition hover:bg-[#fff7df]'
+                        className='flex items-center gap-3 border-t px-3 py-3 transition'
+                        style={{ borderColor: themeMutedBorderColor }}
                       >
-                        <span className='flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px] bg-[#fff2cc]'>
+                        <span className='flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-[12px]' style={{ backgroundColor: themeSoftSurfaceStrong }}>
                           <img
                             src={item.image}
                             alt={item.title}
@@ -1386,14 +1451,14 @@ export function PocoFoodHome() {
                           />
                         </span>
                         <span className='min-w-0 flex-1'>
-                          <span className='block truncate text-sm font-extrabold text-[#171717]'>
+                          <span className='block truncate text-sm font-extrabold' style={{ color: themeHeadingColor }}>
                             {item.title}
                           </span>
-                          <span className='mt-1 block truncate text-xs font-semibold text-[#7b7b7b]'>
+                          <span className='mt-1 block truncate text-xs font-semibold' style={{ color: themeMutedTextColor }}>
                             {item.category}
                           </span>
                         </span>
-                        <span className='shrink-0 text-xs font-extrabold text-[#d94b2b]'>
+                        <span className='shrink-0 text-xs font-extrabold' style={{ color: themeDangerColor }}>
                           {formatPrice(item.price)}
                         </span>
                       </Link>
@@ -1403,7 +1468,8 @@ export function PocoFoodHome() {
                     <Link
                       href={heroSearchListingHref(heroSearchText)}
                       onClick={() => setHeroSearchOpen(false)}
-                      className='flex items-center justify-between border-t border-[#f1ead6] bg-[#fffbf0] px-4 py-3 text-sm font-extrabold text-[#171717] transition hover:bg-[#fff3cc]'
+                      className='flex items-center justify-between border-t px-4 py-3 text-sm font-extrabold transition'
+                      style={{ borderColor: themeMutedBorderColor, backgroundColor: themeMutedSurfaceColor, color: themeHeadingColor }}
                     >
                       View all results
                       <ArrowRight className='h-4 w-4' />
@@ -1411,7 +1477,7 @@ export function PocoFoodHome() {
                   ) : null}
                 </>
               ) : (
-                <div className='px-5 py-6 text-sm font-semibold text-[#6b6257]'>
+                <div className='px-5 py-6 text-sm font-semibold' style={{ color: themeBodyTextColor }}>
                   No dishes found. Try another item name or category.
                 </div>
               )}
@@ -1420,7 +1486,13 @@ export function PocoFoodHome() {
         </form>
       </div>
 
-      <section className='overflow-hidden bg-[#151418] text-white' data-template-section='hero'>
+      <section
+        className='overflow-hidden text-white'
+        style={{ backgroundColor: heroBackgroundColor }}
+        data-template-path='components.home_page.hero_style.backgroundColor'
+        data-template-section='hero'
+        data-template-component='components.home_page.hero_style.backgroundColor'
+      >
         <div className='relative min-h-[320px] lg:min-h-[390px]'>
           {heroBackdropImages.map((image, index) => (
             <img
@@ -1430,14 +1502,23 @@ export function PocoFoodHome() {
               className={`hero-backdrop-layer absolute inset-0 h-full w-full object-cover ${
                 index === 0 ? 'object-[82%_center]' : index === 1 ? 'object-center' : 'object-[70%_center]'
               }`}
-              style={{ animationDelay: `${index * 6}s` }}
+              style={{
+                animationDelay: `${index * 6}s`,
+                ...(index === 0
+                  ? {
+                      transform: `scale(${heroBannerZoom / 100})`,
+                      transformOrigin: `${heroBannerPosition}% center`,
+                      objectPosition: `${heroBannerPosition}% center`,
+                    }
+                  : {}),
+              }}
               data-template-path={index === 0 ? 'components.home_page.backgroundImage' : undefined}
               data-template-section={index === 0 ? 'branding' : undefined}
               data-template-component={index === 0 ? 'components.home_page.backgroundImage' : undefined}
             />
           ))}
-          <div className='absolute inset-0 bg-[linear-gradient(90deg,rgba(32,32,32,0.84)_0%,rgba(35,35,35,0.74)_30%,rgba(27,26,31,0.46)_58%,rgba(27,26,31,0.16)_100%)]' />
-          <div className='absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(255,255,255,0.12),transparent_18%),radial-gradient(circle_at_bottom_left,rgba(255,194,34,0.14),transparent_30%),radial-gradient(circle_at_left_center,rgba(255,255,255,0.08),transparent_24%)] opacity-95' />
+          <div className='absolute inset-0' style={{ background: `linear-gradient(90deg, ${hexToRgba(themeHeaderTextColor, 0.84, 'rgba(32,32,32,0.84)')} 0%, ${hexToRgba(themeHeaderTextColor, 0.74, 'rgba(35,35,35,0.74)')} 30%, ${hexToRgba(themeHeaderTextColor, 0.46, 'rgba(27,26,31,0.46)')} 58%, ${hexToRgba(themeHeaderTextColor, 0.16, 'rgba(27,26,31,0.16)')} 100%)` }} />
+          <div className='absolute inset-0 opacity-95' style={{ background: `radial-gradient(circle at top left, ${hexToRgba(themeSurfaceColor, 0.12, 'rgba(255,255,255,0.12)')} 0%, transparent 18%), radial-gradient(circle at bottom left, ${hexToRgba(themeAccentColor, 0.14, 'rgba(255,194,34,0.14)')} 0%, transparent 30%), radial-gradient(circle at left center, ${hexToRgba(themeSurfaceColor, 0.08, 'rgba(255,255,255,0.08)')} 0%, transparent 24%)` }} />
           <div className='absolute inset-y-0 left-0 w-full bg-[url("data:image/svg+xml,%3Csvg width=%27320%27 height=%27320%27 viewBox=%270%200%20320%20320%27 xmlns=%27http://www.w3.org/2000/svg%27%3E%3Cfilter id=%27n%27 x=%270%27 y=%270%27 width=%27100%25%27 height=%27100%25%27%3E%3CfeTurbulence type=%27fractalNoise%27 baseFrequency=%270.9%27 numOctaves=%272%27 stitchTiles=%27stitch%27/%3E%3C/filter%3E%3Crect width=%27320%27 height=%27320%27 filter=%27url(%23n)%27 opacity=%270.08%27/%3E%3C/svg%3E")] opacity-30 mix-blend-screen' />
 
           <div className='relative mx-auto grid min-h-[320px] max-w-[1440px] items-center gap-6 px-4 pb-8 pt-24 lg:min-h-[390px] lg:grid-cols-[minmax(0,1fr)_320px] lg:px-10 lg:py-10'>
@@ -1446,12 +1527,15 @@ export function PocoFoodHome() {
                 onSubmit={handleHeroSearchSubmit}
                 className='relative mb-6 hidden max-w-[740px] lg:block'
               >
-                <div className='flex min-h-[62px] overflow-hidden rounded-[18px] border border-white/18 bg-white shadow-[0_22px_60px_rgba(0,0,0,0.32)] transition focus-within:border-[#ffc222] focus-within:ring-4 focus-within:ring-[#ffc222]/25'>
-                  <div className='hidden min-w-[112px] items-center justify-center border-r border-[#e8e2d7] bg-[#f6f6f6] px-4 text-sm font-bold text-[#555] sm:flex'>
+                <div
+                  className='flex min-h-[62px] overflow-hidden rounded-[18px] border shadow-[0_22px_60px_rgba(0,0,0,0.32)] transition focus-within:ring-4'
+                  style={{ borderColor: themeBorderColor, backgroundColor: themeSurfaceColor }}
+                >
+                  <div className='hidden min-w-[112px] items-center justify-center border-r px-4 text-sm font-bold sm:flex' style={{ borderColor: themeMutedBorderColor, backgroundColor: hexToRgba(themeHeadingColor, 0.04, 'rgba(246,246,246,1)'), color: hexToRgba(themeHeadingColor, 0.66, 'rgba(85,85,85,0.66)') }}>
                     All
                   </div>
                   <div className='relative flex flex-1 items-center'>
-                    <Search className='absolute left-4 h-5 w-5 text-[#d94b2b]' />
+                    <Search className='absolute left-4 h-5 w-5' style={{ color: themeDangerColor }} />
                     <input
                       type='text'
                       value={heroSearchText}
@@ -1461,7 +1545,8 @@ export function PocoFoodHome() {
                   setHeroSearchOpen(Boolean(value.trim()))
                       }}
                       placeholder='Search food items, combos, categories...'
-                      className='hero-search-input h-full w-full bg-white py-4 pl-12 pr-10 text-base font-semibold text-[#171717] outline-none placeholder:text-[#7a7a7a] sm:text-lg'
+                      className='hero-search-input h-full w-full py-4 pl-12 pr-10 text-base font-semibold outline-none sm:text-lg'
+                      style={{ backgroundColor: themeSurfaceColor, color: themeHeaderTextColor }}
                       aria-label='Search food items'
                     />
                     {heroSearchText ? (
@@ -1471,7 +1556,8 @@ export function PocoFoodHome() {
                           setHeroSearchText('')
                           setHeroSearchOpen(false)
                         }}
-                        className='absolute right-3 flex h-8 w-8 items-center justify-center rounded-full text-[#7a7a7a] transition hover:bg-[#f4efe1] hover:text-[#d94b2b]'
+                        className='absolute right-3 flex h-8 w-8 items-center justify-center rounded-full transition'
+                        style={{ color: themeBodyTextColor }}
                         aria-label='Clear search'
                       >
                         <X className='h-4 w-4' />
@@ -1480,7 +1566,8 @@ export function PocoFoodHome() {
                   </div>
                   <button
                     type='submit'
-                    className='flex w-[64px] items-center justify-center bg-[#ffc222] text-[#171717] transition hover:bg-[#ffae00] sm:w-[82px]'
+                    className='flex w-[64px] items-center justify-center transition sm:w-[82px]'
+                    style={{ backgroundColor: themeAccentColor, color: themeHeaderTextColor }}
                     aria-label='Search'
                   >
                     <Search className='h-7 w-7' strokeWidth={2.4} />
@@ -1488,10 +1575,13 @@ export function PocoFoodHome() {
                 </div>
 
                 {heroSearchOpen && heroSearchText.trim() ? (
-                  <div className='absolute left-0 right-0 top-[calc(100%+10px)] z-30 overflow-hidden rounded-[18px] border border-[#eadfb7] bg-white text-[#171717] shadow-[0_24px_70px_rgba(0,0,0,0.28)]'>
+                  <div
+                    className='absolute left-0 right-0 top-[calc(100%+10px)] z-30 overflow-hidden rounded-[18px] border shadow-[0_24px_70px_rgba(0,0,0,0.28)]'
+                    style={{ borderColor: themeBorderColor, backgroundColor: themeSurfaceColor, color: themeHeaderTextColor }}
+                  >
                     {heroSearchResults.length ? (
                       <>
-                        <div className='px-4 py-3 text-xs font-extrabold uppercase tracking-[0.14em] text-[#9a7b38]'>
+                        <div className='px-4 py-3 text-xs font-extrabold uppercase tracking-[0.14em]' style={{ color: themeAccentColor }}>
                           Matching dishes
                         </div>
                         <div className='max-h-[320px] overflow-y-auto'>
@@ -1503,9 +1593,10 @@ export function PocoFoodHome() {
                                 setHeroSearchOpen(false)
                                 setHeroSearchText('')
                               }}
-                              className='flex items-center gap-3 border-t border-[#f1ead6] px-4 py-3 transition hover:bg-[#fff7df]'
+                              className='flex items-center gap-3 border-t px-4 py-3 transition'
+                              style={{ borderColor: themeMutedBorderColor }}
                             >
-                              <span className='flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[14px] bg-[#fff2cc]'>
+                              <span className='flex h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-[14px]' style={{ backgroundColor: themeSoftSurfaceStrong }}>
                                 <img
                                   src={item.image}
                                   alt={item.title}
@@ -1513,14 +1604,14 @@ export function PocoFoodHome() {
                                 />
                               </span>
                               <span className='min-w-0 flex-1'>
-                                <span className='block truncate text-sm font-extrabold text-[#171717] sm:text-base'>
+                                <span className='block truncate text-sm font-extrabold sm:text-base' style={{ color: themeHeadingColor }}>
                                   {item.title}
                                 </span>
-                                <span className='mt-1 block truncate text-xs font-semibold text-[#7b7b7b]'>
+                                <span className='mt-1 block truncate text-xs font-semibold' style={{ color: themeMutedTextColor }}>
                                   {item.category}
                                 </span>
                               </span>
-                              <span className='shrink-0 text-sm font-extrabold text-[#d94b2b]'>
+                              <span className='shrink-0 text-sm font-extrabold' style={{ color: themeDangerColor }}>
                                 {formatPrice(item.price)}
                               </span>
                             </Link>
@@ -1530,7 +1621,8 @@ export function PocoFoodHome() {
                           <Link
                             href={heroSearchListingHref(heroSearchText)}
                             onClick={() => setHeroSearchOpen(false)}
-                            className='flex items-center justify-between border-t border-[#f1ead6] bg-[#fffbf0] px-4 py-3 text-sm font-extrabold text-[#171717] transition hover:bg-[#fff3cc]'
+                            className='flex items-center justify-between border-t px-4 py-3 text-sm font-extrabold transition'
+                            style={{ borderColor: themeMutedBorderColor, backgroundColor: themeMutedSurfaceColor, color: themeHeadingColor }}
                           >
                             View all results for "{heroSearchText.trim()}"
                             <ArrowRight className='h-4 w-4' />
@@ -1538,7 +1630,7 @@ export function PocoFoodHome() {
                         ) : null}
                       </>
                     ) : (
-                      <div className='px-5 py-6 text-sm font-semibold text-[#6b6257]'>
+                      <div className='px-5 py-6 text-sm font-semibold' style={{ color: themeBodyTextColor }}>
                         No dishes found. Try another item name or category.
                       </div>
                     )}
@@ -1546,7 +1638,7 @@ export function PocoFoodHome() {
                 ) : null}
               </form>
 
-              <span className='inline-flex w-fit rounded-full border border-[#ffd36a]/30 bg-white/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.28em] text-[#ffd36a] shadow-[0_12px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm'>
+              <span className='inline-flex w-fit rounded-full border bg-white/10 px-4 py-2 text-[11px] font-extrabold uppercase tracking-[0.28em] shadow-[0_12px_24px_rgba(0,0,0,0.18)] backdrop-blur-sm' style={{ borderColor: hexToRgba(themeAccentColor, 0.3, 'rgba(255,211,106,0.3)'), color: themeAccentColor }}>
                 {heroPromoLabel}
               </span>
               <h1
@@ -1564,7 +1656,7 @@ export function PocoFoodHome() {
                 ) : null}
               </h1>
               <p
-                className='mt-3 max-w-[560px] text-[17px] font-extrabold leading-6 text-[#ff8c42] drop-shadow-[0_6px_18px_rgba(0,0,0,0.35)] sm:text-[21px]'
+                className='mt-3 max-w-[560px] text-[17px] font-extrabold leading-6 drop-shadow-[0_6px_18px_rgba(0,0,0,0.35)] sm:text-[21px]'
                 style={{
                   color: heroSubtitleColor,
                   ...(heroSubtitleSize ? { fontSize: `${heroSubtitleSize}px` } : {}),
@@ -1585,23 +1677,33 @@ export function PocoFoodHome() {
               <div className='mt-6 flex flex-wrap items-center gap-4'>
                 <Link
                   href={vendorId ? menuSectionPath : '#'}
-                  className='inline-flex items-center justify-center rounded-[18px] bg-[#ffc222] px-7 py-4 text-base font-extrabold uppercase tracking-[0.05em] text-[#171717] shadow-[0_18px_40px_rgba(255,194,34,0.28)] transition hover:-translate-y-0.5 hover:bg-[#ffae00]'
-                  style={{ backgroundColor: heroPrimaryButtonColor }}
+                  className='inline-flex items-center justify-center rounded-[18px] px-7 py-4 text-base font-extrabold uppercase tracking-[0.05em] shadow-[0_18px_40px_rgba(255,194,34,0.28)] transition hover:-translate-y-0.5'
+                  style={{
+                    backgroundColor: heroPrimaryButtonColor,
+                    color: heroPrimaryButtonTextColor,
+                  }}
                   data-template-path='components.home_page.button_header'
                   data-template-section='hero'
+                  data-template-component='components.home_page.hero_style.primaryButtonColor'
                 >
                   {heroButtonPrimary}
                 </Link>
                 <Link
                   href={vendorId ? menuSectionPath : '#'}
-                  className='inline-flex items-center gap-3 rounded-[18px] border border-white/18 bg-white/10 px-6 py-4 text-sm font-extrabold uppercase tracking-[0.08em] text-white backdrop-blur-sm transition hover:border-[#ffc222]/50 hover:bg-white/14'
-                  style={{ backgroundColor: heroSecondaryButtonColor }}
+                  className='inline-flex items-center gap-3 rounded-[18px] border px-6 py-4 text-sm font-extrabold uppercase tracking-[0.08em] backdrop-blur-sm transition'
+                  style={{
+                    backgroundColor: heroSecondaryButtonColor,
+                    color: heroSecondaryButtonTextColor,
+                    borderColor: heroSecondaryButtonColor,
+                  }}
                   data-template-path='components.home_page.button_secondary'
                   data-template-section='hero'
+                  data-template-component='components.home_page.hero_style.secondaryButtonColor'
                 >
                   <span
-                    className='flex h-10 w-10 items-center justify-center rounded-full bg-[#d94b2b] text-white shadow-[0_10px_22px_rgba(217,75,43,0.32)]'
+                    className='flex h-10 w-10 items-center justify-center rounded-full text-white shadow-[0_10px_22px_rgba(217,75,43,0.32)]'
                     style={{ backgroundColor: heroPrimaryButtonColor }}
+                    data-template-component='components.home_page.hero_style.primaryButtonColor'
                   >
                     <Play className='h-4 w-4 fill-current' />
                   </span>
@@ -1609,7 +1711,8 @@ export function PocoFoodHome() {
                 </Link>
                 <div className='rounded-[18px] border border-white/12 bg-black/20 px-5 py-3 backdrop-blur-sm'>
                   <p
-                    className='text-[28px] font-extrabold text-[#ff8c42] sm:text-[40px]'
+                    className='text-[28px] font-extrabold sm:text-[40px]'
+                    style={{ color: themeAccentColor }}
                     data-template-path='components.home_page.hero_price'
                     data-template-section='hero'
                   >
@@ -1652,14 +1755,16 @@ export function PocoFoodHome() {
                     <div className='absolute inset-0 bg-[linear-gradient(180deg,rgba(0,0,0,0.06),rgba(0,0,0,0.5))]' />
                     <button
                       type='button'
-                      className='absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full bg-white text-[#171717] shadow-[0_16px_34px_rgba(0,0,0,0.3)]'
+                      className='absolute left-1/2 top-1/2 flex h-16 w-16 -translate-x-1/2 -translate-y-1/2 items-center justify-center rounded-full shadow-[0_16px_34px_rgba(0,0,0,0.3)]'
+                      style={{ backgroundColor: themeSurfaceColor, color: themeHeadingColor }}
                     >
                       <Play className='ml-1 h-6 w-6 fill-current' />
                     </button>
-                    <div className='absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl bg-[#111111]/65 px-4 py-3 backdrop-blur-sm'>
+                    <div className='absolute bottom-4 left-4 right-4 flex items-center justify-between rounded-2xl px-4 py-3 backdrop-blur-sm' style={{ backgroundColor: themeDarkOverlayColor }}>
                       <div>
                         <p
-                          className='text-xs font-bold uppercase tracking-[0.2em] text-[#ffd36a]'
+                          className='text-xs font-bold uppercase tracking-[0.2em]'
+                          style={{ color: themeAccentColor }}
                           data-template-path='components.home_page.hero_card_kicker'
                           data-template-section='hero'
                         >
@@ -1674,7 +1779,8 @@ export function PocoFoodHome() {
                         </p>
                       </div>
                       <span
-                        className='rounded-full bg-[#ff8c42] px-3 py-1 text-xs font-extrabold uppercase text-[#2f1305]'
+                        className='rounded-full px-3 py-1 text-xs font-extrabold uppercase'
+                        style={{ backgroundColor: heroSubtitleColor, color: themeHeadingColor }}
                         data-template-path='components.home_page.hero_card_badge'
                         data-template-section='hero'
                       >
@@ -1683,7 +1789,7 @@ export function PocoFoodHome() {
                     </div>
                   </div>
                 </div>
-                <div className='mt-3 flex items-center justify-between rounded-[18px] bg-[#171717]/60 px-4 py-3'>
+                <div className='mt-3 flex items-center justify-between rounded-[18px] px-4 py-3' style={{ backgroundColor: themeDarkOverlayColor }}>
                   <div>
                     <p className='text-xs font-bold uppercase tracking-[0.18em] text-white/60'>
                       <span
@@ -1693,7 +1799,7 @@ export function PocoFoodHome() {
                         {heroStartingLabel}
                       </span>
                     </p>
-                    <p className='mt-1 text-2xl font-extrabold text-[#ffc222]'>{formatPrice(heroPrice)}</p>
+                    <p className='mt-1 text-2xl font-extrabold' style={{ color: themeAccentColor }}>{formatPrice(heroPrice)}</p>
                   </div>
                   <div className='text-right'>
                     <p className='text-xs font-bold uppercase tracking-[0.18em] text-white/60'>
@@ -1731,14 +1837,12 @@ export function PocoFoodHome() {
           }
 
           .hero-title-main {
-            color: #ffffff;
             text-shadow:
               0 4px 0 rgba(0, 0, 0, 0.28),
               0 10px 20px rgba(0, 0, 0, 0.24);
           }
 
           .hero-title-accent {
-            color: #ffc222;
             text-shadow:
               0 4px 0 rgba(118, 74, 0, 0.34),
               0 10px 20px rgba(0, 0, 0, 0.22);
@@ -1775,15 +1879,16 @@ export function PocoFoodHome() {
         `}</style>
       </section>
 
-      <section className='bg-white py-4 sm:py-5'>
+      <section className='py-4 sm:py-5' style={{ backgroundColor: themeSurfaceColor }}>
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='mb-3 flex items-center justify-between gap-4'>
-            <h2 className='text-[18px] font-black uppercase tracking-normal text-[#171717] sm:text-[24px]'>
+            <h2 className='text-[18px] font-black uppercase tracking-normal sm:text-[24px]' style={{ color: themeHeadingColor }}>
               Our menu
             </h2>
             <Link
               href={vendorId ? allProductsPath : '#'}
-              className='inline-flex shrink-0 items-center gap-1.5 text-[12px] font-black text-[#5b2413] transition hover:text-[#d94b2b] sm:text-[13px]'
+              className='inline-flex shrink-0 items-center gap-1.5 text-[12px] font-black transition sm:text-[13px]'
+              style={{ color: themeDangerColor }}
             >
               See All
               <ArrowRight className='h-3.5 w-3.5' />
@@ -1803,7 +1908,7 @@ export function PocoFoodHome() {
                     className='h-[50px] w-auto max-w-[82px] object-contain drop-shadow-[0_8px_14px_rgba(0,0,0,0.14)] transition duration-300 group-hover:scale-105 sm:h-[60px] sm:max-w-[104px] lg:h-[66px] lg:max-w-[120px]'
                   />
                 </div>
-                <p className='mt-2 min-h-[34px] w-full overflow-hidden text-[12px] font-black leading-[1.12] tracking-normal text-[#171717] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] sm:min-h-[40px] sm:text-[14px]'>
+                <p className='mt-2 min-h-[34px] w-full overflow-hidden text-[12px] font-black leading-[1.12] tracking-normal [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2] sm:min-h-[40px] sm:text-[14px]' style={{ color: themeHeadingColor }}>
                   {item.label}
                 </p>
               </Link>
@@ -1813,20 +1918,21 @@ export function PocoFoodHome() {
       </section>
 
       {visibleFoodOffers.length ? (
-        <section id='offers' className='scroll-mt-32 bg-[#fff8e8] py-14'>
+        <section id='offers' className='scroll-mt-32 py-14' style={{ backgroundColor: themeMutedSurfaceColor }}>
           <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
             <div className='mb-8 flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between'>
               <div>
-                <p className='text-xs font-extrabold uppercase tracking-[0.22em] text-[#d94b2b]'>
+                <p className='text-xs font-extrabold uppercase tracking-[0.22em]' style={{ color: themeDangerColor }}>
                   Live offers
                 </p>
-                <h2 className='template-section-title mt-2 text-[36px] font-black leading-none tracking-[-0.05em] text-[#171717] sm:text-[52px]'>
+                <h2 className='template-section-title mt-2 text-[36px] font-black leading-none tracking-[-0.05em] sm:text-[52px]' style={{ color: themeHeadingColor }}>
                   Today's food deals
                 </h2>
               </div>
               <Link
                 href={vendorId ? allProductsPath : '#'}
-                className='inline-flex w-fit items-center gap-2 rounded-full bg-[#171717] px-5 py-3 text-sm font-extrabold uppercase text-white transition hover:bg-[#d94b2b]'
+                className='inline-flex w-fit items-center gap-2 rounded-full px-5 py-3 text-sm font-extrabold uppercase text-white transition'
+                style={{ backgroundColor: themeHeadingColor }}
               >
                 View menu
                 <ArrowRight className='h-4 w-4' />
@@ -1855,11 +1961,12 @@ export function PocoFoodHome() {
                 return (
                   <article
                     key={offer?._id || `${offer?.offer_title || 'offer'}-${index}`}
-                    className='overflow-hidden rounded-[26px] border border-[#eadfb7] bg-white shadow-[0_18px_34px_rgba(23,23,23,0.06)]'
+                    className='overflow-hidden rounded-[26px] bg-white shadow-[0_18px_34px_rgba(23,23,23,0.06)]'
+                    style={{ border: `1px solid ${themeCardBorderColor}`, backgroundColor: themeSurfaceColor }}
                   >
                     {isComboOffer ? (
                       <div className='relative bg-white px-5 pt-5'>
-                        <span className='absolute left-5 top-5 z-10 rounded-full bg-[#3c1710] px-4 py-1.5 text-xs font-black uppercase text-white shadow-[0_10px_20px_rgba(60,23,16,0.18)]'>
+                        <span className='absolute left-5 top-5 z-10 rounded-full px-4 py-1.5 text-xs font-black uppercase text-white shadow-[0_10px_20px_rgba(60,23,16,0.18)]' style={{ backgroundColor: themeDarkSurfaceColor }}>
                           {isComboSet ? 'Combo' : 'Deal'}
                         </span>
                         <div className='flex h-[178px] items-center justify-center pt-5'>
@@ -1873,8 +1980,11 @@ export function PocoFoodHome() {
                             comboItems.slice(0, 3).map((item, itemIndex) => (
                               <div
                                 key={item.key}
-                                className='relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full bg-[#fff8ef]'
-                                style={{ marginLeft: itemIndex ? '-18px' : 0 }}
+                                className='relative flex h-28 w-28 shrink-0 items-center justify-center rounded-full'
+                                style={{
+                                  backgroundColor: themeMutedSurfaceColor,
+                                  marginLeft: itemIndex ? '-18px' : 0,
+                                }}
                               >
                                 <img
                                   src={item.image}
@@ -1882,7 +1992,7 @@ export function PocoFoodHome() {
                                   className='h-24 w-24 object-contain drop-shadow-[0_14px_24px_rgba(23,23,23,0.16)]'
                                 />
                                 {item.quantity > 1 ? (
-                                  <span className='absolute -right-1 -top-1 rounded-full bg-[#ffc222] px-2 py-1 text-xs font-black text-[#171717]'>
+                                  <span className='absolute -right-1 -top-1 rounded-full px-2 py-1 text-xs font-black' style={{ backgroundColor: themeAccentColor, color: themeHeadingColor }}>
                                     x{item.quantity}
                                   </span>
                                 ) : null}
@@ -1898,8 +2008,8 @@ export function PocoFoodHome() {
                         </div>
                       </div>
                     ) : (
-                      <div className='bg-[#171717] px-5 py-5 text-white'>
-                        <p className='text-xs font-extrabold uppercase tracking-[0.2em] text-[#ffc222]'>
+                      <div className='px-5 py-5 text-white' style={{ backgroundColor: themeDarkSurfaceColor }}>
+                        <p className='text-xs font-extrabold uppercase tracking-[0.2em]' style={{ color: themeAccentColor }}>
                           {String(offer?.offer_type || 'offer').replace(/_/g, ' ')}
                         </p>
                         <h3 className='mt-3 min-h-[58px] text-[26px] font-black leading-[1.08] tracking-[-0.04em]'>
@@ -1909,12 +2019,12 @@ export function PocoFoodHome() {
                     )}
 
                     <div className='p-5'>
-                      <p className='text-xs font-extrabold uppercase tracking-[0.18em] text-[#d94b2b]'>
+                      <p className='text-xs font-extrabold uppercase tracking-[0.18em]' style={{ color: themeDangerColor }}>
                         {isComboOffer && !isComboSet
                           ? 'special price'
                           : String(offer?.offer_type || 'offer').replace(/_/g, ' ')}
                       </p>
-                      <h3 className='mt-2 min-h-[62px] text-[26px] font-black leading-[1.08] tracking-[-0.04em] text-[#171717]'>
+                      <h3 className='mt-2 min-h-[62px] text-[26px] font-black leading-[1.08] tracking-[-0.04em]' style={{ color: themeHeadingColor }}>
                         {isComboOffer ? comboTitle : offer?.offer_title || 'Food offer'}
                       </h3>
 
@@ -1923,7 +2033,8 @@ export function PocoFoodHome() {
                           {comboItems.map((item) => (
                             <span
                               key={`${item.key}-chip`}
-                              className='rounded-full bg-[#fff3cf] px-3 py-1 text-xs font-extrabold text-[#5c3324]'
+                              className='rounded-full px-3 py-1 text-xs font-extrabold'
+                              style={{ backgroundColor: themeSoftSurfaceStrong, color: themeHeadingColor }}
                             >
                               {item.quantity} x {item.name}
                             </span>
@@ -1931,18 +2042,18 @@ export function PocoFoodHome() {
                         </div>
                       ) : null}
 
-                      <p className='mt-4 text-[30px] font-black leading-none text-[#d94b2b]'>
+                      <p className='mt-4 text-[30px] font-black leading-none' style={{ color: themeDangerColor }}>
                         {isComboOffer && !isComboSet && comboPrice > 0
                           ? `Deal ${formatPrice(comboPrice)}`
                           : getFoodOfferValueLabel(offer)}
                       </p>
                       {comboSavings > 0 ? (
-                        <p className='mt-2 text-sm font-extrabold text-[#6f6255]'>
+                        <p className='mt-2 text-sm font-extrabold' style={{ color: themeBodyTextColor }}>
                           Worth <span className='line-through'>{formatPrice(comboWorth)}</span>
-                          <span className='ml-2 text-[#d94b2b]'>Save {formatPrice(comboSavings)}</span>
+                          <span className='ml-2' style={{ color: themeDangerColor }}>Save {formatPrice(comboSavings)}</span>
                         </p>
                       ) : null}
-                      <p className='mt-3 min-h-[44px] text-sm font-semibold leading-6 text-[#6f6255]'>
+                      <p className='mt-3 min-h-[44px] text-sm font-semibold leading-6' style={{ color: themeBodyTextColor }}>
                         {getFoodOfferFinePrint(offer)}
                       </p>
                       {isComboOffer && comboItems.length ? (
@@ -1950,14 +2061,19 @@ export function PocoFoodHome() {
                           type='button'
                           onClick={() => void addOfferToCart(offer, comboItems)}
                           disabled={offerAdding}
-                          className='mt-5 inline-flex w-full items-center justify-center rounded-[16px] bg-[#ffc222] px-4 py-3 text-sm font-extrabold uppercase text-[#171717] transition hover:bg-[#ffae00] disabled:cursor-not-allowed disabled:bg-[#eadfb7]'
+                          className='mt-5 inline-flex w-full items-center justify-center rounded-[16px] px-4 py-3 text-sm font-extrabold uppercase transition disabled:cursor-not-allowed'
+                          style={{
+                            backgroundColor: offerAdding ? themeDisabledSurfaceColor : themeAccentColor,
+                            color: offerAdding ? themeDisabledTextColor : themeHeadingColor,
+                          }}
                         >
                           {offerAdding ? 'Adding combo...' : 'Add combo to cart'}
                         </button>
                       ) : (
                         <Link
                           href={vendorId ? menuSectionPath : '#'}
-                          className='mt-5 inline-flex w-full items-center justify-center rounded-[16px] bg-[#ffc222] px-4 py-3 text-sm font-extrabold uppercase text-[#171717] transition hover:bg-[#ffae00]'
+                          className='mt-5 inline-flex w-full items-center justify-center rounded-[16px] px-4 py-3 text-sm font-extrabold uppercase transition'
+                          style={{ backgroundColor: themeAccentColor, color: themeHeadingColor }}
                         >
                           Order now
                         </Link>
@@ -1971,18 +2087,25 @@ export function PocoFoodHome() {
         </section>
       ) : null}
 
-      <section className='bg-white py-4 sm:py-6' data-template-section='description'>
+      <section
+        className='py-4 sm:py-6'
+        style={{ backgroundColor: servicesBackgroundColor }}
+        data-template-path='components.home_page.benefits.backgroundColor'
+        data-template-section='description'
+      >
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='text-center'>
             <p
-              className='text-[28px] font-semibold italic tracking-[-0.03em] text-[#ffb81c] sm:text-[42px]'
+              className='text-[28px] font-semibold italic tracking-[-0.03em] sm:text-[42px]'
+              style={{ color: themeAccentColor }}
               data-template-path='components.home_page.benefits.kicker'
               data-template-section='description'
             >
               {configuredDisplayText(servicesConfig?.kicker, 'Our Services')}
             </p>
             <h2
-              className='mt-1 text-[34px] font-black tracking-[-0.05em] text-[#171717] sm:text-[54px]'
+              className='mt-1 text-[34px] font-black tracking-[-0.05em] sm:text-[54px]'
+              style={{ color: themeHeadingColor }}
               data-template-path='components.home_page.benefits.heading'
               data-template-section='description'
             >
@@ -1990,7 +2113,8 @@ export function PocoFoodHome() {
             </h2>
             {configuredDisplayText(servicesConfig?.subtitle) ? (
               <p
-                className='mx-auto mt-2 max-w-[680px] text-base leading-7 text-[#7c7c7c]'
+                className='mx-auto mt-2 max-w-[680px] text-base leading-7'
+                style={{ color: themeMutedTextColor }}
                 data-template-path='components.home_page.benefits.subtitle'
                 data-template-section='description'
               >
@@ -2003,20 +2127,23 @@ export function PocoFoodHome() {
             {serviceCards.map((item, index) => (
               <article
                 key={`${item.title}-${index}`}
-                className='rounded-[28px] border border-[#ece8df] bg-white px-6 py-8 text-center shadow-[0_14px_34px_rgba(23,23,23,0.035)] transition hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(23,23,23,0.06)] sm:px-7 sm:py-9'
+                className='rounded-[28px] bg-white px-6 py-8 text-center shadow-[0_14px_34px_rgba(23,23,23,0.035)] transition hover:-translate-y-1 hover:shadow-[0_20px_44px_rgba(23,23,23,0.06)] sm:px-7 sm:py-9'
+                style={{ border: `1px solid ${themeSubtleBorderColor}`, backgroundColor: themeSurfaceColor }}
               >
-                <div className={`mx-auto flex h-24 w-24 items-center justify-center rounded-full ${item.iconWrap}`}>
+                <div className='mx-auto flex h-24 w-24 items-center justify-center rounded-full' style={{ backgroundColor: item.iconWrap }}>
                   {item.icon}
                 </div>
                 <h3
-                  className='mt-6 text-[24px] font-black tracking-[-0.04em] text-[#171717] sm:text-[26px]'
+                  className='mt-6 text-[24px] font-black tracking-[-0.04em] sm:text-[26px]'
+                  style={{ color: themeHeadingColor }}
                   data-template-path={`components.home_page.benefits.cards.${index}.title`}
                   data-template-section='description'
                 >
                   {item.title}
                 </h3>
                 <p
-                  className='mx-auto mt-3 max-w-[230px] text-[16px] leading-8 text-[#7c7c7c]'
+                  className='mx-auto mt-3 max-w-[230px] text-[16px] leading-8'
+                  style={{ color: themeMutedTextColor }}
                   data-template-path={`components.home_page.benefits.cards.${index}.description`}
                   data-template-section='description'
                 >
@@ -2028,21 +2155,30 @@ export function PocoFoodHome() {
         </div>
       </section>
 
-      <section id='food-menu' className='bg-white py-10 sm:py-12 lg:py-14' data-template-section='products'>
+      <section
+        id='food-menu'
+        className='py-10 sm:py-12 lg:py-14'
+        style={{ backgroundColor: productsBackgroundColor }}
+        data-template-path='components.home_page.products_style.backgroundColor'
+        data-template-section='products'
+        data-template-component='components.home_page.products_style.backgroundColor'
+      >
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='mx-auto max-w-[860px] text-center'>
-            <p className='text-xs font-black uppercase tracking-[0.22em] text-[#d94b2b]'>
+            <p className='text-xs font-black uppercase tracking-[0.22em]' style={{ color: themeDangerColor }}>
               Menu highlights
             </p>
             <h2
-              className='template-section-title mt-2 text-[34px] font-extrabold leading-none tracking-[-0.05em] text-[#171717] sm:text-[44px] lg:text-[52px]'
+              className='template-section-title mt-2 text-[34px] font-extrabold leading-none tracking-[-0.05em] sm:text-[44px] lg:text-[52px]'
+              style={{ color: themeHeadingColor }}
               data-template-path='components.home_page.products_heading'
               data-template-section='products'
             >
               {productsHeading}
             </h2>
             <p
-              className='mx-auto mt-4 max-w-[760px] text-sm font-semibold leading-6 text-[#686868] sm:text-base sm:leading-8'
+              className='mx-auto mt-4 max-w-[760px] text-sm font-semibold leading-6 sm:text-base sm:leading-8'
+              style={{ color: themeBodyTextColor }}
               data-template-path='components.home_page.products_subtitle'
               data-template-section='products'
             >
@@ -2058,9 +2194,15 @@ export function PocoFoodHome() {
                 onClick={() => setActiveCategory(item.key)}
                 className={`min-w-[148px] shrink-0 snap-start rounded-full border px-6 py-3.5 text-sm font-extrabold uppercase transition sm:min-w-[160px] sm:px-8 sm:py-4 ${
                   activeCategory === item.key
-                    ? 'border-[#ffc222] bg-[#ffc222] text-[#171717]'
-                    : 'border-[#efe7ca] bg-white text-[#171717] hover:border-[#ffcf4d]'
+                    ? ''
+                    : ''
                 }`}
+                style={
+                  activeCategory === item.key
+                    ? { borderColor: productsButtonColor, backgroundColor: productsButtonColor, color: themeHeaderTextColor }
+                    : { borderColor: themeMutedBorderColor, backgroundColor: themeSurfaceColor, color: themeHeadingColor }
+                }
+                data-template-component='components.home_page.products_style.buttonColor'
               >
                 {item.label}
               </button>
@@ -2074,23 +2216,27 @@ export function PocoFoodHome() {
                 return (
                 <article
                   key={product._id || `${product.title}-${index}`}
-                  className='template-product-card overflow-hidden rounded-[30px] border border-[#efe7ca] bg-white p-4 shadow-[0_20px_40px_rgba(23,23,23,0.05)]'
+                  className='template-product-card overflow-hidden rounded-[30px] p-4 shadow-[0_20px_40px_rgba(23,23,23,0.05)]'
+                  style={{ border: `1px solid ${themeMutedBorderColor}`, backgroundColor: themeSurfaceColor }}
                 >
                   <div className='flex items-start justify-between'>
-                    <div className='flex items-center gap-1 text-[#ffc222]'>
+                    <div className='flex items-center gap-1' style={{ color: themeAccentColor }}>
                       {Array.from({ length: 5 }).map((_, ratingIndex) => (
                         <Star
                           key={ratingIndex}
-                          className={`h-4 w-4 ${ratingIndex < product.rating ? 'fill-current' : 'text-[#e9dcc0]'}`}
+                          className={`h-4 w-4 ${ratingIndex < product.rating ? 'fill-current' : ''}`}
+                          style={ratingIndex < product.rating ? undefined : { color: themeMutedBorderColor }}
                         />
                       ))}
                     </div>
                     <button
                       type='button'
                       onClick={() => toggleWishlist(product)}
-                      className={`rounded-full bg-[#f6f1df] p-2 transition hover:text-[#ff5a36] ${
-                        isWishlisted ? 'text-[#d94b2b]' : 'text-[#d1c6a6]'
-                      }`}
+                    className='rounded-full p-2 transition'
+                    style={{
+                      backgroundColor: themeMutedSurfaceColor,
+                      color: isWishlisted ? themeDangerColor : themeMutedBorderColor,
+                    }}
                     >
                       <Heart className={`h-4 w-4 ${isWishlisted ? 'fill-current' : ''}`} />
                     </button>
@@ -2098,7 +2244,8 @@ export function PocoFoodHome() {
 
                   <Link
                     href={product.href}
-                    className='mt-4 block overflow-hidden rounded-[24px] bg-[#fff7e4]'
+                    className='mt-4 block overflow-hidden rounded-[24px]'
+                    style={{ backgroundColor: themeMutedSurfaceColor }}
                   >
                     <div className='flex aspect-[4/3] items-center justify-center p-5'>
                       <img
@@ -2109,27 +2256,44 @@ export function PocoFoodHome() {
                     </div>
                   </Link>
 
-                  <div className='mt-5 flex items-center gap-2'>
+                  <div className='mt-5 flex flex-wrap items-center gap-2'>
                     <FoodTypeMark type={product.foodType} />
-                    <p className='text-[13px] font-bold uppercase tracking-[0.12em] text-[#d94b2b]'>
+                    <p className='text-[13px] font-bold uppercase tracking-[0.12em]' style={{ color: themeDangerColor }}>
                       {product.category}
                     </p>
+                    {product.isFoodCatalogItem ? (
+                      <span
+                        className={`rounded-full px-2.5 py-1 text-[11px] font-extrabold uppercase tracking-[0.08em] ${
+                          product.isAvailable === false
+                            ? ''
+                            : ''
+                        }`}
+                        style={
+                          product.isAvailable === false
+                            ? { backgroundColor: hexToRgba(themeHeadingColor, 0.08, 'rgba(23,23,23,0.08)'), color: hexToRgba(themeHeadingColor, 0.58, 'rgba(23,23,23,0.58)') }
+                            : { backgroundColor: hexToRgba('#187947', 0.12, 'rgba(24,121,71,0.12)'), color: '#187947' }
+                        }
+                      >
+                        {product.isAvailable === false ? 'Out stock' : 'In stock'}
+                      </span>
+                    ) : null}
                   </div>
                   <Link
                     href={product.href}
-                    className='mt-2 block text-[30px] font-extrabold leading-[1] tracking-[-0.04em] text-[#171717]'
+                    className='mt-2 block text-[30px] font-extrabold leading-[1] tracking-[-0.04em]'
+                    style={{ color: themeHeadingColor }}
                   >
                     {product.title}
                   </Link>
-                  <p className='mt-3 min-h-[72px] text-sm leading-7 text-[#686868]'>
+                  <p className='mt-3 min-h-[72px] text-sm leading-7' style={{ color: themeBodyTextColor }}>
                     {product.description}
                   </p>
 
                   <div className='mt-5 flex items-end justify-between gap-3'>
                     <div>
-                      <p className='text-[16px] font-bold text-[#ffae00]'>{formatPrice(product.price)}</p>
+                      <p className='text-[16px] font-bold' style={{ color: themeAccentColor }}>{formatPrice(product.price)}</p>
                       {product.oldPrice > product.price ? (
-                        <p className='text-sm text-[#9e9e9e] line-through'>{formatPrice(product.oldPrice)}</p>
+                        <p className='text-sm line-through' style={{ color: hexToRgba(themeHeadingColor, 0.44, 'rgba(23,23,23,0.44)') }}>{formatPrice(product.oldPrice)}</p>
                       ) : null}
                     </div>
                     {product.variantId || product.isFoodCatalogItem ? (
@@ -2137,10 +2301,21 @@ export function PocoFoodHome() {
                         type='button'
                         onClick={() => void handleAddToCart(product)}
                         disabled={
+                          product.isAvailable === false ||
                           (!product.isFoodCatalogItem && product.stockQuantity <= 0) ||
                           addingId === product._id
                         }
-                        className='inline-flex h-14 w-14 items-center justify-center rounded-full bg-[#ffc222] text-[#171717] transition hover:bg-[#ffae00] disabled:cursor-not-allowed disabled:bg-[#efe7ca] disabled:text-[#a58f55]'
+                        className='inline-flex h-14 w-14 items-center justify-center rounded-full transition disabled:cursor-not-allowed'
+                        style={{
+                          backgroundColor:
+                            product.isAvailable === false || (!product.isFoodCatalogItem && product.stockQuantity <= 0) || addingId === product._id
+                              ? themeDisabledSurfaceColor
+                              : themeAccentColor,
+                          color:
+                            product.isAvailable === false || (!product.isFoodCatalogItem && product.stockQuantity <= 0) || addingId === product._id
+                              ? themeDisabledTextColor
+                              : themeHeaderTextColor,
+                        }}
                       >
                         {addingId === product._id ? (
                           <span className='text-[11px] font-extrabold uppercase'>...</span>
@@ -2151,7 +2326,8 @@ export function PocoFoodHome() {
                     ) : (
                       <Link
                         href={product.href}
-                        className='inline-flex h-14 items-center justify-center rounded-full bg-[#ffc222] px-5 text-sm font-extrabold uppercase text-[#171717] transition hover:bg-[#ffae00]'
+                        className='inline-flex h-14 items-center justify-center rounded-full px-5 text-sm font-extrabold uppercase transition'
+                        style={{ backgroundColor: themeAccentColor, color: themeHeaderTextColor }}
                       >
                         View
                       </Link>
@@ -2161,14 +2337,14 @@ export function PocoFoodHome() {
                 )
               })
             ) : (
-              <div className='rounded-[30px] border border-dashed border-[#eadfb7] bg-[#fffdf6] p-10 text-center text-sm text-[#686868] sm:col-span-2 xl:col-span-4'>
+              <div className='rounded-[30px] border border-dashed p-10 text-center text-sm sm:col-span-2 xl:col-span-4' style={{ borderColor: themeCardBorderColor, backgroundColor: themeSurfaceTintColor, color: themeBodyTextColor }}>
                 Food Hub me food items add karo. PocoFood template ab sirf wahi food menu show karega.
               </div>
             )}
           </div>
 
           {actionMessage ? (
-            <p className='mt-6 rounded-2xl bg-[#fff7e4] px-4 py-3 text-sm font-semibold text-[#171717]'>
+            <p className='mt-6 rounded-2xl px-4 py-3 text-sm font-semibold' style={{ backgroundColor: themeMutedSurfaceColor, color: themeHeadingColor }}>
               {actionMessage}
             </p>
           ) : null}
@@ -2179,15 +2355,23 @@ export function PocoFoodHome() {
         className='py-6 text-white sm:py-8'
         style={{ backgroundColor: offerSectionBackgroundColor }}
         data-template-path='components.home_page.offer_section_background_color'
+        data-template-section='description'
+        data-template-component='components.home_page.offer_section_background_color'
       >
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='relative overflow-hidden rounded-[30px] border border-white/8 shadow-[0_30px_80px_rgba(0,0,0,0.28)]'>
             {hasPromoOfferComboItems ? (
               <div
-                className='absolute inset-0 flex items-center justify-center overflow-hidden bg-[#f7f2df]'
+                className='absolute inset-0 flex items-center justify-center overflow-hidden'
+                style={{ backgroundColor: themeMutedSurfaceColor }}
                 data-template-path='components.home_page.offer_section_background_image'
               >
-                <div className='absolute inset-0 bg-[radial-gradient(circle_at_38%_52%,rgba(255,194,34,0.28),transparent_30%),linear-gradient(90deg,rgba(255,255,255,0.42),rgba(255,255,255,0.2))]' />
+                <div
+                  className='absolute inset-0'
+                  style={{
+                    background: `radial-gradient(circle_at_38%_52%, ${hexToRgba(themeAccentColor, 0.28, 'rgba(255,194,34,0.28)')} 0%, transparent 30%), linear-gradient(90deg, ${hexToRgba(themeSurfaceColor, 0.42, 'rgba(255,255,255,0.42)')}, ${hexToRgba(themeSurfaceColor, 0.2, 'rgba(255,255,255,0.2)')})`,
+                  }}
+                />
                 <div className='relative flex h-full w-full items-center justify-center gap-0 px-[12%] py-5 sm:py-8 lg:px-[18%]'>
                   {promoOfferComboItems.slice(0, 3).map((item, itemIndex) => (
                     <div
@@ -2213,20 +2397,29 @@ export function PocoFoodHome() {
               />
             )}
             <div
-              className='absolute inset-0 bg-[#121212]'
-              style={{ opacity: hasPromoOfferComboItems ? Math.max(offerSectionOverlayOpacity, 0.42) : offerSectionOverlayOpacity }}
+              className='absolute inset-0'
+              style={{
+                backgroundColor: themeHeaderTextColor,
+                opacity: hasPromoOfferComboItems ? Math.max(offerSectionOverlayOpacity, 0.42) : offerSectionOverlayOpacity,
+              }}
               data-template-path='components.home_page.offer_section_overlay_opacity'
             />
-            <div className='absolute inset-0 bg-[radial-gradient(circle_at_top_right,rgba(255,194,34,0.12),transparent_18%),radial-gradient(circle_at_left_bottom,rgba(255,255,255,0.08),transparent_24%)]' />
+            <div
+              className='absolute inset-0'
+              style={{
+                background: `radial-gradient(circle_at_top_right, ${hexToRgba(themeAccentColor, 0.12, 'rgba(255,194,34,0.12)')} 0%, transparent 18%), radial-gradient(circle_at_left_bottom, ${hexToRgba(themeSurfaceColor, 0.08, 'rgba(255,255,255,0.08)')} 0%, transparent 24%)`,
+              }}
+            />
 
             <div className='relative min-h-[230px] px-5 py-6 sm:min-h-[300px] sm:px-8 sm:py-7 lg:min-h-[350px] lg:px-12 lg:py-8'>
               <div className='absolute left-3 top-3 sm:left-[18%] sm:top-8 lg:left-[20%] lg:top-10'>
                 <div
-                  className='flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full text-center text-[#171717] shadow-[0_18px_34px_rgba(0,0,0,0.18)] sm:h-[122px] sm:w-[122px] lg:h-[148px] lg:w-[148px]'
+                  className='flex h-[88px] w-[88px] flex-col items-center justify-center rounded-full text-center shadow-[0_18px_34px_rgba(0,0,0,0.18)] sm:h-[122px] sm:w-[122px] lg:h-[148px] lg:w-[148px]'
                   style={{ backgroundColor: offerSectionPriceBackground }}
                   data-template-path='components.home_page.offer_section_price_background'
+                  data-template-component='components.home_page.offer_section_price_background'
                 >
-                  <p className='text-[10px] font-bold italic leading-none text-[#171717] sm:text-[12px] lg:text-[14px]'>
+                  <p className='text-[10px] font-bold italic leading-none sm:text-[12px] lg:text-[14px]' style={{ color: themeHeadingColor }}>
                     {promoOfferDisplay.statPrefix}
                   </p>
                   <p
@@ -2252,6 +2445,7 @@ export function PocoFoodHome() {
                     textShadow: '0 6px 18px rgba(0,0,0,0.32)',
                   }}
                   data-template-path='components.home_page.offer_section_eyebrow'
+                  data-template-component='components.home_page.offer_section_eyebrow_color'
                 >
                   {offerSectionEyebrow}
                 </p>
@@ -2262,17 +2456,19 @@ export function PocoFoodHome() {
                     textShadow: '0 10px 28px rgba(0,0,0,0.34)',
                   }}
                   data-template-path='components.home_page.offer_section_title_color'
+                  data-template-component='components.home_page.offer_section_title_color'
                 >
                   {promoOfferDisplay.headline}
                 </h2>
                 <Link
                   href={vendorId ? menuSectionPath : '#'}
-                  className='mt-4 inline-flex self-center rounded-[16px] bg-white px-6 py-3 text-sm font-extrabold uppercase tracking-[0.04em] text-[#171717] shadow-[0_16px_34px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 hover:bg-[#fff2c9] sm:mt-5 sm:px-8 sm:py-4 sm:text-base'
+                  className='mt-4 inline-flex self-center rounded-[16px] px-6 py-3 text-sm font-extrabold uppercase tracking-[0.04em] shadow-[0_16px_34px_rgba(0,0,0,0.18)] transition hover:-translate-y-0.5 sm:mt-5 sm:px-8 sm:py-4 sm:text-base'
                   style={{
                     backgroundColor: offerSectionButtonBackground,
                     color: offerSectionButtonTextColor,
                   }}
                   data-template-path='components.home_page.offer_section_button_label'
+                  data-template-component='components.home_page.offer_section_button_background'
                 >
                   {offerSectionButtonLabel}
                 </Link>
@@ -2282,18 +2478,19 @@ export function PocoFoodHome() {
         </div>
       </section>
 
-      <section className='bg-white py-16'>
+      <section className='py-16' style={{ backgroundColor: themeSurfaceColor }}>
         <div className='mx-auto grid max-w-[1440px] gap-8 px-4 xl:grid-cols-[minmax(0,1.95fr)_460px] lg:px-10'>
           <div>
             <div className='mb-8 flex items-center justify-between gap-4'>
-              <h2 className='template-section-title text-[38px] font-extrabold tracking-[-0.05em] text-[#171717] sm:text-[52px]'>
+              <h2 className='template-section-title text-[38px] font-extrabold tracking-[-0.05em] sm:text-[52px]' style={{ color: themeHeadingColor }}>
                 <span data-template-path='components.home_page.recipe_section_heading'>
                   {recipeSectionHeading}
                 </span>
               </h2>
               <Link
                 href={vendorId ? menuSectionPath : '#'}
-                className='inline-flex items-center gap-2 text-sm font-extrabold uppercase text-[#d94b2b]'
+                className='inline-flex items-center gap-2 text-sm font-extrabold uppercase'
+                style={{ color: themeDangerColor }}
               >
                 See all
                 <ArrowRight className='h-4 w-4' />
@@ -2303,7 +2500,8 @@ export function PocoFoodHome() {
               {topRecipeCards.map((product, index) => (
                 <article
                   key={`${product.title}-${index}`}
-                  className='flex min-h-[168px] items-center gap-4 rounded-[30px] border border-[#ece7dd] bg-[#fff8e8] px-5 py-4 shadow-[0_10px_24px_rgba(23,23,23,0.03)]'
+                  className='flex min-h-[168px] items-center gap-4 rounded-[30px] px-5 py-4 shadow-[0_10px_24px_rgba(23,23,23,0.03)]'
+                  style={{ border: `1px solid ${themeSubtleBorderColor}`, backgroundColor: themeMutedSurfaceColor }}
                 >
                   <div className='flex h-28 w-28 shrink-0 items-center justify-center overflow-hidden rounded-full bg-white shadow-[0_10px_20px_rgba(23,23,23,0.08)]'>
                     <img src={product.image} alt={product.title} className='h-[84px] w-[84px] object-contain' />
@@ -2311,20 +2509,20 @@ export function PocoFoodHome() {
                   <div className='min-w-0 flex-1'>
                     <div className='flex items-center gap-2'>
                       <FoodTypeMark type={product.foodType} />
-                      <p className='text-[15px] text-[#8a8a8a]'>
+                      <p className='text-[15px]' style={{ color: themeMutedTextColor }}>
                         {product.category}
                       </p>
                     </div>
-                    <p className='mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.03em] text-[#171717]'>
+                    <p className='mt-1 text-[22px] font-extrabold leading-tight tracking-[-0.03em]' style={{ color: themeHeadingColor }}>
                       {product.title}
                     </p>
                     <div className='mt-2 flex items-center gap-2'>
                       {product.oldPrice ? (
-                        <span className='text-[16px] font-bold text-[#8a8a8a] line-through'>
+                        <span className='text-[16px] font-bold line-through' style={{ color: themeMutedTextColor }}>
                           {formatPrice(product.oldPrice)}
                         </span>
                       ) : null}
-                      <span className='text-[18px] font-extrabold text-[#ffb81c]'>
+                      <span className='text-[18px] font-extrabold' style={{ color: themeAccentColor }}>
                         {formatPrice(product.price)}
                       </span>
                     </div>
@@ -2334,14 +2532,19 @@ export function PocoFoodHome() {
                       type='button'
                       onClick={() => void handleAddToCart(product)}
                       disabled={addingId === product._id}
-                      className='inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#ffc222] text-[#171717] transition hover:bg-[#ffae00] disabled:bg-[#efe7ca]'
+                      className='inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition'
+                      style={{
+                        backgroundColor: addingId === product._id ? themeDisabledSurfaceColor : themeAccentColor,
+                        color: addingId === product._id ? themeDisabledTextColor : themeHeadingColor,
+                      }}
                     >
                       <ShoppingBasket className='h-5 w-5' />
                     </button>
                   ) : (
                     <Link
                       href={product.href}
-                      className='inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full bg-[#ffc222] text-[#171717] transition hover:bg-[#ffae00]'
+                      className='inline-flex h-14 w-14 shrink-0 items-center justify-center rounded-full transition'
+                      style={{ backgroundColor: themeAccentColor, color: themeHeadingColor }}
                     >
                       <ArrowRight className='h-5 w-5' />
                     </Link>
@@ -2351,16 +2554,16 @@ export function PocoFoodHome() {
             </div>
           </div>
 
-          <aside className='overflow-hidden rounded-[26px] border border-[#f3c957] bg-[#ffc31a] shadow-[0_24px_60px_rgba(255,194,34,0.24)] xl:sticky xl:top-6 xl:self-start'>
+          <aside className='overflow-hidden rounded-[26px] xl:sticky xl:top-6 xl:self-start' style={{ border: `1px solid ${hexToRgba(themeAccentColor, 0.72, 'rgba(255,194,34,0.72)')}`, backgroundColor: themeAccentColor, boxShadow: `0 24px 60px ${themeAccentGlow}` }}>
             <div className='p-8'>
               <p className='text-center text-[30px] font-bold italic text-white sm:text-[34px]'>{promoSidebarSubtitle}</p>
-              <h3 className='mt-3 text-center text-[58px] font-extrabold uppercase leading-[0.92] tracking-[-0.05em] text-[#ff2c14] sm:text-[72px]'>
+              <h3 className='mt-3 text-center text-[58px] font-extrabold uppercase leading-[0.92] tracking-[-0.05em] sm:text-[72px]' style={{ color: themeDangerColor }}>
                 {promoSidebarTitle}
               </h3>
               <p className='mt-6 text-center text-[18px] font-extrabold uppercase text-white'>
                 Call us now:
               </p>
-              <p className='mt-2 text-center text-[34px] font-extrabold text-[#ff2c14] sm:text-[46px]'>
+              <p className='mt-2 text-center text-[34px] font-extrabold sm:text-[46px]' style={{ color: themeDangerColor }}>
                 {promoCallPhone}
               </p>
             </div>
@@ -2371,23 +2574,32 @@ export function PocoFoodHome() {
         </div>
       </section>
 
-      <section className='bg-white py-6 sm:py-8'>
+      <section
+        className='py-6 sm:py-8'
+        style={{ backgroundColor: advantageBackgroundColor }}
+        data-template-path='components.home_page.advantage.backgroundColor'
+        data-template-section='description'
+        data-template-component='components.home_page.advantage.backgroundColor'
+      >
         <div className='mx-auto grid max-w-[1440px] items-center gap-8 px-4 lg:grid-cols-[minmax(0,0.98fr)_minmax(0,1.02fr)] lg:px-10'>
           <div className='max-w-[560px]'>
             <p
-              className='text-[28px] font-semibold italic tracking-[-0.03em] text-[#ffb81c] sm:text-[42px]'
+              className='text-[28px] font-semibold italic tracking-[-0.03em] sm:text-[42px]'
+              style={{ color: themeAccentColor }}
               data-template-path='components.home_page.advantage.kicker'
             >
               {advantageKicker}
             </p>
             <h2
-              className='mt-2 text-[34px] font-black leading-[0.98] tracking-[-0.05em] text-[#171717] sm:text-[50px]'
+              className='mt-2 text-[34px] font-black leading-[0.98] tracking-[-0.05em] sm:text-[50px]'
+              style={{ color: themeHeadingColor }}
               data-template-path='components.home_page.advantage.heading'
             >
               {advantageHeading}
             </h2>
             <p
-              className='mt-5 max-w-[520px] whitespace-pre-line text-[17px] leading-8 text-[#7b7b7b]'
+              className='mt-5 max-w-[520px] whitespace-pre-line text-[17px] leading-8'
+              style={{ color: themeMutedTextColor }}
               data-template-path='components.home_page.advantage.subtitle'
             >
               {advantageSubtitle}
@@ -2402,18 +2614,21 @@ export function PocoFoodHome() {
                       className='flex h-20 w-20 shrink-0 items-center justify-center rounded-full text-white shadow-[0_14px_24px_rgba(217,75,43,0.2)]'
                       style={{ backgroundColor: advantageAccentColor }}
                       data-template-path='components.home_page.advantage.accentColor'
+                      data-template-component='components.home_page.advantage.accentColor'
                     >
                       <Icon className='h-8 w-8' strokeWidth={2.2} />
                     </div>
                     <div className='pt-1'>
                       <h3
-                        className='text-[20px] font-black tracking-[-0.03em] text-[#171717]'
+                        className='text-[20px] font-black tracking-[-0.03em]'
+                        style={{ color: themeHeadingColor }}
                         data-template-path={`components.home_page.advantage.cards.${index}.title`}
                       >
                         {card.title}
                       </h3>
                       <p
-                        className='mt-1 text-[17px] leading-7 text-[#7b7b7b]'
+                        className='mt-1 text-[17px] leading-7'
+                        style={{ color: themeMutedTextColor }}
                         data-template-path={`components.home_page.advantage.cards.${index}.description`}
                       >
                         {card.description}
@@ -2427,8 +2642,10 @@ export function PocoFoodHome() {
             {advantageCtaLabel ? (
               <Link
                 href={vendorId ? menuSectionPath : '#'}
-                className='mt-8 inline-flex rounded-[16px] bg-[#ffc222] px-8 py-4 text-base font-extrabold uppercase tracking-[0.05em] text-[#171717] shadow-[0_16px_30px_rgba(255,194,34,0.22)] transition hover:-translate-y-0.5 hover:bg-[#ffae00]'
+                className='mt-8 inline-flex rounded-[16px] px-8 py-4 text-base font-extrabold uppercase tracking-[0.05em] shadow-[0_16px_30px_rgba(255,194,34,0.22)] transition hover:-translate-y-0.5'
+                style={{ backgroundColor: heroPrimaryButtonColor, color: heroPrimaryButtonTextColor }}
                 data-template-path='components.home_page.advantage.ctaLabel'
+                data-template-component='components.home_page.hero_style.primaryButtonColor'
               >
                 {advantageCtaLabel}
               </Link>
@@ -2443,14 +2660,14 @@ export function PocoFoodHome() {
               }}
               data-template-path='components.home_page.advantage.glowColor'
             />
-            <div className='absolute right-[4%] top-[12%] h-16 w-16 rounded-full border-4 border-[#ffc222] opacity-70' />
-            <div className='absolute left-[18%] top-[14%] h-10 w-10 rounded-full border-4 border-[#ffc222] opacity-80' />
+            <div className='absolute right-[4%] top-[12%] h-16 w-16 rounded-full border-4 opacity-70' style={{ borderColor: themeAccentColor }} />
+            <div className='absolute left-[18%] top-[14%] h-10 w-10 rounded-full border-4 opacity-80' style={{ borderColor: themeAccentColor }} />
 
             <div className='relative z-10 grid w-full max-w-[620px] gap-4 sm:grid-cols-[1.05fr_0.95fr]'>
               <div className='flex flex-col gap-4 pt-10 sm:pt-16'>
                 <div className='rounded-[28px] bg-white/92 p-4 shadow-[0_18px_36px_rgba(23,23,23,0.08)] backdrop-blur-sm'>
                   <div className='flex items-center gap-4'>
-                    <div className='flex h-20 w-20 items-center justify-center rounded-[22px] bg-[#fff7df]'>
+                    <div className='flex h-20 w-20 items-center justify-center rounded-[22px]' style={{ backgroundColor: themeMutedSurfaceColor }}>
                       <img
                         src={advantageVisualCardImage}
                         alt={advantageVisualCardTitle}
@@ -2467,7 +2684,8 @@ export function PocoFoodHome() {
                         {advantageTopTag}
                       </p>
                       <p
-                        className='mt-1 text-[24px] font-black tracking-[-0.03em] text-[#171717]'
+                        className='mt-1 text-[24px] font-black tracking-[-0.03em]'
+                        style={{ color: themeHeadingColor }}
                         data-template-path='components.home_page.advantage.visualCardTitle'
                       >
                         {advantageVisualCardTitle}
@@ -2480,6 +2698,7 @@ export function PocoFoodHome() {
                   className='ml-6 rounded-[28px] p-5 text-white shadow-[0_18px_36px_rgba(217,75,43,0.2)]'
                   style={{ backgroundColor: advantageAccentColor }}
                   data-template-path='components.home_page.advantage.promiseText'
+                  data-template-component='components.home_page.advantage.accentColor'
                 >
                   <p className='text-sm font-bold uppercase tracking-[0.16em] text-white/72'>
                     {advantagePromiseLabel}
@@ -2492,11 +2711,17 @@ export function PocoFoodHome() {
 
               <div className='relative flex items-center justify-center'>
                 <div className='absolute inset-6 rounded-full bg-white/28 blur-xl' />
-                <div className='relative flex h-[270px] w-[270px] items-center justify-center rounded-full border-[14px] border-white bg-[radial-gradient(circle_at_top,#fffaf0_0%,#fff5d6_48%,#ffe8a4_100%)] shadow-[0_28px_45px_rgba(23,23,23,0.12)] sm:h-[320px] sm:w-[320px]'>
+                <div
+                  className='relative flex h-[270px] w-[270px] items-center justify-center rounded-full border-[14px] border-white shadow-[0_28px_45px_rgba(23,23,23,0.12)] sm:h-[320px] sm:w-[320px]'
+                  style={{
+                    background: `radial-gradient(circle at top, ${hexToRgba(themeSurfaceColor, 0.96, 'rgba(255,250,240,0.96)')} 0%, ${hexToRgba(themeAccentColor, 0.18, 'rgba(255,245,214,0.18)')} 48%, ${hexToRgba(themeAccentColor, 0.36, 'rgba(255,232,164,0.36)')} 100%)`,
+                  }}
+                >
                   <img
                     src={advantageMainImage}
                     alt={advantageHeading}
-                    className='h-[200px] w-[200px] object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.16)] sm:h-[240px] sm:w-[240px]'
+                    className='object-contain drop-shadow-[0_18px_30px_rgba(0,0,0,0.16)]'
+                    style={{ width: advantageImageSize, height: advantageImageSize }}
                     data-template-path='components.home_page.advantage.image'
                   />
                 </div>
@@ -2530,16 +2755,17 @@ export function PocoFoodHome() {
         </div>
       </section>
 
-      <section className='bg-[#fbf5de] py-16'>
+      <section className='py-16' style={{ backgroundColor: hexToRgba(themeAccentColor, 0.14, 'rgba(251,245,222,1)') }}>
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
-          <h2 className='template-section-title text-center text-[38px] font-extrabold tracking-[-0.05em] text-[#171717] sm:text-[56px]'>
+          <h2 className='template-section-title text-center text-[38px] font-extrabold tracking-[-0.05em] sm:text-[56px]' style={{ color: themeHeadingColor }}>
             What your client says
           </h2>
           <div className='mt-10 grid gap-6 lg:grid-cols-3'>
             {testimonials.map((item, index) => (
               <article
                 key={`${item.name}-${index}`}
-                className='rounded-[30px] border border-[#eadfb7] bg-white p-8 shadow-[0_18px_34px_rgba(23,23,23,0.05)]'
+                className='rounded-[30px] bg-white p-8 shadow-[0_18px_34px_rgba(23,23,23,0.05)]'
+                style={{ border: `1px solid ${themeCardBorderColor}`, backgroundColor: themeSurfaceColor }}
               >
                 <div className='flex items-start justify-between gap-3'>
                   <div className='flex items-center gap-4'>
@@ -2549,38 +2775,39 @@ export function PocoFoodHome() {
                       className='h-16 w-16 rounded-full object-cover'
                     />
                     <div>
-                      <p className='text-[28px] font-extrabold leading-none tracking-[-0.03em] text-[#171717]'>
+                      <p className='text-[28px] font-extrabold leading-none tracking-[-0.03em]' style={{ color: themeHeadingColor }}>
                         {item.name}
                       </p>
-                      <p className='mt-1 text-sm font-semibold uppercase tracking-[0.12em] text-[#d94b2b]'>
+                      <p className='mt-1 text-sm font-semibold uppercase tracking-[0.12em]' style={{ color: themeDangerColor }}>
                         {item.role}
                       </p>
                     </div>
                   </div>
-                  <Quote className='h-8 w-8 text-[#ffc222]' />
+                  <Quote className='h-8 w-8' style={{ color: themeAccentColor }} />
                 </div>
-                <div className='mt-6 flex items-center gap-1 text-[#ffc222]'>
+                <div className='mt-6 flex items-center gap-1' style={{ color: themeAccentColor }}>
                   {Array.from({ length: 5 }).map((_, ratingIndex) => (
                     <Star
                       key={ratingIndex}
-                      className={`h-5 w-5 ${ratingIndex < item.rating ? 'fill-current' : 'text-[#e9dcc0]'}`}
+                      className={`h-5 w-5 ${ratingIndex < item.rating ? 'fill-current' : ''}`}
+                      style={ratingIndex < item.rating ? undefined : { color: themeMutedBorderColor }}
                     />
                   ))}
                 </div>
-                <p className='mt-6 text-base leading-8 text-[#686868]'>{item.text}</p>
+                <p className='mt-6 text-base leading-8' style={{ color: themeBodyTextColor }}>{item.text}</p>
               </article>
             ))}
           </div>
         </div>
       </section>
 
-      <section className='bg-white py-16'>
+      <section className='py-16' style={{ backgroundColor: themeSurfaceColor }}>
         <div className='mx-auto max-w-[1440px] px-4 lg:px-10'>
           <div className='mb-10 flex items-center justify-between gap-4'>
-            <h2 className='template-section-title text-[38px] font-extrabold tracking-[-0.05em] text-[#171717] sm:text-[52px]'>
+            <h2 className='template-section-title text-[38px] font-extrabold tracking-[-0.05em] sm:text-[52px]' style={{ color: themeHeadingColor }}>
               Latest news
             </h2>
-            <Link href={toTemplatePath('blog')} className='inline-flex items-center gap-2 text-sm font-extrabold uppercase text-[#d94b2b]'>
+            <Link href={toTemplatePath('blog')} className='inline-flex items-center gap-2 text-sm font-extrabold uppercase' style={{ color: themeDangerColor }}>
               See all
               <ArrowRight className='h-4 w-4' />
             </Link>
@@ -2589,7 +2816,8 @@ export function PocoFoodHome() {
             {newsCards.map((item: any, index: number) => (
               <article
                 key={`${item?.title || 'news'}-${index}`}
-                className='overflow-hidden rounded-[30px] border border-[#efe7ca] bg-[#fffdf6]'
+                className='overflow-hidden rounded-[30px]'
+                style={{ border: `1px solid ${themeMutedBorderColor}`, backgroundColor: themeSurfaceTintColor }}
               >
                 <img
                   src={configuredImage(item?.image, NEWS_FALLBACKS[index % NEWS_FALLBACKS.length])}
@@ -2597,18 +2825,19 @@ export function PocoFoodHome() {
                   className='h-[280px] w-full object-cover'
                 />
                 <div className='p-6'>
-                  <p className='text-xs font-bold uppercase tracking-[0.12em] text-[#d94b2b]'>
+                  <p className='text-xs font-bold uppercase tracking-[0.12em]' style={{ color: themeDangerColor }}>
                     {configuredText(item?.category, 'Uncategorized')} / {configuredText(item?.date, 'September 7, 2020')} / Post by {configuredText(item?.author, 'admin')}
                   </p>
-                  <h3 className='mt-4 text-[30px] font-extrabold leading-[1.02] tracking-[-0.04em] text-[#171717]'>
+                  <h3 className='mt-4 text-[30px] font-extrabold leading-[1.02] tracking-[-0.04em]' style={{ color: themeHeadingColor }}>
                     {configuredText(item?.title, 'Digital restaurant campaign ideas')}
                   </h3>
-                  <p className='mt-4 text-base leading-8 text-[#686868]'>
+                  <p className='mt-4 text-base leading-8' style={{ color: themeBodyTextColor }}>
                     {configuredText(item?.excerpt, 'Campaign storytelling, seasonal offers, and food-first visual merchandising for delivery brands.')}
                   </p>
                   <Link
                     href={item?.slug ? toTemplatePath(`blog/${item.slug}`) : toTemplatePath('blog')}
-                    className='mt-6 inline-flex rounded-[18px] bg-[#ffc222] px-6 py-3 text-sm font-extrabold uppercase tracking-[0.06em] text-[#171717] transition hover:bg-[#ffae00]'
+                    className='mt-6 inline-flex rounded-[18px] px-6 py-3 text-sm font-extrabold uppercase tracking-[0.06em] transition'
+                    style={{ backgroundColor: themeAccentColor, color: themeHeadingColor }}
                   >
                     Read more
                   </Link>
@@ -2626,7 +2855,8 @@ export function PocoFoodHome() {
               <button
                 type='button'
                 onClick={closeFoodCustomization}
-                className='inline-flex h-9 w-9 items-center justify-center rounded-full text-[#6d382f] transition hover:bg-[#f8efe3]'
+                className='inline-flex h-9 w-9 items-center justify-center rounded-full transition'
+                style={{ color: themeDangerColor }}
                 aria-label='Back'
               >
                 <span className='text-2xl leading-none'>&larr;</span>
@@ -2634,7 +2864,8 @@ export function PocoFoodHome() {
               <button
                 type='button'
                 onClick={closeFoodCustomization}
-                className='inline-flex h-9 w-9 items-center justify-center rounded-full text-xl font-bold text-[#6d382f] transition hover:bg-[#f8efe3]'
+                className='inline-flex h-9 w-9 items-center justify-center rounded-full text-xl font-bold transition'
+                style={{ color: themeDangerColor }}
                 aria-label='Close customization popup'
               >
                 <X className='h-4 w-4' />
@@ -2668,26 +2899,32 @@ export function PocoFoodHome() {
                       .map((variant, index) => {
                         const variantName = String(variant?.name || `Variant ${index + 1}`)
                         const active = selectedFoodVariantName === variantName
-                        const variantPrice =
-                          toNumber(variant?.offer_price) || toNumber(variant?.price) || customizingProduct.price
-                        const variantOldPrice = toNumber(variant?.price)
+                        const primaryVariantName = String(customizingProduct.selectedVariantName || '').trim().toLowerCase()
+                        const isPrimaryVariant =
+                          variantName.trim().toLowerCase() === primaryVariantName
+                        const variantPrice = isPrimaryVariant
+                          ? customizingProduct.price
+                          : toNumber(variant?.offer_price) || toNumber(variant?.price) || customizingProduct.price
+                        const variantOldPrice = isPrimaryVariant
+                          ? toNumber(customizingProduct.oldPrice)
+                          : toNumber(variant?.price)
 
                         return (
                           <button
                             key={`${variantName}-${index}`}
                             type='button'
                             onClick={() => setSelectedFoodVariantName(variantName)}
-                            className={`rounded-[16px] border-2 px-4 py-3 text-left transition ${
-                              active
-                                ? 'border-[#7b3127] bg-[#fff8ec]'
-                                : 'border-[#d9d9d9] bg-white hover:border-[#7b3127]'
-                            }`}
+                            className='rounded-[16px] border-2 px-4 py-3 text-left transition'
+                            style={{
+                              borderColor: active ? themeDangerColor : hexToRgba(themeBorderColor, 0.8, 'rgba(217,217,217,0.8)'),
+                              backgroundColor: active ? themeMutedSurfaceColor : themeSurfaceColor,
+                            }}
                           >
                             <p className='text-base font-black text-black sm:text-lg'>{variantName}</p>
-                            <p className='mt-1 text-sm text-[#555] sm:text-base'>
+                            <p className='mt-1 text-sm sm:text-base' style={{ color: hexToRgba(themeHeadingColor, 0.66, 'rgba(85,85,85,0.66)') }}>
                               {formatPrice(variantPrice)}
                               {variantOldPrice > variantPrice ? (
-                                <span className='ml-2 text-[#777] line-through'>
+                                <span className='ml-2 line-through' style={{ color: hexToRgba(themeHeadingColor, 0.48, 'rgba(119,119,119,0.48)') }}>
                                   {formatPrice(variantOldPrice)}
                                 </span>
                               ) : null}
@@ -2709,7 +2946,8 @@ export function PocoFoodHome() {
                       return (
                         <div
                           key={`${addonName}-${index}`}
-                          className='flex items-center justify-between gap-4 rounded-[16px] border border-[#e3e3e3] bg-white px-4 py-3'
+                          className='flex items-center justify-between gap-4 rounded-[16px] border bg-white px-4 py-3'
+                          style={{ borderColor: hexToRgba(themeBorderColor, 0.72, 'rgba(227,227,227,0.72)'), backgroundColor: themeSurfaceColor }}
                         >
                           <div className='min-w-0'>
                             <p className='text-base font-bold text-black sm:text-lg'>{addonName}</p>
@@ -2720,9 +2958,8 @@ export function PocoFoodHome() {
                           <button
                             type='button'
                             onClick={() => toggleFoodAddon(addonName)}
-                            className={`min-w-[96px] rounded-full px-5 py-2.5 text-sm font-black uppercase text-white transition sm:text-base ${
-                              checked ? 'bg-[#4a241c] hover:bg-[#321713]' : 'bg-[#f27a00] hover:bg-[#da6d00]'
-                            }`}
+                            className='min-w-[96px] rounded-full px-5 py-2.5 text-sm font-black uppercase text-white transition sm:text-base'
+                            style={{ backgroundColor: checked ? themeDangerColor : themeAccentColor }}
                           >
                             {checked ? 'Added' : 'Add'}
                           </button>
@@ -2734,10 +2971,10 @@ export function PocoFoodHome() {
               ) : null}
             </div>
 
-            <div className='flex-none border-t border-[#ededed] bg-white px-4 py-3 sm:px-6 sm:py-4'>
+            <div className='flex-none border-t bg-white px-4 py-3 sm:px-6 sm:py-4' style={{ borderColor: hexToRgba(themeBorderColor, 0.54, 'rgba(237,237,237,0.54)'), backgroundColor: themeSurfaceColor }}>
               <div className='flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between'>
                 <div className='flex items-center justify-between gap-4 sm:justify-start'>
-                  <div className='inline-flex items-center rounded-full border border-[#d9d9d9]'>
+                  <div className='inline-flex items-center rounded-full border' style={{ borderColor: hexToRgba(themeBorderColor, 0.8, 'rgba(217,217,217,0.8)') }}>
                       <button
                         type='button'
                         onClick={() => setCustomizationQuantity((current) => Math.max(1, current - 1))}
@@ -2771,7 +3008,11 @@ export function PocoFoodHome() {
                   type='button'
                   onClick={() => void addCustomizedFoodToCart()}
                   disabled={addingId === customizingProduct._id}
-                  className='w-full rounded-full bg-[#f27a00] px-8 py-3.5 text-base font-black uppercase tracking-[0.04em] text-white transition hover:bg-[#da6d00] disabled:cursor-not-allowed disabled:bg-[#d7c1a9] sm:w-auto sm:min-w-[260px] sm:text-lg'
+                  className='w-full rounded-full px-8 py-3.5 text-base font-black uppercase tracking-[0.04em] text-white transition disabled:cursor-not-allowed sm:w-auto sm:min-w-[260px] sm:text-lg'
+                  style={{
+                    backgroundColor: addingId === customizingProduct._id ? themeDisabledSurfaceColor : themeAccentColor,
+                    color: addingId === customizingProduct._id ? themeDisabledTextColor : '#ffffff',
+                  }}
                 >
                   {addingId === customizingProduct._id ? 'Adding...' : 'Add to cart'}
                 </button>
@@ -2784,7 +3025,8 @@ export function PocoFoodHome() {
       <button
         type='button'
         onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-        className='fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full bg-[#d94b2b] text-white shadow-[0_16px_28px_rgba(217,75,43,0.24)] transition hover:scale-105'
+        className='fixed bottom-6 right-6 z-40 inline-flex h-12 w-12 items-center justify-center rounded-full text-white transition hover:scale-105'
+        style={{ backgroundColor: themeDangerColor, boxShadow: `0 16px 28px ${themeDangerGlow}` }}
       >
         <Search className='h-4 w-4' />
       </button>

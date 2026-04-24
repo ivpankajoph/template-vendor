@@ -135,6 +135,7 @@ export function PocoFoodFooter() {
       className='mt-12 text-white'
       style={{ backgroundColor: footerBackground }}
       data-template-section='footer'
+      data-template-component='components.theme.footerBackground'
     >
       <div className='border-b border-white/10'>
         <div className='mx-auto grid max-w-[1440px] gap-8 px-5 py-14 lg:grid-cols-4 lg:px-10'>
@@ -144,6 +145,7 @@ export function PocoFoodFooter() {
               style={{ color: footerBottomBackground }}
               data-template-path='components.social_page.footer.brand_heading'
               data-template-section='footer'
+              data-template-component='components.theme.footerBottomBackground'
             >
               {getFooterText('brand_heading', 'Oph!')}
             </h3>
@@ -167,7 +169,13 @@ export function PocoFoodFooter() {
             >
               {getFooterText('book_text', 'Fresh burgers, pizzas, combos, and chef specials for your everyday cravings.')}
             </p>
-            <p className='mt-4 text-3xl font-extrabold' style={{ color: footerAccentColor }}>{phone}</p>
+            <p
+              className='mt-4 text-3xl font-extrabold'
+              style={{ color: footerAccentColor }}
+              data-template-component='components.theme.footerAccentColor'
+            >
+              {phone}
+            </p>
           </div>
 
           <div>
@@ -223,6 +231,7 @@ export function PocoFoodFooter() {
                 style={{ backgroundColor: footerAccentColor }}
                 data-template-path='components.social_page.footer.newsletter_button'
                 data-template-section='footer'
+                data-template-component='components.theme.footerAccentColor'
               >
                 {getFooterText('newsletter_button', 'SUBSCRIBE')}
               </button>
@@ -262,7 +271,10 @@ export function PocoFoodFooter() {
         </div>
       </div>
 
-      <div style={{ backgroundColor: footerBottomBackground }}>
+      <div
+        style={{ backgroundColor: footerBottomBackground }}
+        data-template-component='components.theme.footerBottomBackground'
+      >
         <div className='mx-auto flex max-w-[1440px] flex-col gap-4 px-5 py-5 text-sm text-white lg:flex-row lg:items-center lg:justify-between lg:px-10'>
           <p>
             Copyright © {new Date().getFullYear()} {businessName}. All Rights Reserved.
