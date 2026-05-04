@@ -7,6 +7,7 @@ import { useParams, usePathname } from 'next/navigation'
 import { useSelector } from 'react-redux'
 import {
   CircleUserRound,
+  CalendarCheck2,
   Heart,
   Menu,
   PhoneCall,
@@ -58,6 +59,10 @@ export function PocoFoodNavbar() {
   const cartHref = toTemplatePath('cart')
   const wishlistHref = toTemplatePath('wishlist')
   const profileHref = toTemplatePath(isLoggedIn ? 'profile' : 'login')
+  const openReservationForm = () => {
+    if (typeof window === 'undefined') return
+    window.dispatchEvent(new CustomEvent('pocofood-open-reservation'))
+  }
 
   const logo = String(template?.components?.logo || '').trim()
   const headerConfig = template?.components?.home_page?.header || {}
@@ -90,13 +95,13 @@ export function PocoFoodNavbar() {
       label: getHeaderText('navBlogLabel', 'Blog'),
       href: toTemplatePath('blog'),
       emphasis: false,
-      visible: headerConfig?.showBlogLink !== false,
+      visible: false,
     },
     {
       label: getHeaderText('navContactLabel', 'Contact'),
       href: toTemplatePath('contact'),
       emphasis: false,
-      visible: headerConfig?.showContactLink !== false,
+      visible: false,
     },
   ].filter((item) => item.visible)
   const businessName = String(
@@ -253,6 +258,22 @@ export function PocoFoodNavbar() {
         </div>
 
         <div className='hidden items-center gap-2.5 lg:flex'>
+          <button
+            type='button'
+            onClick={openReservationForm}
+            className='inline-flex min-h-11 items-center gap-2 rounded-full border px-4 py-2 text-sm font-extrabold uppercase tracking-[0.04em] transition hover:-translate-y-0.5'
+            style={{
+              borderColor: accentSoftBorder,
+              backgroundColor: accentColor,
+              color: headerTextColor,
+              boxShadow: `0 10px 22px ${toRgba(accentColor, 0.18)}`,
+            }}
+            data-template-component='components.theme.accentColor'
+          >
+            <CalendarCheck2 className='h-4 w-4' style={{ color: dangerColor }} />
+            Book Table
+          </button>
+
           <div
             className='flex items-center gap-2 rounded-full border px-3 py-1.5'
             style={{ borderColor: accentSoftBorder, color: headerTextColor }}
@@ -383,6 +404,22 @@ export function PocoFoodNavbar() {
                 {item.label}
               </Link>
             ))}
+            <button
+              type='button'
+              onClick={() => {
+                openReservationForm()
+                setMobileMenuOpen(false)
+              }}
+              className='inline-flex items-center gap-2 rounded-2xl border px-4 py-3 text-sm font-extrabold uppercase'
+              style={{
+                borderColor: accentColor,
+                backgroundColor: accentColor,
+                color: headerTextColor,
+              }}
+            >
+              <CalendarCheck2 className='h-4 w-4 text-[#d94b2b]' />
+              Book Table
+            </button>
             <Link
               href={toTemplatePath('cart')}
               onClick={() => setMobileMenuOpen(false)}

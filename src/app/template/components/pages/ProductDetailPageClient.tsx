@@ -208,11 +208,22 @@ type FoodMenuItem = {
   prep_time_minutes?: number;
   addons?: FoodAddonOption[];
   variants?: FoodVariantOption[];
+  slug?: string;
+  seo_title?: string;
+  seo_description?: string;
+  seo_keywords?: string[];
+  service_areas?: string[];
 };
 
 type FoodRestaurantProfile = {
   restaurant_name?: string;
   mobile?: string;
+  email?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  pincode?: string;
+  service_areas?: string[];
   minimum_order_amount?: number;
   average_preparation_time?: number;
   delivery_radius_km?: number;
@@ -1540,9 +1551,49 @@ export default function ProductDetailPage() {
     const isFoodWishlisted = foodWishlistIds.includes(
       String(foodProduct._id || ""),
     );
+    const foodSchema = {
+      "@context": "https://schema.org",
+      "@type": "MenuItem",
+      name: foodProduct.item_name || "Food item",
+      description:
+        foodProduct.seo_description ||
+        foodProduct.description ||
+        "Freshly prepared restaurant menu item.",
+      image: foodImages,
+      offers: {
+        "@type": "Offer",
+        priceCurrency: "INR",
+        price: foodPricing.finalPrice,
+        availability:
+          foodProduct.is_available === false
+            ? "https://schema.org/OutOfStock"
+            : "https://schema.org/InStock",
+      },
+      provider: {
+        "@type": "Restaurant",
+        name: foodRestaurant?.restaurant_name || "Restaurant",
+        telephone: foodRestaurant?.mobile || "",
+        address: {
+          "@type": "PostalAddress",
+          streetAddress: foodRestaurant?.address || "",
+          addressLocality: foodRestaurant?.city || "",
+          addressRegion: foodRestaurant?.state || "",
+          postalCode: foodRestaurant?.pincode || "",
+          addressCountry: "IN",
+        },
+        areaServed:
+          foodProduct.service_areas?.length
+            ? foodProduct.service_areas
+            : foodRestaurant?.service_areas || [],
+      },
+    };
 
     return (
       <div className="min-h-screen bg-[#faf7f1] pb-24 text-[#1f1720] lg:pb-0">
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(foodSchema) }}
+        />
         <div className="mx-auto max-w-7xl px-4 py-5 sm:px-6 lg:py-8">
           <div className="mb-5 flex flex-wrap items-center gap-2 text-xs font-semibold uppercase tracking-[0.16em] text-[#8b6d58]">
             <Link

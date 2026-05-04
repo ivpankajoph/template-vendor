@@ -295,7 +295,6 @@ export default function AllProducts() {
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [categoryMap, setCategoryMap] = useState<Record<string, string>>({});
   const [foodMenuItems, setFoodMenuItems] = useState<FoodMenuItem[]>([]);
-  const [foodOffers, setFoodOffers] = useState<FoodOffer[]>([]);
   const [addingById, setAddingById] = useState<Record<string, boolean>>({});
   const [apiProducts, setApiProducts] = useState<any[]>([]);
   const [productFacets, setProductFacets] = useState<{
@@ -456,7 +455,6 @@ export default function AllProducts() {
       if (!isPocoFood || !vendorId) {
         if (mounted) {
           setFoodMenuItems([]);
-          setFoodOffers([]);
         }
         return;
       }
@@ -469,17 +467,12 @@ export default function AllProducts() {
         const items = Array.isArray(result?.data?.menu_items)
           ? result.data.menu_items.filter((item: FoodMenuItem) => Boolean(item?._id))
           : [];
-        const offers = Array.isArray(result?.data?.offers)
-          ? result.data.offers.filter((offer: FoodOffer) => offer?.is_active !== false)
-          : [];
         if (mounted) {
           setFoodMenuItems(items);
-          setFoodOffers(offers);
         }
       } catch {
         if (mounted) {
           setFoodMenuItems([]);
-          setFoodOffers([]);
         }
       }
     };
@@ -780,27 +773,26 @@ export default function AllProducts() {
   });
   const visibleFoodCount = filteredFoodItems.length;
   const visibleFoodWord = visibleFoodCount === 1 ? "item" : "items";
-  const featuredFoodOffer = foodOffers[0] || null;
 
   if (isPocoFood) {
     return (
-      <div className="min-h-screen bg-[#fcf8f1] py-10 text-[#1f1720] lg:py-14">
+      <div className="min-h-screen bg-[#fcf8f1] py-6 text-[#1f1720] lg:py-8">
         <div className="mx-auto max-w-7xl px-4 sm:px-6">
-          <div className="mb-8 rounded-[2rem] border border-[#eadfce] bg-gradient-to-r from-[#fff6e7] via-white to-[#fff0f0] p-6 shadow-[0_18px_40px_rgba(83,45,27,0.07)]">
-            <div className="flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
+          <div className="mb-5 rounded-[1.5rem] border border-[#eadfce] bg-gradient-to-r from-[#fff6e7] via-white to-[#fff0f0] p-5 shadow-[0_14px_30px_rgba(83,45,27,0.06)]">
+            <div className="flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
               <div>
                 <p className="text-xs font-semibold uppercase tracking-[0.28em] text-[#b46a2d]">
                   PocoFood Menu
                 </p>
-                <h1 className="mt-2 text-3xl font-bold tracking-[-0.03em] sm:text-4xl">
+                <h1 className="mt-1.5 text-3xl font-bold tracking-[-0.03em] sm:text-4xl">
                   All food items
                 </h1>
-                <p className="mt-3 max-w-2xl text-sm leading-7 text-[#6a5a51]">
+                <p className="mt-2 max-w-2xl text-sm leading-6 text-[#6a5a51]">
                   Yahan sirf aapke Food Hub ke menu items show honge. Ecommerce products is page par nahi aayenge.
                 </p>
               </div>
 
-              <div className="rounded-2xl border border-[#eadfce] bg-white px-5 py-4 text-center shadow-sm">
+              <div className="rounded-2xl border border-[#eadfce] bg-white px-5 py-3 text-center shadow-sm">
                 <p className="text-xs font-semibold uppercase tracking-[0.22em] text-[#9f8471]">
                   Live Menu
                 </p>
@@ -810,53 +802,16 @@ export default function AllProducts() {
             </div>
           </div>
 
-          {foodOffers.length ? (
-            <div className="mb-8 rounded-[1.75rem] border border-[#eadfce] bg-[#1f1720] p-5 text-white shadow-[0_18px_40px_rgba(83,45,27,0.14)]">
-              <div className="flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <p className="text-xs font-bold uppercase tracking-[0.24em] text-[#ffc222]">
-                    Active offers
-                  </p>
-                  <h2 className="mt-2 text-2xl font-bold tracking-[-0.03em] sm:text-3xl">
-                    {featuredFoodOffer?.offer_title || "Food offers are live"}
-                  </h2>
-                  <p className="mt-2 text-sm leading-6 text-white/70">
-                    {getFoodOfferFinePrint(featuredFoodOffer)}
-                  </p>
-                </div>
-
-                <div className="grid gap-3 sm:grid-cols-2 lg:min-w-[430px]">
-                  {foodOffers.slice(0, 2).map((offer, index) => (
-                    <div
-                      key={offer?._id || `${offer?.offer_title || "offer"}-${index}`}
-                      className="rounded-[1.2rem] border border-white/10 bg-white/10 p-4"
-                    >
-                      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-white/55">
-                        {String(offer?.offer_type || "offer").replace(/_/g, " ")}
-                      </p>
-                      <p className="mt-2 text-2xl font-bold text-[#ffc222]">
-                        {getFoodOfferValueLabel(offer)}
-                      </p>
-                      <p className="mt-2 line-clamp-1 text-sm font-semibold text-white">
-                        {offer?.offer_title || "Live food deal"}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          ) : null}
-
-          <div className="mb-8 flex flex-col gap-4 rounded-[1.75rem] border border-[#eadfce] bg-white p-5 shadow-sm lg:flex-row lg:items-center lg:justify-between">
+          <div className="mb-5 flex flex-col gap-3 rounded-[1.35rem] border border-[#eadfce] bg-white p-4 shadow-sm lg:flex-row lg:items-center lg:justify-between">
             <div className="relative w-full lg:max-w-xl">
               <input
                 type="text"
                 placeholder="Search food items, categories, dishes..."
-                className="w-full rounded-2xl border border-[#e7d7c4] bg-[#fffdf9] py-3 pl-11 pr-4 text-sm outline-none transition focus:border-[#c97b38]"
+                className="w-full rounded-xl border border-[#e7d7c4] bg-[#fffdf9] py-2.5 pl-10 pr-4 text-sm outline-none transition focus:border-[#c97b38]"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
-              <Search className="absolute left-3.5 top-3.5 text-[#ad8c72]" size={18} />
+              <Search className="absolute left-3.5 top-3 text-[#ad8c72]" size={17} />
             </div>
 
             <div className="flex flex-wrap gap-2">
@@ -877,7 +832,7 @@ export default function AllProducts() {
           </div>
 
           {filteredFoodItems.length > 0 ? (
-            <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 xl:grid-cols-3">
+            <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-3">
               {filteredFoodItems.map((item) => {
                 const pricing = getFoodPricing(item);
                 const imageUrl = getFoodMenuImageUrl(item);
@@ -891,9 +846,9 @@ export default function AllProducts() {
                 return (
                   <div
                     key={item._id}
-                    className="overflow-hidden rounded-[1.75rem] border border-[#eadfce] bg-white shadow-[0_18px_40px_rgba(83,45,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_22px_48px_rgba(83,45,27,0.1)]"
+                    className="overflow-hidden rounded-[1.4rem] border border-[#eadfce] bg-white shadow-[0_14px_30px_rgba(83,45,27,0.06)] transition hover:-translate-y-1 hover:shadow-[0_18px_40px_rgba(83,45,27,0.1)]"
                   >
-                    <Link href={foodProductPath} className="relative block h-64 overflow-hidden bg-[#fff8ef] p-4">
+                    <Link href={foodProductPath} className="relative block h-56 overflow-hidden bg-[#fff8ef] p-4">
                       {imageUrl ? (
                         <img
                           src={imageUrl}
@@ -920,10 +875,6 @@ export default function AllProducts() {
                       {pricing.discountPercent > 0 ? (
                         <span className="absolute right-4 top-4 rounded-full bg-[#c97b38] px-3 py-1 text-xs font-semibold text-white shadow-sm">
                           {pricing.discountPercent}% OFF
-                        </span>
-                      ) : featuredFoodOffer ? (
-                        <span className="absolute right-4 top-4 rounded-full bg-[#1f1720] px-3 py-1 text-xs font-semibold text-[#ffc222] shadow-sm">
-                          Offer available
                         </span>
                       ) : null}
                     </Link>

@@ -6,6 +6,7 @@ type UnknownRecord = Record<string, any>;
 type TemplatePreviewPayload = {
   template: UnknownRecord | null;
   products: UnknownRecord[];
+  foodMenuItems: UnknownRecord[];
 };
 
 type BuildTemplateSitemapOptions = {
@@ -117,7 +118,7 @@ const fetchTemplatePreview = async (
 ): Promise<TemplatePreviewPayload> => {
   const apiBase = getApiBase();
   if (!apiBase || !vendorId) {
-    return { template: null, products: [] };
+    return { template: null, products: [], foodMenuItems: [] };
   }
 
   const resolvedCity = normalizeCitySlug(citySlug);
@@ -139,13 +140,19 @@ const fetchTemplatePreview = async (
     const payload = response.data;
     const template = payload?.data?.template || payload?.data || payload?.template || null;
     const products = Array.isArray(payload?.data?.products) ? payload.data.products : [];
+    const foodResponse = await fetchJson(
+      `${apiBase}/vendors/${encodeURIComponent(vendorId)}/food-storefront`
+    );
+    const foodMenuItems = Array.isArray(foodResponse?.data?.data?.menu_items)
+      ? foodResponse.data.data.menu_items
+      : [];
 
-    if (template || products.length) {
-      return { template, products };
+    if (template || products.length || foodMenuItems.length) {
+      return { template, products, foodMenuItems };
     }
   }
 
-  return { template: null, products: [] };
+  return { template: null, products: [], foodMenuItems: [] };
 };
 
 const toSlug = (value?: string) =>
@@ -183,7 +190,7 @@ export async function buildTemplateSitemap(
   const websiteId = normalizeWebsiteId(options.websiteId);
   const basePath = normalizeSegment(options.basePath);
   const origin = await resolveOrigin(options.hostname);
-  const { template, products } = await fetchTemplatePreview(vendorId, citySlug, websiteId);
+  const { template, products, foodMenuItems } = await fetchTemplatePreview(vendorId, citySlug, websiteId);
   const lastModified =
     String(template?.updatedAt || template?.createdAt || "").trim() ||
     new Date().toISOString();
@@ -242,6 +249,14 @@ export async function buildTemplateSitemap(
     if (categorySlug && !OBJECT_ID_REGEX.test(categorySlug)) {
       categorySlugs.add(categorySlug);
     }
+  });
+
+  foodMenuItems.forEach((item: UnknownRecord) => {
+    const id = normalizeSegment(item?._id);
+    if (id) addEntry(`product/${id}`, 0.85);
+
+    const categorySlug = toSlug(item?.category);
+    if (categorySlug) categorySlugs.add(categorySlug);
   });
 
   categorySlugs.forEach((slug) => addEntry(`category/${slug}`, 0.7));

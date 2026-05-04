@@ -178,6 +178,13 @@ const NEWS_FALLBACKS = [
   'https://images.unsplash.com/photo-1528735602780-2552fd46c7af?auto=format&fit=crop&w=900&q=80',
   'https://images.unsplash.com/photo-1497534446932-c925b458314e?auto=format&fit=crop&w=900&q=80',
 ]
+
+const toDateInputValue = (date = new Date()) => {
+  const year = date.getFullYear()
+  const month = String(date.getMonth() + 1).padStart(2, '0')
+  const day = String(date.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
 const HERO_MOTION_FALLBACKS = [
   'https://images.unsplash.com/photo-1513104890138-7c749659a591?auto=format&fit=crop&w=1600&q=80',
   'https://images.unsplash.com/photo-1514326640560-7d063ef2aed5?auto=format&fit=crop&w=1600&q=80',
@@ -523,9 +530,21 @@ export function PocoFoodHome() {
   const [wishlistIds, setWishlistIds] = useState<string[]>([])
   const [heroSearchText, setHeroSearchText] = useState('')
   const [heroSearchOpen, setHeroSearchOpen] = useState(false)
+  const [reservationOpen, setReservationOpen] = useState(false)
+  const [reservationSubmitting, setReservationSubmitting] = useState(false)
+  const [reservationMessage, setReservationMessage] = useState('')
+  const [reservationForm, setReservationForm] = useState({
+    customer_name: '',
+    customer_phone: '',
+    customer_email: '',
+    number_of_persons: '2',
+    reservation_date: toDateInputValue(),
+    reservation_time: '',
+    notes: '',
+  })
 
   useEffect(() => {
-    if (typeof document === 'undefined' || !customizingProduct) return
+    if (typeof document === 'undefined' || (!customizingProduct && !reservationOpen)) return
 
     const { body } = document
     const previousOverflow = body.style.overflow
@@ -541,7 +560,7 @@ export function PocoFoodHome() {
       body.style.overflow = previousOverflow
       body.style.paddingRight = previousPaddingRight
     }
-  }, [customizingProduct])
+  }, [customizingProduct, reservationOpen])
 
   const home = template?.components?.home_page || {}
   const faqSection = template?.components?.social_page?.faqs || {}
@@ -1309,6 +1328,64 @@ export function PocoFoodHome() {
     }
   }
 
+  const submitReservation = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault()
+    setReservationMessage('')
+
+    if (!vendorId) {
+      setReservationMessage('Restaurant is not ready for table booking yet.')
+      return
+    }
+
+    if (
+      !reservationForm.customer_name.trim() ||
+      !reservationForm.customer_phone.trim() ||
+      !reservationForm.reservation_date ||
+      !reservationForm.reservation_time
+    ) {
+      setReservationMessage('Name, phone, date, and time are required.')
+      return
+    }
+
+    const numberOfPersons = Number(reservationForm.number_of_persons)
+    if (!Number.isFinite(numberOfPersons) || numberOfPersons < 1) {
+      setReservationMessage('Guest count must be at least 1.')
+      return
+    }
+
+    setReservationSubmitting(true)
+    try {
+      const response = await fetch(`${API_BASE}/vendors/${vendorId}/food-reservations`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...reservationForm,
+          number_of_persons: numberOfPersons,
+        }),
+      })
+      const payload = await response.json().catch(() => ({}))
+      if (!response.ok) {
+        throw new Error(payload?.message || 'Failed to send reservation request.')
+      }
+
+      setReservationMessage('Table booking request sent. Restaurant will confirm it soon.')
+      setReservationForm((current) => ({
+        ...current,
+        customer_name: '',
+        customer_phone: '',
+        customer_email: '',
+        number_of_persons: '2',
+        reservation_date: toDateInputValue(),
+        reservation_time: '',
+        notes: '',
+      }))
+    } catch (error: any) {
+      setReservationMessage(error?.message || 'Failed to send reservation request.')
+    } finally {
+      setReservationSubmitting(false)
+    }
+  }
+
   const addOfferToCart = async (
     offer: FoodStorefrontOffer,
     comboItems: ReturnType<typeof getComboOfferItems>,
@@ -1398,6 +1475,7 @@ export function PocoFoodHome() {
                     />
               {heroSearchText ? (
                 <button
+                  id='book-table'
                   type='button'
                   onClick={() => {
                     setHeroSearchText('')
@@ -1709,6 +1787,22 @@ export function PocoFoodHome() {
                   </span>
                   {heroButtonSecondary}
                 </Link>
+                <button
+                  type='button'
+                  onClick={() => {
+                    setReservationMessage('')
+                    setReservationOpen(true)
+                  }}
+                  className='inline-flex items-center gap-3 rounded-[18px] border px-6 py-4 text-sm font-extrabold uppercase tracking-[0.08em] backdrop-blur-sm transition hover:-translate-y-0.5'
+                  style={{
+                    backgroundColor: hexToRgba(themeSurfaceColor, 0.12, 'rgba(255,255,255,0.12)'),
+                    color: '#ffffff',
+                    borderColor: hexToRgba(themeAccentColor, 0.56, 'rgba(255,194,34,0.56)'),
+                  }}
+                >
+                  <CalendarCheck2 className='h-5 w-5' style={{ color: themeAccentColor }} />
+                  Book Table
+                </button>
                 <div className='rounded-[18px] border border-white/12 bg-black/20 px-5 py-3 backdrop-blur-sm'>
                   <p
                     className='text-[28px] font-extrabold sm:text-[40px]'
@@ -2847,6 +2941,182 @@ export function PocoFoodHome() {
           </div>
         </div>
       </section>
+
+      {reservationOpen ? (
+        <div className='fixed inset-0 z-50 flex items-center justify-center overflow-y-auto bg-black/55 px-3 py-6 sm:px-6'>
+          <button
+            type='button'
+            className='absolute inset-0'
+            aria-label='Close table booking form'
+            onClick={() => setReservationOpen(false)}
+          />
+          <div className='relative w-full max-w-[560px] overflow-hidden rounded-[22px] bg-white shadow-[0_28px_80px_rgba(0,0,0,0.28)]'>
+            <div className='flex items-center justify-between border-b px-5 py-4' style={{ borderColor: themeMutedBorderColor }}>
+              <div>
+                <p className='text-xs font-black uppercase tracking-[0.18em]' style={{ color: themeDangerColor }}>
+                  Table Reservation
+                </p>
+                <h3 className='mt-1 text-2xl font-black tracking-[-0.03em]' style={{ color: themeHeadingColor }}>
+                  Book a table
+                </h3>
+              </div>
+              <button
+                type='button'
+                onClick={() => setReservationOpen(false)}
+                className='inline-flex h-10 w-10 items-center justify-center rounded-full border transition'
+                style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                aria-label='Close table booking form'
+              >
+                <X className='h-4 w-4' />
+              </button>
+            </div>
+
+            <form onSubmit={submitReservation} className='space-y-4 px-5 py-5'>
+              <div className='grid gap-4 sm:grid-cols-2'>
+                <label className='space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                  Name
+                  <input
+                    type='text'
+                    value={reservationForm.customer_name}
+                    onChange={(event) =>
+                      setReservationForm((current) => ({
+                        ...current,
+                        customer_name: event.target.value,
+                      }))
+                    }
+                    className='h-12 w-full rounded-[14px] border px-4 text-sm font-semibold outline-none'
+                    style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                    placeholder='Your name'
+                    required
+                  />
+                </label>
+                <label className='space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                  Phone
+                  <input
+                    type='tel'
+                    value={reservationForm.customer_phone}
+                    onChange={(event) =>
+                      setReservationForm((current) => ({
+                        ...current,
+                        customer_phone: event.target.value,
+                      }))
+                    }
+                    className='h-12 w-full rounded-[14px] border px-4 text-sm font-semibold outline-none'
+                    style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                    placeholder='Mobile number'
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className='block space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                Email
+                <input
+                  type='email'
+                  value={reservationForm.customer_email}
+                  onChange={(event) =>
+                    setReservationForm((current) => ({
+                      ...current,
+                      customer_email: event.target.value,
+                    }))
+                  }
+                  className='h-12 w-full rounded-[14px] border px-4 text-sm font-semibold outline-none'
+                  style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                  placeholder='Optional'
+                />
+              </label>
+
+              <div className='grid gap-4 sm:grid-cols-3'>
+                <label className='space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                  Date
+                  <input
+                    type='date'
+                    min={toDateInputValue()}
+                    value={reservationForm.reservation_date}
+                    onChange={(event) =>
+                      setReservationForm((current) => ({
+                        ...current,
+                        reservation_date: event.target.value,
+                      }))
+                    }
+                    className='h-12 w-full rounded-[14px] border px-3 text-sm font-semibold outline-none'
+                    style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                    required
+                  />
+                </label>
+                <label className='space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                  Time
+                  <input
+                    type='time'
+                    value={reservationForm.reservation_time}
+                    onChange={(event) =>
+                      setReservationForm((current) => ({
+                        ...current,
+                        reservation_time: event.target.value,
+                      }))
+                    }
+                    className='h-12 w-full rounded-[14px] border px-3 text-sm font-semibold outline-none'
+                    style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                    required
+                  />
+                </label>
+                <label className='space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                  Guests
+                  <input
+                    type='number'
+                    min='1'
+                    max='30'
+                    value={reservationForm.number_of_persons}
+                    onChange={(event) =>
+                      setReservationForm((current) => ({
+                        ...current,
+                        number_of_persons: event.target.value,
+                      }))
+                    }
+                    className='h-12 w-full rounded-[14px] border px-3 text-sm font-semibold outline-none'
+                    style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                    required
+                  />
+                </label>
+              </div>
+
+              <label className='block space-y-2 text-sm font-bold' style={{ color: themeHeadingColor }}>
+                Note
+                <textarea
+                  value={reservationForm.notes}
+                  onChange={(event) =>
+                    setReservationForm((current) => ({
+                      ...current,
+                      notes: event.target.value,
+                    }))
+                  }
+                  className='min-h-24 w-full resize-none rounded-[14px] border px-4 py-3 text-sm font-semibold outline-none'
+                  style={{ borderColor: themeMutedBorderColor, color: themeHeadingColor }}
+                  placeholder='Birthday, window seat, high chair, etc.'
+                />
+              </label>
+
+              {reservationMessage ? (
+                <p className='rounded-[14px] px-4 py-3 text-sm font-bold' style={{ backgroundColor: themeMutedSurfaceColor, color: themeHeadingColor }}>
+                  {reservationMessage}
+                </p>
+              ) : null}
+
+              <button
+                type='submit'
+                disabled={reservationSubmitting}
+                className='flex w-full items-center justify-center rounded-full px-5 py-3.5 text-sm font-black uppercase tracking-[0.08em] transition disabled:cursor-not-allowed'
+                style={{
+                  backgroundColor: reservationSubmitting ? themeDisabledSurfaceColor : themeAccentColor,
+                  color: reservationSubmitting ? themeDisabledTextColor : themeHeaderTextColor,
+                }}
+              >
+                {reservationSubmitting ? 'Sending...' : 'Send Booking Request'}
+              </button>
+            </form>
+          </div>
+        </div>
+      ) : null}
 
       {customizingProduct ? (
         <div className='fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/45 px-3 py-4 sm:px-6'>

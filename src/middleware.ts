@@ -285,6 +285,17 @@ export async function middleware(request: NextRequest) {
   requestHeaders.set("x-current-path", request.nextUrl.pathname || "/");
 
   const pathname = request.nextUrl.pathname || "/";
+  if (
+    pathname.startsWith("/_next/static/chunks/app/") &&
+    /%5B|%5D/i.test(pathname)
+  ) {
+    const decodedChunkUrl = request.nextUrl.clone();
+    decodedChunkUrl.pathname = pathname
+      .replace(/%5B/gi, "[")
+      .replace(/%5D/gi, "]");
+    return NextResponse.rewrite(decodedChunkUrl);
+  }
+
   const segments = pathname.split("/").filter(Boolean);
   const requestPreviewContext = getPreviewContext(segments);
   const requestStandardContext = getStandardTemplateContext(segments);
@@ -509,6 +520,7 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
+    "/_next/static/chunks/app/:path*",
     "/((?!api|_next/static|_next/image|favicon.ico|.*\\..*).*)",
     "/robots.txt",
     "/sitemap.xml",

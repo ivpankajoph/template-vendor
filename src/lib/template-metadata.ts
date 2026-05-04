@@ -12,6 +12,8 @@ type UnknownRecord = Record<string, any>;
 type TemplatePreviewPayload = {
   template: UnknownRecord | null;
   products: UnknownRecord[];
+  foodMenuItems: UnknownRecord[];
+  foodRestaurant: UnknownRecord | null;
 };
 
 type TemplateMetadataPage =
@@ -306,7 +308,7 @@ const fetchTemplatePreview = cache(
   ): Promise<TemplatePreviewPayload> => {
     const apiBase = getApiBase();
     if (!apiBase || !vendorId) {
-      return { template: null, products: [] };
+      return { template: null, products: [], foodMenuItems: [], foodRestaurant: null };
     }
 
     const resolvedCity = normalizeCitySlug(citySlug);
@@ -316,7 +318,7 @@ const fetchTemplatePreview = cache(
     const now = Date.now();
     const blockedUntil = metadataNotFoundByVendor.get(scopeKey) || 0;
     if (blockedUntil > now) {
-      return { template: null, products: [] };
+      return { template: null, products: [], foodMenuItems: [], foodRestaurant: null };
     }
 
     const cityQuery = `city=${encodeURIComponent(resolvedCity)}`;
@@ -353,11 +355,22 @@ const fetchTemplatePreview = cache(
       const products = Array.isArray(payload?.data?.products)
         ? payload.data.products
         : [];
+      const foodResponse = await fetchJson(
+        `${apiBase}/vendors/${encodeURIComponent(vendorId)}/food-storefront`
+      );
+      const foodMenuItems = Array.isArray(foodResponse?.data?.data?.menu_items)
+        ? foodResponse.data.data.menu_items
+        : [];
+      const foodRestaurant =
+        foodResponse?.data?.data?.restaurant &&
+        typeof foodResponse.data.data.restaurant === "object"
+          ? foodResponse.data.data.restaurant
+          : null;
 
-      if (template || products.length > 0) {
+      if (template || products.length > 0 || foodMenuItems.length > 0) {
         metadataEndpointPreference.set(scopeKey, endpoint);
         metadataNotFoundByVendor.delete(scopeKey);
-        return { template, products };
+        return { template, products, foodMenuItems, foodRestaurant };
       }
     }
 
@@ -368,6 +381,8 @@ const fetchTemplatePreview = cache(
     return {
       template: null,
       products: [],
+      foodMenuItems: [],
+      foodRestaurant: null,
     };
   }
 );
@@ -386,6 +401,25 @@ const fetchProductById = cache(async (productId: string, citySlug: string = "all
   const payload = response.data;
   return payload?.product || payload?.data?.product || payload?.data || null;
 });
+
+const buildFoodSeoDescription = (
+  item: UnknownRecord,
+  restaurant: UnknownRecord | null,
+  storeName: string
+) => {
+  const areas = Array.isArray(item?.service_areas) && item.service_areas.length
+    ? item.service_areas
+    : Array.isArray(restaurant?.service_areas)
+      ? restaurant.service_areas
+      : [];
+  return [
+    `Order ${pickString(item?.item_name, item?.name, "food item")} from ${pickString(restaurant?.restaurant_name, storeName)}.`,
+    pickString(item?.description, `${pickString(item?.category, "Food item")} available for dine-in, takeaway and delivery.`),
+    areas.length ? `Available in ${areas.join(", ")}.` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+};
 
 const getStoreName = (template: UnknownRecord | null) =>
   pickString(
@@ -490,7 +524,7 @@ export async function buildTemplateMetadata(
     });
     return mergeMetadataWithSeoOverride(metadata, override);
   };
-  const { template, products } = await fetchTemplatePreview(
+  const { template, products, foodMenuItems, foodRestaurant } = await fetchTemplatePreview(
     vendorId,
     citySlug,
     websiteId
@@ -551,6 +585,35 @@ export async function buildTemplateMetadata(
   }
 
   if (page === "product-detail" && productId) {
+    const foodItem = foodMenuItems.find((item) => item?._id === productId) || null;
+    if (foodItem) {
+      const foodMeta = readMetaFromObject({
+        ...foodItem,
+        metaTitle: foodItem?.seo_title,
+        metaDescription: foodItem?.seo_description,
+        metaKeywords: foodItem?.seo_keywords,
+      });
+      const metadata = await applyAdminSeo(makeMetadata({
+        title: pickString(
+          foodMeta.title,
+          foodItem?.item_name,
+          `Menu item | ${storeName}`
+        ),
+        description: pickString(
+          foodMeta.description,
+          buildFoodSeoDescription(foodItem, foodRestaurant, storeName),
+          defaultDescription
+        ),
+        keywords: uniqueKeywords(
+          foodMeta.keywords,
+          parseKeywords(foodItem?.seo_keywords),
+          [foodItem?.item_name, foodItem?.category].filter(Boolean) as string[],
+          Array.isArray(foodItem?.service_areas) ? foodItem.service_areas : []
+        ),
+      }));
+      return enforceCityOnProductMetadata(metadata, citySlug);
+    }
+
     const productFromCatalog = products.find((product) => product?._id === productId) || null;
     const fetchedProduct = await fetchProductById(productId, citySlug);
     const product = fetchedProduct || productFromCatalog;
