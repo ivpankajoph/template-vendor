@@ -1559,7 +1559,7 @@ export default function ProductDetailPage() {
         foodProduct.seo_description ||
         foodProduct.description ||
         "Freshly prepared restaurant menu item.",
-      image: foodImages,
+      image: foodImageUrls,
       offers: {
         "@type": "Offer",
         priceCurrency: "INR",
