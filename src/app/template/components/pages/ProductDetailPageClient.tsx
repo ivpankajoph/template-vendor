@@ -20,6 +20,7 @@ import {
   Check,
   Heart,
   MessageSquareMore,
+  LoaderCircle,
 } from "lucide-react";
 
 import { NEXT_PUBLIC_API_URL } from "@/config/variables";
@@ -2027,9 +2028,9 @@ export default function ProductDetailPage() {
                 type="button"
                 disabled={adding || foodProduct.is_available === false}
                 onClick={handleAddFoodToCart}
-                className="shrink-0 rounded-full bg-[#1f1720] px-5 py-3 text-xs font-extrabold uppercase tracking-[0.1em] text-white transition hover:bg-[#32252d] disabled:cursor-not-allowed disabled:bg-slate-300"
+                className="flex items-center justify-center gap-2 shrink-0 rounded-full bg-[#1f1720] px-5 py-3 text-xs font-extrabold uppercase tracking-[0.1em] text-white transition hover:bg-[#32252d] disabled:cursor-not-allowed disabled:bg-slate-300"
               >
-                {adding ? "Adding..." : "Add"}
+                {adding ? <LoaderCircle className="h-4 w-4 animate-spin" /> : "Add"}
               </button>
             </div>
           </div>
@@ -2407,9 +2408,16 @@ export default function ProductDetailPage() {
                     stockQuantity <= 0 ||
                     isDraftPreview
                   }
-                  className="h-12 w-full rounded-lg font-semibold text-white transition template-accent-bg template-accent-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
+                  className="flex items-center justify-center gap-2 h-12 w-full rounded-lg font-semibold text-white transition template-accent-bg template-accent-bg-hover disabled:cursor-not-allowed disabled:opacity-60"
                 >
-                  {adding ? "Adding..." : "Add to cart"}
+                  {adding ? (
+                    <>
+                      <LoaderCircle className="h-5 w-5 animate-spin" />
+                      Adding...
+                    </>
+                  ) : (
+                    "Add to cart"
+                  )}
                 </button>
                 <button
                   type="button"
@@ -2420,7 +2428,7 @@ export default function ProductDetailPage() {
                     stockQuantity <= 0 ||
                     isDraftPreview
                   }
-                  className={`h-12 w-full rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
+                  className={`flex items-center justify-center gap-2 h-12 w-full rounded-lg border font-semibold transition disabled:cursor-not-allowed disabled:opacity-60 ${
                     isStudio
                       ? "border-slate-700 bg-slate-950 text-slate-100 hover:bg-slate-900"
                       : isWhiteRose
@@ -2430,7 +2438,14 @@ export default function ProductDetailPage() {
                           : "border-slate-300 bg-white text-slate-900 hover:bg-slate-50"
                   }`}
                 >
-                  {adding ? "Processing..." : "Buy now"}
+                  {adding ? (
+                    <>
+                      <LoaderCircle className="h-5 w-5 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    "Buy now"
+                  )}
                 </button>
               </div>
 
