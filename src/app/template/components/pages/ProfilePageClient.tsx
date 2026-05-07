@@ -43,6 +43,27 @@ type Order = {
   total: number;
   payment_method?: string;
   createdAt: string;
+  delivery_provider?: string;
+  borzo?: {
+    order_id?: number | string;
+    status?: string;
+    status_description?: string;
+    tracking_url?: string;
+  };
+  delhivery?: {
+    waybill?: string;
+    waybills?: string[];
+    status?: string;
+    status_description?: string;
+    pickup_request_status?: string;
+    scans?: unknown;
+  };
+  shadowfax?: {
+    tracking_number?: string;
+    order_id?: string;
+    status?: string;
+    status_description?: string;
+  };
   items?: Array<{
     _id?: string;
     product_id?: string;
@@ -60,6 +81,38 @@ const API_BASE =
     : `${NEXT_PUBLIC_API_URL}/v1`;
 
 const formatMoney = (value: number) => `Rs. ${Number(value || 0).toFixed(2)}`;
+
+const readText = (value: unknown) => String(value ?? "").trim();
+
+const formatProviderName = (value?: string) => {
+  const provider = readText(value || "none").toLowerCase();
+  if (provider === "delhivery") return "Delhivery";
+  if (provider === "borzo") return "Borzo";
+  if (provider === "shadowfax") return "Shadowfax";
+  return "Delivery";
+};
+
+const getDeliveryStatus = (order: Order) =>
+  readText(
+    order.delhivery?.status ||
+      order.delhivery?.status_description ||
+      order.delhivery?.pickup_request_status ||
+      order.borzo?.status_description ||
+      order.borzo?.status ||
+      order.shadowfax?.status_description ||
+      order.shadowfax?.status ||
+      "",
+  );
+
+const getTrackingNumber = (order: Order) =>
+  readText(
+    order.delhivery?.waybill ||
+      order.delhivery?.waybills?.[0] ||
+      order.shadowfax?.tracking_number ||
+      order.shadowfax?.order_id ||
+      order.borzo?.order_id ||
+      "",
+  );
 
 export default function TemplateProfilePage() {
   const variant = useTemplateVariant();
@@ -474,12 +527,31 @@ export default function TemplateProfilePage() {
                         <span className={`w-fit rounded-full px-3 py-1 text-xs font-semibold ${isPocoFood ? "bg-[#fff6d6] text-[#171717]" : isStudio ? "bg-slate-800 text-slate-200" : "bg-slate-100 text-slate-600"}`}>
                           {order.items?.length || 0} items
                         </span>
+                        {(order.delivery_provider && order.delivery_provider !== "none") ||
+                        getTrackingNumber(order) ||
+                        getDeliveryStatus(order) ? (
+                          <div className={`min-w-0 flex-1 rounded-xl border px-3 py-2 text-xs ${isPocoFood ? "border-[#f2e9c8] bg-[#fffdf5]" : isStudio ? "border-slate-700 bg-slate-950/50" : "border-slate-200 bg-slate-50"}`}>
+                            <p className={`font-bold ${strongTextClass}`}>
+                              {formatProviderName(order.delivery_provider)}
+                              {getTrackingNumber(order) ? ` - ${getTrackingNumber(order)}` : ""}
+                            </p>
+                            <p className={`mt-0.5 ${mutedTextClass}`}>
+                              {getDeliveryStatus(order) || "Tracking updates pending"}
+                            </p>
+                          </div>
+                        ) : null}
                         <div className="grid gap-2 sm:flex sm:justify-end">
                           <Link
                             href={orderDetailPath(order._id)}
                             className={`inline-flex justify-center rounded-full border px-4 py-2 text-xs font-bold ${isPocoFood ? "border-[#eadfb7] text-[#171717] hover:border-[#ffc222] hover:bg-[#fff6d6]" : isStudio ? "border-slate-700 text-slate-200 hover:border-slate-600" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}
                           >
                             View details
+                          </Link>
+                          <Link
+                            href={`${orderDetailPath(order._id)}#delivery-tracking`}
+                            className={`inline-flex justify-center rounded-full border px-4 py-2 text-xs font-bold ${isPocoFood ? "border-[#eadfb7] text-[#171717] hover:border-[#ffc222] hover:bg-[#fff6d6]" : isStudio ? "border-slate-700 text-slate-200 hover:border-slate-600" : "border-slate-200 text-slate-700 hover:border-slate-300"}`}
+                          >
+                            Track delivery
                           </Link>
                           <button
                             type="button"

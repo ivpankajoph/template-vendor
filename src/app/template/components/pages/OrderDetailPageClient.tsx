@@ -48,6 +48,53 @@ type OrderDetail = {
     delivery_instructions?: string;
     country?: string;
   };
+  delivery_provider?: string;
+  delivery_cost?: number;
+  actual_delivery_cost?: number;
+  borzo?: {
+    order_id?: number | string;
+    status?: string;
+    status_description?: string;
+    tracking_url?: string;
+    courier?: Record<string, unknown>;
+  };
+  delhivery?: {
+    order_id?: string;
+    waybill?: string;
+    waybills?: string[];
+    label_url?: string;
+    pickup_location?: string;
+    pickup_request_id?: string;
+    pickup_request_status?: string;
+    pickup_request_message?: string;
+    pickup_request_date?: string;
+    pickup_request_time?: string;
+    pickup_request_packages?: number;
+    payment_mode?: string;
+    status?: string;
+    status_description?: string;
+    package_count?: number;
+    packages?: unknown;
+    tracking_data?: unknown;
+    scans?: unknown;
+    updated_at?: string;
+  };
+  shadowfax?: {
+    order_model?: string;
+    order_id?: string;
+    tracking_number?: string;
+    client_order_id?: string;
+    payment_mode?: string;
+    status?: string;
+    status_description?: string;
+  };
+};
+
+type TimelinePoint = {
+  status: string;
+  description: string;
+  location: string;
+  time: string;
 };
 
 const API_BASE =
@@ -56,6 +103,58 @@ const API_BASE =
     : `${NEXT_PUBLIC_API_URL}/v1`;
 
 const formatMoney = (value: number) => `Rs. ${Number(value || 0).toFixed(2)}`;
+
+const readText = (value: unknown) => String(value ?? "").trim();
+
+const normalizeTimeline = (rows: unknown): TimelinePoint[] => {
+  const list = Array.isArray(rows) ? rows : [];
+  return list
+    .map((row: any) => ({
+      status: readText(row?.status || row?.status_type || row?.scan || "Update"),
+      description: readText(row?.description || row?.remark || row?.instructions || ""),
+      location: readText(row?.location || row?.city || row?.hub || ""),
+      time: readText(row?.time || row?.updated_at || row?.date || ""),
+    }))
+    .filter((row) => row.status);
+};
+
+const formatDateTime = (value?: string) => {
+  if (!value) return "Not available";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleString("en-IN");
+};
+
+const formatProviderName = (value?: string) => {
+  const provider = readText(value || "none").toLowerCase();
+  if (provider === "delhivery") return "Delhivery";
+  if (provider === "borzo") return "Borzo";
+  if (provider === "shadowfax") return "Shadowfax";
+  return "Not assigned";
+};
+
+const getDeliveryStatus = (order: OrderDetail) =>
+  readText(
+    order.delhivery?.status ||
+      order.delhivery?.status_description ||
+      order.borzo?.status_description ||
+      order.borzo?.status ||
+      order.shadowfax?.status_description ||
+      order.shadowfax?.status ||
+      order.status,
+  );
+
+const getTrackingNumber = (order: OrderDetail) =>
+  readText(
+    order.delhivery?.waybill ||
+      order.delhivery?.waybills?.[0] ||
+      order.shadowfax?.tracking_number ||
+      order.shadowfax?.order_id ||
+      order.borzo?.order_id ||
+      "",
+  );
+
+const getDeliveryTimeline = (order: OrderDetail) =>
+  normalizeTimeline(order.delhivery?.scans);
 
 export default function OrderDetailPageClient() {
   const variant = useTemplateVariant();
@@ -137,6 +236,11 @@ export default function OrderDetailPageClient() {
       total: Number(order.total || 0),
     };
   }, [order]);
+
+  const deliveryTimeline = useMemo(
+    () => (order ? getDeliveryTimeline(order) : []),
+    [order],
+  );
 
   const downloadInvoice = async () => {
     if (!auth?.token) return;
@@ -240,6 +344,108 @@ export default function OrderDetailPageClient() {
         {order && totals && (
           <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
             <div className="space-y-6">
+              <div className={panelClass} id="delivery-tracking">
+                <div className="p-6">
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <div>
+                      <h2 className="text-lg font-semibold text-slate-900">
+                        Delivery tracking
+                      </h2>
+                      <p className="mt-1 text-sm text-slate-500">
+                        Courier status, tracking number, and scan updates.
+                      </p>
+                    </div>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase text-slate-600">
+                      {formatProviderName(order.delivery_provider)}
+                    </span>
+                  </div>
+
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    {[
+                      ["Tracking / AWB", getTrackingNumber(order) || "Not available"],
+                      ["Delivery status", getDeliveryStatus(order) || "Not available"],
+                      ["Payment mode", order.delhivery?.payment_mode || order.shadowfax?.payment_mode || order.payment_method || "Not available"],
+                      ["Package count", String(order.delhivery?.package_count || order.delhivery?.pickup_request_packages || order.items?.length || 0)],
+                      ["Pickup location", order.delhivery?.pickup_location || "Not available"],
+                      ["Pickup request", order.delhivery?.pickup_request_id || order.delhivery?.pickup_request_status || "Not available"],
+                    ].map(([label, value]) => (
+                      <div key={label} className="rounded-xl border border-slate-100 bg-white p-3 text-sm">
+                        <p className="text-xs font-semibold uppercase text-slate-500">{label}</p>
+                        <p className="mt-1 break-words font-semibold text-slate-900">{value}</p>
+                      </div>
+                    ))}
+                  </div>
+
+                  {order.delhivery?.pickup_request_message ||
+                  order.delhivery?.pickup_request_date ||
+                  order.delhivery?.pickup_request_time ? (
+                    <div className="mt-4 rounded-xl border border-emerald-100 bg-emerald-50 p-4 text-sm text-emerald-900">
+                      <p className="font-semibold">Pickup details</p>
+                      <p className="mt-1">
+                        {order.delhivery?.pickup_request_message ||
+                          order.delhivery?.pickup_request_status ||
+                          "Pickup request created"}
+                      </p>
+                      <p className="mt-1 text-xs">
+                        {[order.delhivery?.pickup_request_date, order.delhivery?.pickup_request_time]
+                          .filter(Boolean)
+                          .join(" at ") || "Slot not available"}
+                      </p>
+                    </div>
+                  ) : null}
+
+                  {order.borzo?.tracking_url ? (
+                    <a
+                      href={order.borzo.tracking_url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="mt-4 inline-flex rounded-lg border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-700 hover:border-slate-300"
+                    >
+                      Open courier tracking
+                    </a>
+                  ) : null}
+
+                  <div className="mt-6">
+                    <h3 className="text-sm font-semibold text-slate-900">
+                      Tracking timeline
+                    </h3>
+                    {deliveryTimeline.length ? (
+                      <div className="mt-4 space-y-0">
+                        {deliveryTimeline.map((point, index) => (
+                          <div
+                            key={`${point.status}-${point.time}-${index}`}
+                            className="flex gap-3"
+                          >
+                            <div className="flex w-6 flex-col items-center">
+                              <span className="mt-1 h-2.5 w-2.5 rounded-full bg-emerald-600" />
+                              {index !== deliveryTimeline.length - 1 ? (
+                                <span className="mt-1 h-full w-px bg-slate-200" />
+                              ) : null}
+                            </div>
+                            <div className="pb-4 text-sm">
+                              <p className="font-semibold text-slate-900">{point.status}</p>
+                              {point.description ? (
+                                <p className="text-slate-600">{point.description}</p>
+                              ) : null}
+                              <p className="text-xs text-slate-500">
+                                {point.location || "Location not available"}
+                              </p>
+                              <p className="text-xs text-slate-500">
+                                {formatDateTime(point.time)}
+                              </p>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="mt-3 rounded-xl border border-dashed border-slate-200 p-4 text-sm text-slate-500">
+                        Tracking updates will appear here after the courier shares scans.
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+
               <div className={panelClass}>
                 <div className="p-6">
                   <h2 className="text-lg font-semibold text-slate-900">Items</h2>
